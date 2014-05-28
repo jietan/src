@@ -161,7 +161,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opencv_core249d.lib;opencv_imgproc249d.lib;opencv_highgui249d.lib;libglog_d.lib;utility_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_core249d.lib;opencv_imgproc249d.lib;opencv_highgui249d.lib;opencv_photo249d.lib;libglog_d.lib;utility_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
@@ -258,6 +258,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DepthImage.cpp" />
+    <ClCompile Include="DepthInpainting.cpp" />
     <ClCompile Include="DepthSegmentation.cpp" />
     <ClCompile Include="ImageSegmentation.cpp" />
     <ClCompile Include="main.cpp" />
@@ -279,6 +280,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DepthImage.h" />
+    <ClInclude Include="DepthInpainting.h" />
     <ClInclude Include="DepthSegmentation.h" />
     <ClInclude Include="grid.h" />
     <ClInclude Include="ImageSegmentation.h" />

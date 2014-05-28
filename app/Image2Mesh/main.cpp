@@ -22,7 +22,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include <iostream>
 #include <vector>
@@ -39,6 +39,7 @@ using namespace Eigen;
 #include "grid.h"
 #include "ImageSegmentation.h"
 #include "DepthSegmentation.h"
+#include "DepthInpainting.h"
 
 
 //#include "gflags/gflags.h"
@@ -534,11 +535,30 @@ int main(int argc, char** argv)
 	DepthImage depthImage(filename);
 	depthImage.Process(cameraPoses[ithDepthToProcess]);
 
+	//cv::Mat segmentationImage = cv::imread("DepthSegmentation.pngopaque.png");
+	//MatrixXi maskImage = MatrixXi::Zero(segmentationImage.rows, segmentationImage.cols);
+	//for (int i = 0; i < segmentationImage.rows; ++i)
+	//{
+	//	for (int j = 0; j < segmentationImage.cols; ++j)
+	//	{
+	//		if (segmentationImage.at<uchar>(i, j) != 199)
+	//			maskImage(i, j) = 0;
+	//		else
+	//			maskImage(i, j) = 1;
+	//	}
+	//}
+	//DepthImageInpainting inpainter;
+	//inpainter.SetDepthImage(&depthImage);
+	//inpainter.SetMaskImage(maskImage);
+	//inpainter.Inpaint();
+	//inpainter.SaveResultImage("DepthInpaint.png");
+
 	const int numSegments = 200;
 	DepthSegmentation segmenter(&depthImage);
-	segmenter.Segment(numSegments);
-	//cv::waitKey();
+	const Segmentation& segment = segmenter.Segment(numSegments);
 	segmenter.SaveSegmentedImage("DepthSegmentation.png");
+
+
 
  //	cv::Mat depthImg = ReadDepthImage(filename);
 	//cv::Mat depthImgAfterPreprocessing = PreprocessDepthImage(depthImg);

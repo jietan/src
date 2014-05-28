@@ -345,35 +345,19 @@ void DepthSegmentation::mergeSegments()
 	
 	int numSegments = NumSegments();
 	for (int i = numSegments; i >= 2; --i)
-	{
-		//if (i == 14)
-		//{
-		//	printf("Hello");
-		//	
-		//	for (int testI = 0; testI < 200; ++testI)
-		//	{
-		//		for (int testJ = 0; testJ < 200; ++testJ)
-		//		{
-		//			if (mSegmentAdjacency(testI, testJ))
-		//			{
-		//				LOG(INFO) << testI << ": " << testJ << " " << computeBoundaryDepthDifference(testI, testJ);
-		//			}
-		//		}
-		//	}
-		//}
-			
+	{	
 		int segmentI, segmentJ;
 		float similarity = mSegmentSimilarity.maxCoeff(&segmentI, &segmentJ);
 		if (similarity < 0.4)
 			break;
 		mergeSegments(segmentI, segmentJ);
 		
-		//char testFileName[512];
-		//sprintf(testFileName, "testImages/DepthSegmentation%03d.png", i);
-		//SaveSegmentedImage(testFileName);
+		char testFileName[512];
+		sprintf(testFileName, "testImages/DepthSegmentation%03d.png", i);
+		SaveSegmentedImage(testFileName);
 		LOG(INFO) << i << " segments remain.";
 	}
-	mSegmentation.Rebuild();
+	//mSegmentation.Rebuild();
 
 }
 void DepthSegmentation::SaveSegmentedImage(const string& filename)
