@@ -526,7 +526,7 @@ int main(int argc, char** argv)
 	int numFrames = numImages < numViews ? numImages : numViews;
 
 
-	int ithDepthToProcess = 450;
+	int ithDepthToProcess = 0;
 	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
 	sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[ithDepthToProcess].first.c_str());

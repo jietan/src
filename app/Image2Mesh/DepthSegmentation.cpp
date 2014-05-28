@@ -368,9 +368,9 @@ void DepthSegmentation::mergeSegments()
 			break;
 		mergeSegments(segmentI, segmentJ);
 		
-		char testFileName[512];
-		sprintf(testFileName, "testImages/DepthSegmentation%03d.png", i);
-		SaveSegmentedImage(testFileName);
+		//char testFileName[512];
+		//sprintf(testFileName, "testImages/DepthSegmentation%03d.png", i);
+		//SaveSegmentedImage(testFileName);
 		LOG(INFO) << i << " segments remain.";
 	}
 	mSegmentation.Rebuild();
