@@ -23,6 +23,8 @@ public:
 	void ReadFromFile(const string& filename);
 	void SaveToFile(const string& filename) const;
 
+	void SetData(const cv::Mat1f& mDepthData);
+
 	void Process(const Matrix4d& cameraPose);
 
 	int NumRows() const;

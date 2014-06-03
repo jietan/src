@@ -257,6 +257,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DepthCamera.cpp" />
     <ClCompile Include="DepthImage.cpp" />
     <ClCompile Include="DepthInpainting.cpp" />
     <ClCompile Include="DepthSegmentation.cpp" />
@@ -279,6 +280,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DepthCamera.h" />
     <ClInclude Include="DepthImage.h" />
     <ClInclude Include="DepthInpainting.h" />
     <ClInclude Include="DepthSegmentation.h" />

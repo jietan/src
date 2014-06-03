@@ -40,9 +40,9 @@ void DepthImage::ReadFromFile(const string& filename)
 			mData.at<float>(i, j) = mOriginalData.at<ushort>(i, j);
 		}
 	}
-	cv::Mat smoothedData;
-	cv::bilateralFilter(mData, smoothedData, 5, 1000, 5);
-	mData = smoothedData;
+	//cv::Mat smoothedData;
+	//cv::bilateralFilter(mData, smoothedData, 5, 1000, 5);
+	//mData = smoothedData;
 	double minValue;
 	double maxValue;
 	cv::Point minLoc;
@@ -60,6 +60,7 @@ float DepthImage::MinDepth() const
 {
 	return mMinDepth;
 }
+
 void DepthImage::SaveToFile(const string& filename) const
 {
 	int numRows = mData.rows;

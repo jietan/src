@@ -40,6 +40,7 @@ using namespace Eigen;
 #include "ImageSegmentation.h"
 #include "DepthSegmentation.h"
 #include "DepthInpainting.h"
+#include "DepthCamera.h"
 
 
 //#include "gflags/gflags.h"
@@ -53,6 +54,9 @@ string gDataFolder = "../../../Tables/";
 string gDataName = "399318621.826096";
 char* outputFile = NULL;
 double gDepthThreshold = 10.5;
+const int gDepthImageWidth = 640;
+const int gDepthImageHeight = 480;
+const double gFocalLenth = 525.0;
 
 int echoStdout=0;
 typedef float Real;
@@ -239,6 +243,24 @@ void ColorImageToColors(const cv::Mat& colorImg, vector<Vector3i>& colors)
 			colors.push_back(color);
 		}
 	}
+}
+
+void ReadPointCloud(const string& filename, vector<Vector3d>& points, vector<Vector3d>& normals)
+{
+	points.clear();
+	normals.clear();
+
+	PointStream< Real >* pointStream = new PLYPointStream< Real >(filename.c_str());
+
+	Point3D< Real > p, n;
+	while (pointStream->nextPoint(p, n))
+	{
+		Vector3d pt(p[0], p[1], p[2]);
+		Vector3d normal(n[0], n[1], n[2]);
+		points.push_back(pt);
+		normals.push_back(normal);
+	}
+	
 }
 
 
@@ -528,12 +550,12 @@ int main(int argc, char** argv)
 
 
 	int ithDepthToProcess = 0;
-	char filename[MAX_FILENAME_LEN];
-	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[ithDepthToProcess].first.c_str());
+	//char filename[MAX_FILENAME_LEN];
+	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	//sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[ithDepthToProcess].first.c_str());
 
-	DepthImage depthImage(filename);
-	depthImage.Process(cameraPoses[ithDepthToProcess]);
+	//DepthImage depthImage(filename);
+	//depthImage.Process(cameraPoses[ithDepthToProcess]);
 
 	//cv::Mat segmentationImage = cv::imread("DepthSegmentation.pngopaque.png");
 	//MatrixXi maskImage = MatrixXi::Zero(segmentationImage.rows, segmentationImage.cols);
@@ -553,10 +575,10 @@ int main(int argc, char** argv)
 	//inpainter.Inpaint();
 	//inpainter.SaveResultImage("DepthInpaint.png");
 
-	const int numSegments = 200;
-	DepthSegmentation segmenter(&depthImage);
-	const Segmentation& segment = segmenter.Segment(numSegments);
-	segmenter.SaveSegmentedImage("DepthSegmentation.png");
+	//const int numSegments = 200;
+	//DepthSegmentation segmenter(&depthImage);
+	//const Segmentation& segment = segmenter.Segment(numSegments);
+	//segmenter.SaveSegmentedImage("DepthSegmentation.png");
 
 
 
@@ -567,25 +589,25 @@ int main(int argc, char** argv)
 	//segmenter.Segment(depthImgAfterPreprocessing, 30, 85);
 	//segmenter.SaveSegmentedImage("TestSegmentation.png");
 
-	//vector<Vector3d> points;
-	//vector<Vector3d> normals;
-	//vector<Vector3i> colors;
+	vector<Vector3d> points;
+	vector<Vector3d> normals;
+	vector<Vector3i> colors;
 
-	//for (int i = 0; i < numFrames; i += 1000)
+	//for (int i = 0; i < numFrames; i += 1)
 	//{
 	//	char filename[MAX_FILENAME_LEN];
 	//	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//	sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
+	//	sprintf(filename, "%s%s/beforeCleaning/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
 	//	DepthImage depthImg(filename);
 
 	//	depthImg.Process(cameraPoses[i]);
 	//	points.insert(points.end(), depthImg.GetPoints().begin(), depthImg.GetPoints().end());
 	//	normals.insert(normals.end(), depthImg.GetNormals().begin(), depthImg.GetNormals().end());
 
-	//	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//	sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].second.c_str());
-	//	cv::Mat colorImg = ReadColorImage(filename);
-	//	ColorImageToColors(colorImg, colors);
+	//	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	//	//sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].second.c_str());
+	//	//cv::Mat colorImg = ReadColorImage(filename);
+	//	//ColorImageToColors(colorImg, colors);
 	//	LOG(INFO) << "Processing " << i << " out of " << numFrames << " frames." << endl;
 
 	//}
@@ -604,5 +626,32 @@ int main(int argc, char** argv)
 	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
 	//sprintf(filename, "%s%s/mesh.ply", gDataFolder.c_str(), gDataName.c_str());
 	//SaveMesh(filename, &mesh);
+
+	//char filename[MAX_FILENAME_LEN];
+	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	//sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
+	//ReadPointCloud(filename, points, normals);
+
+	
+	DepthCamera dCamera;
+	dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+	dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+	
+	char filename[MAX_FILENAME_LEN];
+	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	sprintf(filename, "%s%s/depthFromMultiview_%d.png.data", gDataFolder.c_str(), gDataName.c_str(), ithDepthToProcess);
+	dCamera.ReadMultilayerDepthImage(filename);
+	dCamera.ProcessMultiLayerDepthImage();
+
+	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	//sprintf(filename, "%s%s/depthFromMultiview_%d.png", gDataFolder.c_str(), gDataName.c_str(), ithDepthToProcess);
+	//dCamera.SaveDepthImage(filename);
+	sprintf(filename, "%s%s/depthOnion", gDataFolder.c_str(), gDataName.c_str());
+	dCamera.SaveDepthOnionImage(filename);
+	//dCamera.SaveDepthThresholdingImage(filename, 25);
+
+
+	//dCamera.Capture(points, normals, filename);
+
 
 }

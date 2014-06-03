@@ -296,6 +296,43 @@ private:
 	T* mData;
 };
 
+template <class T>
+int binarySearchInsertPos(const vector<T>& sortedArray, T elem)
+{
+	int imin = 0;
+	int imax = static_cast<int>(sortedArray.size());
+	
+	while (imax >= imin)
+	{
+		// calculate the midpoint for roughly equal partition
+		int imid = midpoint(imin, imax);
+		if (A[imid] == key)
+			return imid;
+		else if (A[imid] < key)
+			imin = imid + 1;
+		else
+			imax = imid - 1;
+	}
+	// key was not found
+	return imax;
+}
+
+template <class T>
+int linearSearchInsertPos(const vector<T>& sortedArray, T elem)
+{
+	int len = static_cast<int>(sortedArray.size());
+	if (elem <= sortedArray[0])
+		return 0;
+	else if (elem > sortedArray[len - 1])
+		return len;
+	for (int i = 0; i < len - 1; ++i)
+	{
+		if (elem > sortedArray[i] && elem <= sortedArray[i + 1])
+			return i + 1;
+	}
+	return len;
+}
+
 void DumpToObjFile(const string& filename, const vector<double>& vertexBuff);
 bool IsValueInBetween(double value, double a, double b); //the order of a and b is not assumed;
 void Tokenize(const std::string& str,
