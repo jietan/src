@@ -25,13 +25,13 @@ public:
 
 	void SetData(const cv::Mat1f& mDepthData);
 
-	void Process(const Matrix4d& cameraPose);
+	void Process(const Matrix4f& cameraPose);
 
 	int NumRows() const;
 	int NumCols() const;
 
-	const vector<Vector3d>& GetPoints() const;
-	const vector<Vector3d>& GetNormals() const;
+	const vector<Vector3f>& GetPoints() const;
+	const vector<Vector3f>& GetNormals() const;
 
 	const cv::Mat1f& Data() const;
 	float Depth(int idx) const;
@@ -40,11 +40,11 @@ public:
 	float MaxDepth() const;
 	float MinDepth() const;
 	
-	Vector3d GlobalNormal(int idx) const;
-	Vector3d GlobalNormal(int ithRow, int jthCol) const;
+	Vector3f GlobalNormal(int idx) const;
+	Vector3f GlobalNormal(int ithRow, int jthCol) const;
 
-	Vector3d GlobalPoint(int idx) const;
-	Vector3d GlobalPoint(int ithRow, int jthCol) const;
+	Vector3f GlobalPoint(int idx) const;
+	Vector3f GlobalPoint(int ithRow, int jthCol) const;
 
 	int LeftNeighbor(int idx) const;
 	int RightNeighbor(int idx) const;
@@ -59,8 +59,8 @@ private:
 	void depthToPoints();
 	void depthToNormals();
 
-	vector<Vector3d> mPoints;
-	vector<Vector3d> mNormals;
+	vector<Vector3f> mPoints;
+	vector<Vector3f> mNormals;
 	
 	cv::Mat1w mOriginalData;
 	cv::Mat1f mData;
@@ -71,7 +71,7 @@ private:
 	float mMinDepth;
 	float mMaxDepth;
 
-	Matrix4d mCameraPose;
+	Matrix4f mCameraPose;
 };
 
 #endif

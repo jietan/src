@@ -19,8 +19,8 @@ DepthSegmentation::~DepthSegmentation()
 }
 const Segmentation& DepthSegmentation::Segment(int numSegments)
 {
-	const vector<Vector3d>& points = mDepthImage->GetPoints();
-	const vector<Vector3d>& normals = mDepthImage->GetNormals();
+	const vector<Vector3f>& points = mDepthImage->GetPoints();
+	const vector<Vector3f>& normals = mDepthImage->GetNormals();
 
 	int numPoints = static_cast<int>(points.size());
 	cv::Mat1f pointsData;
@@ -148,45 +148,45 @@ void DepthSegmentation::initializeNormalHistogram()
 VectorXi DepthSegmentation::computeNormalHistogram(int ithSegment)
 {
 	const double phi = (1 + sqrt(5)) / 2.0;
-	Vector3d faceNormalIcosahedron[NUM_ICOSAGEDRON_FACES] =
+	Vector3f faceNormalIcosahedron[NUM_ICOSAGEDRON_FACES] =
 	{
-		Vector3d(-1, -1, -1),
-		Vector3d(-1, -1, 1),
-		Vector3d(-1, 1, -1),
-		Vector3d(-1, 1, 1),
-		Vector3d(1, -1, -1),
-		Vector3d(1, -1, 1),
-		Vector3d(1, 1, -1),
-		Vector3d(1, 1, 1),
+		Vector3f(-1, -1, -1),
+		Vector3f(-1, -1, 1),
+		Vector3f(-1, 1, -1),
+		Vector3f(-1, 1, 1),
+		Vector3f(1, -1, -1),
+		Vector3f(1, -1, 1),
+		Vector3f(1, 1, -1),
+		Vector3f(1, 1, 1),
 
-		Vector3d(0, -1 / phi, -phi),
-		Vector3d(0, -1 / phi, phi),
-		Vector3d(0, 1 / phi, -phi),
-		Vector3d(0, 1 / phi, phi),
+		Vector3f(0, -1 / phi, -phi),
+		Vector3f(0, -1 / phi, phi),
+		Vector3f(0, 1 / phi, -phi),
+		Vector3f(0, 1 / phi, phi),
 
-		Vector3d(-1 / phi, -phi, 0),
-		Vector3d(-1 / phi, phi, 0),
-		Vector3d(1 / phi, -phi, 0),
-		Vector3d(1 / phi, phi, 0),
+		Vector3f(-1 / phi, -phi, 0),
+		Vector3f(-1 / phi, phi, 0),
+		Vector3f(1 / phi, -phi, 0),
+		Vector3f(1 / phi, phi, 0),
 
-		Vector3d(-phi, 0, -1 / phi),
-		Vector3d(-phi, 0, 1 / phi),
-		Vector3d(phi, 0, -1 / phi),
-		Vector3d(phi, 0, 1 / phi),
+		Vector3f(-phi, 0, -1 / phi),
+		Vector3f(-phi, 0, 1 / phi),
+		Vector3f(phi, 0, -1 / phi),
+		Vector3f(phi, 0, 1 / phi),
 	};
 	for (int i = 0; i < NUM_ICOSAGEDRON_FACES; ++i)
 	{
 		faceNormalIcosahedron[i].normalize();
 	}
 	VectorXi hist = VectorXi::Zero(NUM_ICOSAGEDRON_FACES);
-	const vector<Vector3d>& normals = mDepthImage->GetNormals();
+	const vector<Vector3f>& normals = mDepthImage->GetNormals();
 
 	VectorXd normalClassificationBins = VectorXd::Zero(NUM_ICOSAGEDRON_FACES);
 
 	for (set<int>::const_iterator it = mSegmentation.mSegmentedPixelIdx[ithSegment].begin(); it != mSegmentation.mSegmentedPixelIdx[ithSegment].end(); ++it)
 	{
 		int idx = *it;
-		Vector3d n = normals[idx];
+		Vector3f n = normals[idx];
 		for (int ithClass = 0; ithClass < NUM_ICOSAGEDRON_FACES; ++ithClass)
 		{
 			normalClassificationBins[ithClass] = faceNormalIcosahedron[ithClass].dot(n);

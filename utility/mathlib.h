@@ -663,7 +663,7 @@ BOOL TriangleRayIntersection (const vector3& a, const vector3& b, const vector3&
 BOOL PointInTriangle (const vector3& pt, const vector3& a, const vector3& b, const vector3& c);
 BOOL PointInLine (const vector3& pt, const vector3& a, const vector3& b, BOOL bSegment = TRUE);
 DOUBLE PointRayDistance(const vector3& pt, const vector3& origin, const vector3& dir, double& rayDepth);
-double PointRayDistance(const Vector3d& pt, const Vector3d& origin, const Vector3d& dir, double& rayDepth);
+double PointRayDistance(const Vector3f& pt, const Vector3f& origin, const Vector3f& dir, double& rayDepth);
 DOUBLE PointLineDistance (const vector3& pt, const vector3& a, const vector3& b, BOOL bSegment = TRUE);
 DOUBLE PointPolylineDistance(const vector3& pt, const vector<vector3>& polyline, int& segmentIdx);
 DOUBLE PointTriangleDistance(const vector3& pt, const vector3& a, const vector3& b, const vector3& c);

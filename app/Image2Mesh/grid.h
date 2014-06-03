@@ -9,11 +9,11 @@ public:
 	{
 
 	}
-	Grid(const Vector3d& minPoint, const Vector3d& maxPoint, const Vector3i& resolution)
+	Grid(const Vector3f& minPoint, const Vector3f& maxPoint, const Vector3i& resolution)
 	{
 		SetResolutionInfo(minPoint, maxPoint, resolution);
 	}
-	void SetResolutionInfo(const Vector3d& minPoint, const Vector3d& maxPoint, const Vector3i& resolution)
+	void SetResolutionInfo(const Vector3f& minPoint, const Vector3f& maxPoint, const Vector3i& resolution)
 	{
 		mMinPoint = minPoint;
 		mMaxPoint = maxPoint;
@@ -38,9 +38,9 @@ public:
 	{
 
 	}
-	bool Pos2Idx(const Vector3d& pos, int&i, int& j, int& k)
+	bool Pos2Idx(const Vector3f& pos, int&i, int& j, int& k)
 	{
-		Vector3d OffsetFromMin = pos - mMinPoint;
+		Vector3f OffsetFromMin = pos - mMinPoint;
 		i = static_cast<int>(OffsetFromMin[0] / mGridSize[0]);
 		j = static_cast<int>(OffsetFromMin[1] / mGridSize[1]);
 		k = static_cast<int>(OffsetFromMin[2] / mGridSize[2]);
@@ -56,10 +56,10 @@ public:
 
 private:
 	vector<vector<vector<type> > > mData;
-	Vector3d mMinPoint;
-	Vector3d mMaxPoint;
+	Vector3f mMinPoint;
+	Vector3f mMaxPoint;
 	Vector3i mResolution;
-	Vector3d mGridSize;
+	Vector3f mGridSize;
 };
 
 #endif

@@ -85,11 +85,11 @@ int DepthImage::NumCols() const
 	return mData.cols;
 }
 
-const vector<Vector3d>& DepthImage::GetPoints() const
+const vector<Vector3f>& DepthImage::GetPoints() const
 {
 	return mPoints;
 }
-const vector<Vector3d>& DepthImage::GetNormals() const
+const vector<Vector3f>& DepthImage::GetNormals() const
 {
 	return mNormals;
 }
@@ -109,27 +109,27 @@ float DepthImage::Depth(int ithRow, int jthCol) const
 	return mData.at<float>(ithRow, jthCol);
 }
 
-Vector3d DepthImage::GlobalNormal(int idx) const
+Vector3f DepthImage::GlobalNormal(int idx) const
 {
 	return mNormals[idx];
 }
-Vector3d DepthImage::GlobalNormal(int ithRow, int jthCol) const
+Vector3f DepthImage::GlobalNormal(int ithRow, int jthCol) const
 {
 	 cv::Vec3f n = mNormalImage.at<cv::Vec3f>(ithRow, jthCol);
-	 return Vector3d(n[0], n[1], n[2]);
+	 return Vector3f(n[0], n[1], n[2]);
 }
 
-Vector3d DepthImage::GlobalPoint(int idx) const
+Vector3f DepthImage::GlobalPoint(int idx) const
 {
 	return mPoints[idx];
 }
-Vector3d DepthImage::GlobalPoint(int ithRow, int jthCol) const
+Vector3f DepthImage::GlobalPoint(int ithRow, int jthCol) const
 {
 	cv::Vec3f p = mPointImage.at<cv::Vec3f>(ithRow, jthCol);
-	return Vector3d(p[0], p[1], p[2]);
+	return Vector3f(p[0], p[1], p[2]);
 }
 
-void DepthImage::Process(const Matrix4d& cameraPose)
+void DepthImage::Process(const Matrix4f& cameraPose)
 {
 	mCameraPose = cameraPose;
 	depthToPoints();
@@ -154,7 +154,7 @@ void DepthImage::depthToPoints()
 			double x = (u - cx) * z / fx;
 			double y = (v - cy) * z / fy;
 
-			Eigen::Vector4d w = mCameraPose * Eigen::Vector4d(x, y, z, 1);
+			Eigen::Vector4f w = mCameraPose * Eigen::Vector4f(x, y, z, 1);
 
 			mPointImage.at<cv::Vec3f>(v, u) = cv::Vec3f(w[0], w[1], w[2]);
 			mPoints.push_back(w.head(3));
@@ -168,8 +168,8 @@ void DepthImage::depthToNormals()
 	mNormalImage.create(numRows, numCols);
 	int numTotalPixels = numRows * numCols;
 
-	Vector3d tangentialAxis1;
-	Vector3d tangentialAxis2;
+	Vector3f tangentialAxis1;
+	Vector3f tangentialAxis2;
 
 	for (int i = 0; i < numTotalPixels; ++i)
 	{
@@ -186,11 +186,11 @@ void DepthImage::depthToNormals()
 		if (abs(2 * dCurrent - dLeft - dRight) > msCurvatureTheshold)
 		{
 			double diff = abs(dRight - dCurrent) > abs(dCurrent - dLeft) ? dCurrent - dLeft : dRight - dCurrent;
-			tangentialAxis1 = Vector3d(1, 0, diff);
+			tangentialAxis1 = Vector3f(1, 0, diff);
 		}
 		else
 		{
-			tangentialAxis1 = Vector3d(2, 0, dRight - dLeft);
+			tangentialAxis1 = Vector3f(2, 0, dRight - dLeft);
 		}
 
 		int upper = UpperNeighbor(current);
@@ -200,15 +200,15 @@ void DepthImage::depthToNormals()
 		if (abs(2 * dCurrent - dUpper - dLower) > msCurvatureTheshold)
 		{
 			double diff = abs(dUpper - dCurrent) > abs(dCurrent - dLower) ? dLower - dCurrent : dCurrent - dUpper;
-			tangentialAxis2 = Vector3d(0, 1, diff);
+			tangentialAxis2 = Vector3f(0, 1, diff);
 		}
 		else
 		{
-			tangentialAxis2 = Vector3d(0, 2, dLower - dUpper);
+			tangentialAxis2 = Vector3f(0, 2, dLower - dUpper);
 		}
-		Vector3d normal = tangentialAxis1.cross(tangentialAxis2);
+		Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
 		normal = -normal.normalized();
-		Vector3d gn = mCameraPose.block(0, 0, 3, 3) * normal;
+		Vector3f gn = mCameraPose.block(0, 0, 3, 3) * normal;
 
 		mNormalImage.at<cv::Vec3f>(v, u) = cv::Vec3f(gn[0], gn[1], gn[2]);
 		mNormals.push_back(gn);

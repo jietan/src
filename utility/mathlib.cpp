@@ -846,7 +846,7 @@ BOOL PointInLine (const vector3& pt, const vector3& a, const vector3& b, BOOL bS
 		return FALSE;
 }
 
-double PointRayDistance(const Vector3d& pt, const Vector3d& origin, const Vector3d& dir, double& rayDepth)
+double PointRayDistance(const Vector3f& pt, const Vector3f& origin, const Vector3f& dir, double& rayDepth)
 {
 	vector3 point(pt[0], pt[1], pt[2]);
 	vector3 o(origin[0], origin[1], origin[2]);

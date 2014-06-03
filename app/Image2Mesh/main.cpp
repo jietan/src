@@ -192,7 +192,7 @@ int ReadCorrespondence(vector<pair<string, string> >& correspondence)
 	return numCorrespondence - 1;
 }
 
-int ReadCameraPoses(vector<MatrixXd>& cameraPose)
+int ReadCameraPoses(vector<MatrixXf>& cameraPose)
 {
 	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
@@ -201,7 +201,7 @@ int ReadCameraPoses(vector<MatrixXd>& cameraPose)
 
 	ifstream inFile(filename);
 	
-	MatrixXd pose = MatrixXd::Zero(4, 4);
+	MatrixXf pose = MatrixXf::Zero(4, 4);
 	while (inFile.good())
 	{
 		int ithFrame;
@@ -245,7 +245,7 @@ void ColorImageToColors(const cv::Mat& colorImg, vector<Vector3i>& colors)
 	}
 }
 
-void ReadPointCloud(const string& filename, vector<Vector3d>& points, vector<Vector3d>& normals)
+void ReadPointCloud(const string& filename, vector<Vector3f>& points, vector<Vector3f>& normals)
 {
 	points.clear();
 	normals.clear();
@@ -255,8 +255,8 @@ void ReadPointCloud(const string& filename, vector<Vector3d>& points, vector<Vec
 	Point3D< Real > p, n;
 	while (pointStream->nextPoint(p, n))
 	{
-		Vector3d pt(p[0], p[1], p[2]);
-		Vector3d normal(n[0], n[1], n[2]);
+		Vector3f pt(p[0], p[1], p[2]);
+		Vector3f normal(n[0], n[1], n[2]);
 		points.push_back(pt);
 		normals.push_back(normal);
 	}
@@ -264,7 +264,7 @@ void ReadPointCloud(const string& filename, vector<Vector3d>& points, vector<Vec
 }
 
 
-void SavePointCloud(const string& filename, const vector<Vector3d>& points, const vector<Vector3i>& colors, const vector<Vector3d>& normals)
+void SavePointCloud(const string& filename, const vector<Vector3f>& points, const vector<Vector3i>& colors, const vector<Vector3f>& normals)
 {
 
 	std::vector<PlyOrientedVertex<Real> > vertices;
@@ -278,7 +278,7 @@ void SavePointCloud(const string& filename, const vector<Vector3d>& points, cons
 }
 
 template< class Vertex >
-int Points2Mesh(const vector<Vector3d>& points, const vector<Vector3d>& normals, CoredMeshData< Vertex >& mesh)
+int Points2Mesh(const vector<Vector3f>& points, const vector<Vector3f>& normals, CoredMeshData< Vertex >& mesh)
 {
 	int i;
 	int paramNum = sizeof(params)/sizeof(cmdLineReadable*);
@@ -374,7 +374,7 @@ void SaveMesh(const string& filename, CoredMeshData< Vertex >* mesh)
 	PlyWritePolygons(const_cast<char*>(filename.c_str()), mesh , PLY_ASCII);
 }
 
-void ComputeBoundingBox(const vector<Vector3d>& points, Vector3d& minPt, Vector3d& maxPt)
+void ComputeBoundingBox(const vector<Vector3f>& points, Vector3f& minPt, Vector3f& maxPt)
 {
 	int numPoints = static_cast<int>(points.size());
 	CHECK(numPoints > 0) << "Empty point cloud to ComputeBoundingBox.";
@@ -392,12 +392,12 @@ void ComputeBoundingBox(const vector<Vector3d>& points, Vector3d& minPt, Vector3
 	}
 }
 
-void MergePoints(const vector<Vector3d>& points, const vector<Vector3d>& normals, const vector<int>& indices, vector<Vector3d>& newPoints, vector<Vector3d>& newNormals)
+void MergePoints(const vector<Vector3f>& points, const vector<Vector3f>& normals, const vector<int>& indices, vector<Vector3f>& newPoints, vector<Vector3f>& newNormals)
 {
 	if (indices.empty()) return;
 	int numPoints = static_cast<int>(indices.size());
-	Vector3d avgPoint = Vector3d::Zero();
-	Vector3d avgNormal = Vector3d::Zero();
+	Vector3f avgPoint = Vector3f::Zero();
+	Vector3f avgNormal = Vector3f::Zero();
 
 	for (int i = 0; i < numPoints; ++i)
 	{
@@ -410,21 +410,21 @@ void MergePoints(const vector<Vector3d>& points, const vector<Vector3d>& normals
 	newNormals.push_back(avgNormal);
 }
 
-void SubsamplePointCloud(const vector<Vector3d>& points, const vector<Vector3d>& normals, double mergeDistance, vector<Vector3d>& newPoints, vector<Vector3d>& newNormals)
+void SubsamplePointCloud(const vector<Vector3f>& points, const vector<Vector3f>& normals, float mergeDistance, vector<Vector3f>& newPoints, vector<Vector3f>& newNormals)
 {
-	Vector3d minPoint, maxPoint;
+	Vector3f minPoint, maxPoint;
 	ComputeBoundingBox(points, minPoint, maxPoint);
 	for (int i = 0; i < 3; ++i)
 	{
-		minPoint[i] = max<double>(-1, minPoint[i]);
+		minPoint[i] = max<float>(-1, minPoint[i]);
 		//maxPoint[i] = min<double>(2.5, maxPoint[i]);
 	}
-	minPoint[0] = max<double>(-1, minPoint[0]);
-	minPoint[1] = max<double>(-1, minPoint[1]);
-	minPoint[2] = max<double>(0, minPoint[2]);
-	maxPoint[0] = min<double>(2.8, maxPoint[0]);
-	maxPoint[1] = min<double>(2.9, maxPoint[1]);
-	maxPoint[2] = min<double>(3.8, maxPoint[2]);
+	minPoint[0] = max<float>(-1.f, minPoint[0]);
+	minPoint[1] = max<float>(-1.f, minPoint[1]);
+	minPoint[2] = max<float>(0.f, minPoint[2]);
+	maxPoint[0] = min<float>(2.8f, maxPoint[0]);
+	maxPoint[1] = min<float>(2.9f, maxPoint[1]);
+	maxPoint[2] = min<float>(3.8f, maxPoint[2]);
 	
 
 	
@@ -432,9 +432,9 @@ void SubsamplePointCloud(const vector<Vector3d>& points, const vector<Vector3d>&
 	cout << maxPoint << endl;
 	
 
-	Vector3d resolutionFloat = (maxPoint - minPoint) / mergeDistance;
+	Vector3f resolutionFloat = (maxPoint - minPoint) / mergeDistance;
 	Vector3i resolution(int(resolutionFloat[0]) + 1, int(resolutionFloat[1]) + 1, int(resolutionFloat[2]) + 1);
-	resolutionFloat = Vector3d(resolution[0], resolution[1], resolution[2]);
+	resolutionFloat = Vector3f(static_cast<float>(resolution[0]), static_cast<float>(resolution[1]), static_cast<float>(resolution[2]));
 
 	cout << resolution << endl;
 	maxPoint = minPoint + mergeDistance * resolutionFloat;
@@ -465,10 +465,10 @@ void SubsamplePointCloud(const vector<Vector3d>& points, const vector<Vector3d>&
 	}
 }
 
-void AlignBoundingBox(vector<Vector3d>& points, vector<Vector3d>& normals)
+void AlignBoundingBox(vector<Vector3f>& points, vector<Vector3f>& normals)
 {
 	int numPoints = static_cast<int>(points.size());
-	Vector3d avgPoint = Vector3d::Zero();
+	Vector3f avgPoint = Vector3f::Zero();
 	for (int i = 0; i < numPoints; ++i)
 	{
 		avgPoint += points[i];
@@ -478,16 +478,16 @@ void AlignBoundingBox(vector<Vector3d>& points, vector<Vector3d>& normals)
 	{
 		points[i] -= avgPoint;
 	}
-	MatrixXd pointMatrix = MatrixXd(numPoints, 3);
+	MatrixXf pointMatrix = MatrixXf(numPoints, 3);
 	for (int i = 0; i < numPoints; ++i)
 	{
 		pointMatrix.row(i) = points[i];
 	}
-	MatrixXd pointMatrixT = pointMatrix.transpose();
-	Matrix3d cov = pointMatrixT * pointMatrix;
-	SelfAdjointEigenSolver<Matrix3d> eigensolver(cov);
-	Matrix3d rot = eigensolver.eigenvectors();
-	Matrix3d rotT = rot.transpose();
+	MatrixXf pointMatrixT = pointMatrix.transpose();
+	Matrix3f cov = pointMatrixT * pointMatrix;
+	SelfAdjointEigenSolver<Matrix3f> eigensolver(cov);
+	Matrix3f rot = eigensolver.eigenvectors();
+	Matrix3f rotT = rot.transpose();
 	for (int i = 0; i < numPoints; ++i)
 	{
 		points[i] = rotT * points[i];
@@ -543,7 +543,7 @@ int main(int argc, char** argv)
 	vector<pair<string, string> > correspondences;
 	int numImages = ReadCorrespondence(correspondences);
 
-	vector<MatrixXd> cameraPoses;
+	vector<MatrixXf> cameraPoses;
 	int numViews = ReadCameraPoses(cameraPoses);
 	
 	int numFrames = numImages < numViews ? numImages : numViews;
@@ -589,8 +589,8 @@ int main(int argc, char** argv)
 	//segmenter.Segment(depthImgAfterPreprocessing, 30, 85);
 	//segmenter.SaveSegmentedImage("TestSegmentation.png");
 
-	vector<Vector3d> points;
-	vector<Vector3d> normals;
+	vector<Vector3f> points;
+	vector<Vector3f> normals;
 	vector<Vector3i> colors;
 
 	//for (int i = 0; i < numFrames; i += 1)
@@ -611,8 +611,8 @@ int main(int argc, char** argv)
 	//	LOG(INFO) << "Processing " << i << " out of " << numFrames << " frames." << endl;
 
 	//}
-	//double mergeDistance = 0.005;
-	//vector<Vector3d> newPoints, newNormals;
+	//float mergeDistance = 0.005f;
+	//vector<Vector3f> newPoints, newNormals;
 	//SubsamplePointCloud(points, normals, mergeDistance, newPoints, newNormals);
 
 	//char filename[MAX_FILENAME_LEN];
@@ -648,6 +648,7 @@ int main(int argc, char** argv)
 	//dCamera.SaveDepthImage(filename);
 	sprintf(filename, "%s%s/depthOnion", gDataFolder.c_str(), gDataName.c_str());
 	dCamera.SaveDepthOnionImage(filename);
+	//dCamera.GetSimplifiedPointCloud(points, normals);
 	//dCamera.SaveDepthThresholdingImage(filename, 25);
 
 
