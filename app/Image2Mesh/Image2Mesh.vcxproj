@@ -124,7 +124,7 @@
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\dev\opencv\build\include;C:\dev\eigen\eigen-eigen-6b38706d90a9;C:\dev\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\dev\opencv\build\include;C:\dev\eigen\eigen-eigen-6b38706d90a9;C:\dev\include;C:\Program Files\assimp--1.0.412-sdk;$(IncludePath)</IncludePath>
     <LibraryPath>C:\dev\opencv\build\x64\vc12\lib;C:\dev\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

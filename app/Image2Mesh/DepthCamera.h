@@ -1,6 +1,6 @@
 #ifndef _DEPTH_CAMERA_H
 #define _DEPTH_CAMERA_H
-
+#include <set>
 #include <list>
 #include <vector>
 using namespace std;
@@ -8,14 +8,20 @@ using namespace std;
 using namespace Eigen;
 
 #include "DepthImage.h"
+#include "KDTree.h"
 
 class ExtendedDepthPixel
 {
 public:
+	ExtendedDepthPixel() : d(0), n(Vector3f::Ones())
+	{
+
+	}
 	ExtendedDepthPixel(float depth, const Vector3f& normal) : d(depth), n(normal)
 	{
 
 	}
+
 	bool operator< (const ExtendedDepthPixel& rhs)
 	{
 		return this->d < rhs.d;
@@ -39,14 +45,16 @@ public:
 	~DepthCamera();
 	void SetIntrinsicParameters(int numPxWidth, int numPxHeight, float focalLenth);
 	void SetExtrinsicParameters(const Matrix4f& pose);
-	void Capture(const vector<Vector3f>& points, const vector<Vector3f>& normals, const string& depthImageFileName);
-	void SaveMultilayerDepthImage(const string& filename);
+	void Capture(const vector<Vector3f>& points, const vector<Vector3f>& normals);
+	void Capture(const vector<Vector3f>& vertices, const vector<Vector3i>& indices);
+	void SaveMultilayerDepthImage(const string& filename, const vector<vector<vector<ExtendedDepthPixel> > >& image);
 	void ReadMultilayerDepthImage(const string& filename);
 	void ProcessMultiLayerDepthImage();
-	void GetSimplifiedPointCloud(vector<Vector3f>& points, vector<Vector3f>& normals);
+	void GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& normals);
 	void SaveDepthImage(const string& filename);
 	void SaveDepthThresholdingImage(const string& filename, int numThresholds);
 	void SaveDepthOnionImage(const string& filename);
+	void SimplifyMultilayerDepthImage();
 	
 private:
 	Vector3f constructRayDirection(int i, int j);
@@ -54,7 +62,8 @@ private:
 	void findMinMaxDepth();
 	void fromMultiLayerToSinglelLayerDepthImage();
 	void saveDepthImageVisualization(const string& filename, const cv::Mat1f image);
-	void simplifyMultilayerDepthImage();
+	void mergePointsAndNormals(const vector<ExtendedDepthPixel>& originalDepthPixel, const cv::Mat& labels, const vector<set<int> >& groups, vector<ExtendedDepthPixel>& mergedDepthPixel);
+
 	cv::Mat1f mSensorMeasurement;
 	Matrix4f mPose;
 	int mWidth;
@@ -63,7 +72,8 @@ private:
 	float mMinDepth;
 	float mMaxDepth;
 	vector<vector<vector<ExtendedDepthPixel> > > mDepthMap;
-	vector<vector<vector<ExtendedDepthPixel> > > mSimplifiedDepthMap;
+	KDTree mKDTree;
+	//vector<vector<vector<ExtendedDepthPixel> > > mSimplifiedDepthMap;
 	
 };
 

@@ -23,7 +23,7 @@ public:
 	void ReadFromFile(const string& filename);
 	void SaveToFile(const string& filename) const;
 
-	void SetData(const cv::Mat1f& mDepthData);
+	void SetData(const cv::Mat1f& depthData);
 
 	void Process(const Matrix4f& cameraPose);
 
@@ -31,7 +31,7 @@ public:
 	int NumCols() const;
 
 	const vector<Vector3f>& GetPoints() const;
-	const vector<Vector3f>& GetNormals() const;
+	const vector<Vector3f>& GetNormals() const; //these two vectors should not be indexed by indexFrom2D because of the theshholding when processing the depth image.
 
 	const cv::Mat1f& Data() const;
 	float Depth(int idx) const;

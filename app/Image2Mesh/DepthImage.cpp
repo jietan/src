@@ -1,7 +1,7 @@
 #include "DepthImage.h"
 #include "utility/mathlib.h"
 
-float DepthImage::msDepthThreshold = 10;
+float DepthImage::msDepthThreshold = 2.5;
 float DepthImage::msCurvatureTheshold = 5000;
 
 DepthImage::DepthImage()
@@ -129,18 +129,24 @@ Vector3f DepthImage::GlobalPoint(int ithRow, int jthCol) const
 	return Vector3f(p[0], p[1], p[2]);
 }
 
+void DepthImage::SetData(const cv::Mat1f& depthData)
+{
+	mData = depthData;
+}
+
 void DepthImage::Process(const Matrix4f& cameraPose)
 {
 	mCameraPose = cameraPose;
 	depthToPoints();
 	depthToNormals();
+	CHECK(mPoints.size() == mNormals.size()) << "Numbers of points and normals do not agree in DepthImage::Process().";
 }
 void DepthImage::depthToPoints()
 {
 	mPointImage.create(mData.rows, mData.cols);
 
-	const double fx = 525.0; const double fy = 525.0; // default focal length
-	const double cx = 319.5; const double cy = 239.5; // default optical center
+	const float fx = 525.f; const float fy = 525.f; // default focal length
+	const float cx = 319.5f; const float cy = 239.5f; // default optical center
 
 	// translation from depth pixel (u,v,d) to a point (x,y,z)
 
@@ -148,11 +154,12 @@ void DepthImage::depthToPoints()
 	{
 		for (int u = 0; u < mData.cols; ++u)
 		{
-			double d = mData.at<float>(v, u);
-			double z = d / 1000.0;
+			float d = mData.at<float>(v, u);
+			float z = d / 1000.f;
 			if (z > msDepthThreshold) continue;
-			double x = (u - cx) * z / fx;
-			double y = (v - cy) * z / fy;
+			
+			float x = (u - cx) * z / fx;
+			float y = (v - cy) * z / fy;
 
 			Eigen::Vector4f w = mCameraPose * Eigen::Vector4f(x, y, z, 1);
 
@@ -175,6 +182,7 @@ void DepthImage::depthToNormals()
 	{
 		int current = i;
 		float dCurrent = Depth(current);
+		if (dCurrent / 1000 > msDepthThreshold) continue;
 
 		int u, v;
 		indexTo2d(current, v, u, numRows, numCols);
@@ -185,7 +193,7 @@ void DepthImage::depthToNormals()
 		float dRight = Depth(right);
 		if (abs(2 * dCurrent - dLeft - dRight) > msCurvatureTheshold)
 		{
-			double diff = abs(dRight - dCurrent) > abs(dCurrent - dLeft) ? dCurrent - dLeft : dRight - dCurrent;
+			float diff = abs(dRight - dCurrent) > abs(dCurrent - dLeft) ? dCurrent - dLeft : dRight - dCurrent;
 			tangentialAxis1 = Vector3f(1, 0, diff);
 		}
 		else
@@ -199,7 +207,7 @@ void DepthImage::depthToNormals()
 		float dLower = Depth(lower);
 		if (abs(2 * dCurrent - dUpper - dLower) > msCurvatureTheshold)
 		{
-			double diff = abs(dUpper - dCurrent) > abs(dCurrent - dLower) ? dLower - dCurrent : dCurrent - dUpper;
+			float diff = abs(dUpper - dCurrent) > abs(dCurrent - dLower) ? dLower - dCurrent : dCurrent - dUpper;
 			tangentialAxis2 = Vector3f(0, 1, diff);
 		}
 		else

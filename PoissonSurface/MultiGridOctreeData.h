@@ -372,7 +372,7 @@ public:
 	int setTree( char* fileName , int maxDepth , int minDepth , int kernelDepth , Real samplesPerNode ,
 		Real scaleFactor , bool useConfidence , bool useNormalWeights , Real constraintWeight , int adaptiveExponent , XForm4x4< Real > xForm=XForm4x4< Real >::Identity );
 	
-	int setTree( const vector<Vector3d>& points, const vector<Vector3d>& normals, int maxDepth , int minDepth , int splatDepth , Real samplesPerNode , 
+	int setTree( const vector<Vector3f>& points, const vector<Vector3f>& normals, int maxDepth , int minDepth , int splatDepth , Real samplesPerNode , 
 		Real scaleFactor , bool useConfidence , bool useNormalWeights , Real constraintWeight , int adaptiveExponent , XForm4x4< Real > xForm=XForm4x4< Real >::Identity );
 
 	void SetLaplacianConstraints(void);

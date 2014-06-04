@@ -53,10 +53,10 @@ using namespace google;
 string gDataFolder = "../../../Tables/";
 string gDataName = "399318621.826096";
 char* outputFile = NULL;
-double gDepthThreshold = 10.5;
+double gDepthThreshold = 2.5;
 const int gDepthImageWidth = 640;
 const int gDepthImageHeight = 480;
-const double gFocalLenth = 525.0;
+const float gFocalLenth = 525.0f;
 
 int echoStdout=0;
 typedef float Real;
@@ -133,7 +133,7 @@ Density( "density" ) ,
 Verbose( "verbose" );
 
 cmdLineInt
-Depth( "depth" , 10 ) ,
+Depth( "depth" , 8 ) ,
 SolverDivide( "solverDivide" , 8 ) ,
 IsoDivide( "isoDivide" , 8 ) ,
 KernelDepth( "kernelDepth" ) ,
@@ -526,6 +526,37 @@ cv::Mat1f PreprocessDepthImage(const cv::Mat& depthImg)
 	//return ret;
 }
 
+void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string, string> >& correspondences, const vector<MatrixXf>& cameraPoses, vector<Vector3f>& points, vector<Vector3f>& normals)
+{
+	for (int i = 0; i < numFrames; i += 1)
+	{
+		char filename[MAX_FILENAME_LEN];
+		memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+		sprintf(filename, "%s%s/beforeCleaning/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
+		DepthImage depthImg(filename);
+
+		depthImg.Process(cameraPoses[i]);
+		points.insert(points.end(), depthImg.GetPoints().begin(), depthImg.GetPoints().end());
+		normals.insert(normals.end(), depthImg.GetNormals().begin(), depthImg.GetNormals().end());
+
+		//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+		//sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].second.c_str());
+		//cv::Mat colorImg = ReadColorImage(filename);
+		//ColorImageToColors(colorImg, colors);
+		LOG(INFO) << "Processing " << i << " out of " << numFrames << " frames." << endl;
+
+	}
+
+}
+
+void BuildMultiLayerDepthImage(const vector<Vector3f>& points, const vector<Vector3f>& normals, const Matrix4f& cameraPose)
+{
+	DepthCamera dCamera;
+	dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+	dCamera.SetExtrinsicParameters(cameraPose);
+	dCamera.Capture(points, normals);
+}
+
 int main(int argc, char** argv)
 {
 	//ParseCommandLineFlags(&argc, &argv, true);
@@ -593,66 +624,90 @@ int main(int argc, char** argv)
 	vector<Vector3f> normals;
 	vector<Vector3i> colors;
 
-	//for (int i = 0; i < numFrames; i += 1)
-	//{
-	//	char filename[MAX_FILENAME_LEN];
-	//	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//	sprintf(filename, "%s%s/beforeCleaning/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
-	//	DepthImage depthImg(filename);
-
-	//	depthImg.Process(cameraPoses[i]);
-	//	points.insert(points.end(), depthImg.GetPoints().begin(), depthImg.GetPoints().end());
-	//	normals.insert(normals.end(), depthImg.GetNormals().begin(), depthImg.GetNormals().end());
-
-	//	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//	//sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].second.c_str());
-	//	//cv::Mat colorImg = ReadColorImage(filename);
-	//	//ColorImageToColors(colorImg, colors);
-	//	LOG(INFO) << "Processing " << i << " out of " << numFrames << " frames." << endl;
-
-	//}
+	/* merge depthImages to point cloud (both high res and low res */
+	//ConstructPointCloudFromDepthImages(numFrames, correspondences, cameraPoses, points, normals);
+	//char filename[MAX_FILENAME_LEN];
+	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	//sprintf(filename, "%s%s/pointsTest.ply", gDataFolder.c_str(), gDataName.c_str());
+	//SavePointCloud(filename, points, colors, normals);
 	//float mergeDistance = 0.005f;
 	//vector<Vector3f> newPoints, newNormals;
 	//SubsamplePointCloud(points, normals, mergeDistance, newPoints, newNormals);
+	//string simplifiedPointCloudFilename = filename;
+	//simplifiedPointCloudFilename += "simplified.ply";
+	//SavePointCloud(simplifiedPointCloudFilename, newPoints, colors, newNormals);
+	
 
-	//char filename[MAX_FILENAME_LEN];
-	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
-	//SavePointCloud(filename, points, colors, normals);
-
-	//CoredFileMeshData<PlyVertex< Real > > mesh;
-	//Points2Mesh(points, normals, mesh);
-
-	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//sprintf(filename, "%s%s/mesh.ply", gDataFolder.c_str(), gDataName.c_str());
-	//SaveMesh(filename, &mesh);
-
+	/* construct multilayer depth image from high res point cloud */
 	//char filename[MAX_FILENAME_LEN];
 	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
 	//sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
 	//ReadPointCloud(filename, points, normals);
+	//BuildMultiLayerDepthImage(points, normals, cameraPoses[ithDepthToProcess]);
 
-	
+
+	/* simplify the multilayer depth image and save the resultant simplified point cloud */
+	//DepthCamera dCamera;
+	//dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+	//dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+	//string filename = "results/DepthFromMultiview.data";
+	//dCamera.ReadMultilayerDepthImage(filename);
+	//dCamera.ProcessMultiLayerDepthImage();
+	//dCamera.SimplifyMultilayerDepthImage();
+	//dCamera.GetPointCloud(points, normals);
+	//SavePointCloud("results/simplifiedDepthFromMultiview.ply", points, colors, normals);
+
+	/* read the point cloud and perform Poisson surface reconstruction */
+	//const string filenamePrefix = "results/simplifiedDepthFromMultiview";
+	//const string filenamePrefix = "results/originalData";
+	//string fileToRead = filenamePrefix;
+	//fileToRead += ".ply";
+	//ReadPointCloud(fileToRead, points, normals);
+	//CoredFileMeshData<PlyVertex< Real > > mesh;
+	//Points2Mesh(points, normals, mesh);
+	//string fileToWrite = filenamePrefix;
+	//fileToWrite += "Mesh.ply";
+	//SaveMesh(fileToWrite, &mesh);
+
+	/* create a multi-layer depth image for a triangular mesh */
+
 	DepthCamera dCamera;
 	dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 	dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
-	
-	char filename[MAX_FILENAME_LEN];
-	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	sprintf(filename, "%s%s/depthFromMultiview_%d.png.data", gDataFolder.c_str(), gDataName.c_str(), ithDepthToProcess);
-	dCamera.ReadMultilayerDepthImage(filename);
-	dCamera.ProcessMultiLayerDepthImage();
 
-	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	string filename = "results/originalDataMesh.ply";
+	vector< PlyVertex< float > > vertices;
+	vector< std::vector< int > > polygons;
+	int ft;
+	PlyReadPolygons(const_cast<char*>(filename.c_str()), vertices, polygons, PlyVertex< float >::Properties, PlyVertex< float >::Components, ft);
+	vector<Vector3f> verticesEigen;
+	vector<Vector3i> indicesEigen;
+	int numVertices = static_cast<int>(vertices.size());
+	verticesEigen.resize(numVertices);
+	for (int i = 0; i < numVertices; ++i)
+	{
+		verticesEigen[i] = Vector3f(vertices[i].point[0], vertices[i].point[1], vertices[i].point[2]);
+	}
+	int numFaces = static_cast<int>(polygons.size());
+	indicesEigen.resize(numFaces);
+	for (int i = 0; i < numFaces; ++i)
+	{
+		CHECK(polygons[i].size() == 3) << "Non-triangular polygon detected in main().";
+		indicesEigen[i] = Vector3i(polygons[i][0], polygons[i][1], polygons[i][2]);
+	}
+	dCamera.Capture(verticesEigen, indicesEigen);
+
+	/* two different ways to visualize the multi-layer depth image */
+	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+	//sprintf(filename, "%s%s/depthOnion", gDataFolder.c_str(), gDataName.c_str());
+	//dCamera.SaveDepthOnionImage(filename);
+
+
 	//sprintf(filename, "%s%s/depthFromMultiview_%d.png", gDataFolder.c_str(), gDataName.c_str(), ithDepthToProcess);
 	//dCamera.SaveDepthImage(filename);
-	sprintf(filename, "%s%s/depthOnion", gDataFolder.c_str(), gDataName.c_str());
-	dCamera.SaveDepthOnionImage(filename);
 	//dCamera.GetSimplifiedPointCloud(points, normals);
 	//dCamera.SaveDepthThresholdingImage(filename, 25);
 
-
-	//dCamera.Capture(points, normals, filename);
 
 
 }
