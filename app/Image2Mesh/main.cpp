@@ -654,6 +654,7 @@ int main(int argc, char** argv)
 	//dCamera.ReadMultilayerDepthImage(filename);
 	//dCamera.ProcessMultiLayerDepthImage();
 	//dCamera.SimplifyMultilayerDepthImage();
+	//dCamera.SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview.data");
 	//dCamera.GetPointCloud(points, normals);
 	//SavePointCloud("results/simplifiedDepthFromMultiview.ply", points, colors, normals);
 
@@ -671,42 +672,46 @@ int main(int argc, char** argv)
 
 	/* create a multi-layer depth image for a triangular mesh */
 
+	//DepthCamera dCamera;
+	//dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+	//dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+
+	//string filename = "results/originalDataMesh.ply";
+	//vector< PlyVertex< float > > vertices;
+	//vector< std::vector< int > > polygons;
+	//int ft;
+	//PlyReadPolygons(const_cast<char*>(filename.c_str()), vertices, polygons, PlyVertex< float >::Properties, PlyVertex< float >::Components, ft);
+	//vector<Vector3f> verticesEigen;
+	//vector<Vector3i> indicesEigen;
+	//int numVertices = static_cast<int>(vertices.size());
+	//verticesEigen.resize(numVertices);
+	//for (int i = 0; i < numVertices; ++i)
+	//{
+	//	verticesEigen[i] = Vector3f(vertices[i].point[0], vertices[i].point[1], vertices[i].point[2]);
+	//}
+	//int numFaces = static_cast<int>(polygons.size());
+	//indicesEigen.resize(numFaces);
+	//for (int i = 0; i < numFaces; ++i)
+	//{
+	//	CHECK(polygons[i].size() == 3) << "Non-triangular polygon detected in main().";
+	//	indicesEigen[i] = Vector3i(polygons[i][0], polygons[i][1], polygons[i][2]);
+	//}
+	//dCamera.Capture(verticesEigen, indicesEigen);
+
+	/* two different ways to visualize the multi-layer depth image */
 	DepthCamera dCamera;
 	dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 	dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+	string filename = "results/simplifiedDepthFromMultiview.data";
+	dCamera.ReadMultilayerDepthImage(filename);
+	dCamera.ProcessMultiLayerDepthImage();
 
-	string filename = "results/originalDataMesh.ply";
-	vector< PlyVertex< float > > vertices;
-	vector< std::vector< int > > polygons;
-	int ft;
-	PlyReadPolygons(const_cast<char*>(filename.c_str()), vertices, polygons, PlyVertex< float >::Properties, PlyVertex< float >::Components, ft);
-	vector<Vector3f> verticesEigen;
-	vector<Vector3i> indicesEigen;
-	int numVertices = static_cast<int>(vertices.size());
-	verticesEigen.resize(numVertices);
-	for (int i = 0; i < numVertices; ++i)
-	{
-		verticesEigen[i] = Vector3f(vertices[i].point[0], vertices[i].point[1], vertices[i].point[2]);
-	}
-	int numFaces = static_cast<int>(polygons.size());
-	indicesEigen.resize(numFaces);
-	for (int i = 0; i < numFaces; ++i)
-	{
-		CHECK(polygons[i].size() == 3) << "Non-triangular polygon detected in main().";
-		indicesEigen[i] = Vector3i(polygons[i][0], polygons[i][1], polygons[i][2]);
-	}
-	dCamera.Capture(verticesEigen, indicesEigen);
+	string outFileName = "results/simplifiedDepthFromMultiview.png";
+	dCamera.SaveDepthOnionImage(outFileName);
 
-	/* two different ways to visualize the multi-layer depth image */
-	//memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	//sprintf(filename, "%s%s/depthOnion", gDataFolder.c_str(), gDataName.c_str());
-	//dCamera.SaveDepthOnionImage(filename);
-
-
-	//sprintf(filename, "%s%s/depthFromMultiview_%d.png", gDataFolder.c_str(), gDataName.c_str(), ithDepthToProcess);
-	//dCamera.SaveDepthImage(filename);
-	//dCamera.GetSimplifiedPointCloud(points, normals);
-	//dCamera.SaveDepthThresholdingImage(filename, 25);
+	//string outFileName = "results/depthFromMultiviewFromMesh.png";
+	//dCamera.SaveDepthImage(outFileName);
+	//dCamera.SaveDepthThresholdingImage(outFileName, 20);
 
 
 

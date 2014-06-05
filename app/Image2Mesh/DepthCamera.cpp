@@ -113,7 +113,7 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 	string depthImageFileName = "results/depthFromMultiviewFromMesh.png";
 	SaveDepthImage(depthImageFileName);
 	string mutlilayerDepthImageFilename = "results/depthFromMultiviewFromMesh.data";
-	SaveMultilayerDepthImage(mutlilayerDepthImageFilename, mDepthMap);
+	SaveMultilayerDepthImage(mutlilayerDepthImageFilename);
 	
 }
 
@@ -189,7 +189,7 @@ void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>
 	string depthImageFileName = "results/depthFromMultiview.png";
 	string mutlilayerDepthImageFilename = "results/depthFromMultiview.data";
 	
-	SaveMultilayerDepthImage(mutlilayerDepthImageFilename, mDepthMap);
+	SaveMultilayerDepthImage(mutlilayerDepthImageFilename);
 	SaveDepthImage(depthImageFileName);
 }
 
@@ -204,9 +204,6 @@ void DepthCamera::GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& norm
 	points.clear();
 	normals.clear();
 	
-	int count = 0;
-	cv::Mat1f onionImage;
-	onionImage.create(mHeight, mWidth);
 	float fx = mFocalLength;
 	float fy = mFocalLength;
 	float cx = (mWidth - 1) / 2.f;
@@ -270,13 +267,14 @@ void DepthCamera::ReadMultilayerDepthImage(const string& filename)
 	}
 	LOG(INFO) << "End DepthCamera::ReadMultilayerDepthImage()";
 }
-void DepthCamera::SaveMultilayerDepthImage(const string& filename, const vector<vector<vector<ExtendedDepthPixel> > >& image)
+void DepthCamera::SaveMultilayerDepthImage(const string& filename)
 {
 	LOG(INFO) << "Start DepthCamera::SaveMultilayerDepthImage()";
 	ofstream outFile(filename.c_str(), ios::out | ios::binary);
 	outFile.write((char*)&mWidth, sizeof(mWidth));
 	outFile.write((char*)&mHeight, sizeof(mHeight));
 	
+	const vector<vector<vector<ExtendedDepthPixel> > >& image = mDepthMap;
 	for (int i = 0; i < mHeight; ++i)
 	{
 		for (int j = 0; j < mWidth; ++j)
@@ -425,71 +423,72 @@ void DepthCamera::SimplifyMultilayerDepthImage()
 	mDepthMap = sDepthMap;
 	return;
 
-	const int numDepthSegments = 10;
-	vector<vector<vector<ExtendedDepthPixel> > > simplifiedDepthMap;
-	simplifiedDepthMap.resize(mHeight);
-	for (int i = 0; i < mHeight; ++i)
-	{
-		simplifiedDepthMap[i].resize(mWidth);
-		LOG(INFO) << "DepthCamera::simplifyMultilayerDepthImage() is processing " << i << "th row.";
-		for (int j = 0; j < mWidth; ++j)
-		{
-			if (mDepthMap[i][j].empty()) continue;
+	//const int numDepthSegments = 10;
+	//vector<vector<vector<ExtendedDepthPixel> > > simplifiedDepthMap;
+	//simplifiedDepthMap.resize(mHeight);
+	//for (int i = 0; i < mHeight; ++i)
+	//{
+	//	simplifiedDepthMap[i].resize(mWidth);
+	//	LOG(INFO) << "DepthCamera::simplifyMultilayerDepthImage() is processing " << i << "th row.";
+	//	for (int j = 0; j < mWidth; ++j)
+	//	{
+	//		if (mDepthMap[i][j].empty()) continue;
 
-			vector<float> simplifiedDepths;
-			int depthListLen = static_cast<int>(mDepthMap[i][j].size());
-			simplifiedDepths.resize(depthListLen);
-			cv::Mat labels;
-			
-			for (int ithDepth = 0; ithDepth < depthListLen; ++ithDepth)
-			{
-				simplifiedDepths[ithDepth] = mDepthMap[i][j][ithDepth].d;
-			}
+	//		vector<float> simplifiedDepths;
+	//		int depthListLen = static_cast<int>(mDepthMap[i][j].size());
+	//		simplifiedDepths.resize(depthListLen);
+	//		cv::Mat labels;
+	//		
+	//		for (int ithDepth = 0; ithDepth < depthListLen; ++ithDepth)
+	//		{
+	//			simplifiedDepths[ithDepth] = mDepthMap[i][j][ithDepth].d;
+	//		}
 
-			if (mDepthMap[i][j].size() > numDepthSegments)
-			{
+	//		if (mDepthMap[i][j].size() > numDepthSegments)
+	//		{
 
-				cv::Mat depthData(simplifiedDepths, true);
-				cv::Mat centers;
-				cv::kmeans(depthData, numDepthSegments, labels, cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 10, 1.0), 1, cv::KMEANS_PP_CENTERS, centers);
-				
-				simplifiedDepths.clear();
-				for (int ithCenter = 0; ithCenter < numDepthSegments; ++ithCenter)
-					simplifiedDepths.push_back(centers.at<float>(ithCenter));
-				sort(simplifiedDepths.begin(), simplifiedDepths.end());
-			}
-			else
-			{
-				labels.create(static_cast<int>(mDepthMap[i][j].size()), 1, CV_32S);
-			}
-			
-			int nDepthValues = static_cast<int>(simplifiedDepths.size());
-			vector<set<int> > groups;
-			set<int> group;
+	//			cv::Mat depthData(simplifiedDepths, true);
+	//			cv::Mat centers;
+	//			cv::kmeans(depthData, numDepthSegments, labels, cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 10, 1.0), 1, cv::KMEANS_PP_CENTERS, centers);
+	//			
+	//			simplifiedDepths.clear();
+	//			for (int ithCenter = 0; ithCenter < numDepthSegments; ++ithCenter)
+	//				simplifiedDepths.push_back(centers.at<float>(ithCenter));
+	//			sort(simplifiedDepths.begin(), simplifiedDepths.end());
+	//		}
+	//		else
+	//		{
+	//			labels.create(static_cast<int>(mDepthMap[i][j].size()), 1, CV_32S);
+	//		}
+	//		
+	//		int nDepthValues = static_cast<int>(simplifiedDepths.size());
+	//		vector<set<int> > groups;
+	//		set<int> group;
 
-			for (int k = 0; k < nDepthValues; ++k)
-			{
-				float currentDepth = simplifiedDepths[k];
-				float nextDepth = k + 1 < nDepthValues ? simplifiedDepths[k + 1] : simplifiedDepths[k];
-				if (abs(nextDepth - currentDepth) < depthMergeThreshold)
-				{
-					group.insert(group.end(), k);
-					group.insert(group.end(), k + 1);
-				}
-				else
-				{
-					groups.push_back(group);
-					group.clear();
-				}
-			}
-			vector<ExtendedDepthPixel> mergedDepthPixels;
-			mergePointsAndNormals(mDepthMap[i][j], labels, groups, mergedDepthPixels);
-			simplifiedDepthMap[i][j] = mergedDepthPixels;
+	//		for (int k = 0; k < nDepthValues; ++k)
+	//		{
+	//			float currentDepth = simplifiedDepths[k];
+	//			float nextDepth = k + 1 < nDepthValues ? simplifiedDepths[k + 1] : simplifiedDepths[k];
+	//			if (abs(nextDepth - currentDepth) < depthMergeThreshold)
+	//			{
+	//				group.insert(group.end(), k);
+	//				group.insert(group.end(), k + 1);
+	//			}
+	//			else
+	//			{
+	//				groups.push_back(group);
+	//				group.clear();
+	//			}
+	//		}
+	//		vector<ExtendedDepthPixel> mergedDepthPixels;
+	//		mergePointsAndNormals(mDepthMap[i][j], labels, groups, mergedDepthPixels);
+	//		simplifiedDepthMap[i][j] = mergedDepthPixels;
 
-		}
-	}
-	SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview.data", simplifiedDepthMap);
-	mDepthMap = simplifiedDepthMap;
+	//	}
+	//}
+	//mDepthMap = simplifiedDepthMap;
+
+	//SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview.data");
 }
 
 void DepthCamera::mergePointsAndNormals(const vector<ExtendedDepthPixel>& originalDepthPixel, const cv::Mat& labels, const vector<set<int> >& groups, vector<ExtendedDepthPixel>& mergedDepthPixel)

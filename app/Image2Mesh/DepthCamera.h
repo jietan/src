@@ -47,7 +47,7 @@ public:
 	void SetExtrinsicParameters(const Matrix4f& pose);
 	void Capture(const vector<Vector3f>& points, const vector<Vector3f>& normals);
 	void Capture(const vector<Vector3f>& vertices, const vector<Vector3i>& indices);
-	void SaveMultilayerDepthImage(const string& filename, const vector<vector<vector<ExtendedDepthPixel> > >& image);
+	void SaveMultilayerDepthImage(const string& filename);
 	void ReadMultilayerDepthImage(const string& filename);
 	void ProcessMultiLayerDepthImage();
 	void GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& normals);
