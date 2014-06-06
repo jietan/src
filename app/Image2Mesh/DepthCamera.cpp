@@ -7,7 +7,7 @@ using namespace google;
 #include "utility/mathlib.h"
 #include "utility/utility.h"
 #include "KDTree.h"
-
+#include <intrin.h>
 
 DepthCamera::DepthCamera()
 {
@@ -31,11 +31,6 @@ void DepthCamera::SetExtrinsicParameters(const Matrix4f& pose)
 
 void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3i>& indices)
 {
-	//vector<Vector3f> tempNormals;
-	//tempNormals.resize(vertices.size());
-	//Capture(vertices, tempNormals);
-	//return;
-
 	const int maxNumDepthLayers = 20;
 	const float maxDepth = 50;
 	//Vector3f rayOrigin = mPose.col(3).head(3);
@@ -47,8 +42,8 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 	faceNormals.resize(numFaces);
 	for (int i = 0; i < numFaces; ++i)
 	{
-		Vector3f v01 = vertices[indices[numFaces][1]] - vertices[indices[numFaces][0]];
-		Vector3f v02 = vertices[indices[numFaces][2]] - vertices[indices[numFaces][0]];
+		Vector3f v01 = vertices[indices[i][1]] - vertices[indices[i][0]];
+		Vector3f v02 = vertices[indices[i][2]] - vertices[indices[i][0]];
 		Vector3f n = v01.cross(v02);
 		n.normalize();
 		faceNormals[i] = n;
@@ -84,11 +79,13 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 	for (int i = 0; i < mHeight; ++i)
 	{
 		mDepthMap[i].resize(mWidth);
+		
 		//if (i > 250) continue;
 		LOG(INFO) << "DepthCamera::Capture() is processing " << i << "th row.";
 
 		for (int j = 0; j < mWidth; ++j)
 		{
+			
 			Vector3f rayDir = constructRayDirection(i, j);
 
 			aiVector3D rayDirection(rayDir[0], rayDir[1], rayDir[2]);
@@ -102,7 +99,8 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 				if (!bHit) break;
 				Vector3f intersection(intersectionPt[0], intersectionPt[1], intersectionPt[2]);
 				float distance = (intersection - rayOrigin).norm();
-				mDepthMap[i][j].push_back(ExtendedDepthPixel(distance * 1000, faceNormals[triangleId]));
+				float depth = intersectionPt[2];
+				mDepthMap[i][j].push_back(ExtendedDepthPixel(depth * 1000, faceNormals[triangleId]));
 				rayStart = rayEnd - (maxDepth - distance - 0.005) * rayDirection;
 			}
 		}
@@ -231,7 +229,16 @@ void DepthCamera::GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& norm
 			
 		}
 	}
+}
 
+void DepthCamera::SetData(const vector<vector<vector<ExtendedDepthPixel> > >& depthMap)
+{
+	mDepthMap = depthMap;
+}
+
+void DepthCamera::SetMask(const vector<vector<vector<int> > >& mask)
+{
+	mMask = mask;
 }
 
 void DepthCamera::ReadMultilayerDepthImage(const string& filename)
@@ -297,7 +304,9 @@ void DepthCamera::SaveDepthThresholdingImage(const string& filename, int numThre
 {
 	float stepSize = (mMaxDepth - mMinDepth) / numThresholds;
 	cv::Mat1f thresholdImage;
+	cv::Mat1i maskImage;
 	thresholdImage.create(mHeight, mWidth);
+	maskImage.create(mHeight, mWidth);
 	for (int ithImage = 0; ithImage < numThresholds; ++ithImage)
 	{
 		float threshold = mMinDepth - EPSILON_FLOAT + stepSize * ithImage;
@@ -305,6 +314,7 @@ void DepthCamera::SaveDepthThresholdingImage(const string& filename, int numThre
 		{
 			for (int j = 0; j < mWidth; ++j)
 			{
+				maskImage.at<int>(i, j) = 0;
 				if (mDepthMap[i][j].empty())
 				{
 					thresholdImage.at<float>(i, j) = 0;
@@ -319,13 +329,15 @@ void DepthCamera::SaveDepthThresholdingImage(const string& filename, int numThre
 					else
 					{
 						thresholdImage.at<float>(i, j) = mDepthMap[i][j][idToInsert].d;
+						if (!mMask.empty())
+							maskImage.at<int>(i, j) = mMask[i][j][idToInsert];
 					}
 				}
 			}
 		}
 		char newFileName[512];
 		sprintf(newFileName, "%s%03d.png", filename.c_str(), ithImage);
-		saveDepthImageVisualization(newFileName, thresholdImage);
+		saveDepthImageVisualization(newFileName, &thresholdImage, &maskImage);
 	}
 }
 
@@ -373,7 +385,7 @@ void DepthCamera::SaveDepthOnionImage(const string& filename)
 		if (!numValidPx) break;
 		char newFileName[512];
 		sprintf(newFileName, "%s%03dOnion.png", filename.c_str(), count);
-		saveDepthImageVisualization(newFileName, onionImage);
+		saveDepthImageVisualization(newFileName, &onionImage);
 		count++;
 	}
 }
@@ -517,15 +529,18 @@ void DepthCamera::mergePointsAndNormals(const vector<ExtendedDepthPixel>& origin
 	}
 }
 
-void DepthCamera::saveDepthImageVisualization(const string& filename, const cv::Mat1f image)
+void DepthCamera::saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask)
 {
-	cv::Mat visualizationImage(mHeight, mWidth, CV_8U);
+	cv::Mat visualizationImage(mHeight, mWidth, CV_8UC3);
 	for (int i = 0; i < mHeight; ++i)
 	{
 		for (int j = 0; j < mWidth; ++j)
 		{
-			float normalizedDepth = 255 * ((image.at<float>(i, j) - mMinDepth) / (1.3f * (mMaxDepth - mMinDepth)) + 0.2f);
-			visualizationImage.at<uchar>(i, j) = static_cast<uchar>(Clamp<float>(normalizedDepth, 0, 255));
+			float normalizedDepth = 255 * ((image->at<float>(i, j) - mMinDepth) / (1.3f * (mMaxDepth - mMinDepth)) + 0.2f);
+			uchar col = static_cast<uchar>(Clamp<float>(normalizedDepth, 0, 255));
+			visualizationImage.at<cv::Vec3b>(i, j) = cv::Vec3b(col, col, col);
+			if (mask && mask->at<int>(i, j) == 1)
+				visualizationImage.at<cv::Vec3b>(i, j) = cv::Vec3b(200, 0, 200);
 		}
 	}
 	imwrite(filename, visualizationImage);
@@ -614,4 +629,83 @@ void DepthCamera::SaveDepthImage(const string& filename)
 		}
 	}
 	cv::imwrite(filename, imageToWrite);
+}
+
+// assuming self is a noisy depth camera view but represent the truth, rhs is from the view of Poisson constructed mesh.
+void DepthCamera::Compare(const DepthCamera& rhs, vector<vector<vector<ExtendedDepthPixel> > >& mergedDepthMap, vector<vector<vector<int> > >& mask)
+{
+	const int MASK_UNKNOWN = 1;
+	const int MASK_KNOWN = 0;
+	const float pointMeshMergingThreshold = 50;
+
+
+	mergedDepthMap.clear();
+	mergedDepthMap.resize(mHeight);
+
+	mask.clear();
+	mask.resize(mHeight);
+	for (int i = 0; i < mHeight; ++i)
+	{
+		mergedDepthMap[i].resize(mWidth);
+		mask[i].resize(mWidth);
+		
+		for (int j = 0; j < mWidth; ++j)
+		{
+			//check whether the depth samples from mesh are presented as points
+			if (mDepthMap[i][j].empty()) continue;
+			vector<ExtendedDepthPixel> processingDepthMapFromMesh;
+			int selfSize = static_cast<int>(mDepthMap[i][j].size());
+			int rhsSize = static_cast<int>(rhs.mDepthMap[i][j].size());
+			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
+			{
+				int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
+				if (insertPos == 0)
+					continue;
+				else if (insertPos == selfSize && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
+					continue;
+				else if (abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos].d) < pointMeshMergingThreshold || abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
+					continue;
+				else
+					processingDepthMapFromMesh.push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			}
+			
+
+			//merge source two list of depth samples
+			
+			rhsSize = static_cast<int>(processingDepthMapFromMesh.size());
+			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
+			{
+				processingDepthMapFromMesh[ithDepthSample].n = Vector3f::Zero(); // make it color so we can see it clearly in mesh lab.
+			}
+			int selfIdx = 0;
+			int rhsIdx = 0;
+			while (selfIdx < selfSize && rhsIdx < rhsSize)
+			{
+				if (mDepthMap[i][j][selfIdx] <= processingDepthMapFromMesh[rhsIdx])
+				{
+					mergedDepthMap[i][j].push_back(mDepthMap[i][j][selfIdx]);
+					mask[i][j].push_back(MASK_KNOWN);
+					selfIdx++;
+				}
+				else
+				{
+					mergedDepthMap[i][j].push_back(processingDepthMapFromMesh[rhsIdx]);
+					mask[i][j].push_back(MASK_UNKNOWN);
+					rhsIdx++;
+				}
+			}
+			if (selfIdx >= selfSize - 1)
+			{
+				mergedDepthMap[i][j].insert(mergedDepthMap[i][j].end(), processingDepthMapFromMesh.begin() + rhsIdx, processingDepthMapFromMesh.end());
+				mask[i][j].insert(mask[i][j].end(), rhsSize - rhsIdx, MASK_UNKNOWN);
+
+			}
+			if (rhsIdx >= rhsSize - 1)
+			{
+				mergedDepthMap[i][j].insert(mergedDepthMap[i][j].end(), mDepthMap[i][j].begin() + selfIdx, mDepthMap[i][j].end());
+				mask[i][j].insert(mask[i][j].end(), selfSize - selfIdx, MASK_KNOWN);
+			}
+		}
+	}
+	
 }
