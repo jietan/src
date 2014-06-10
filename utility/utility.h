@@ -318,7 +318,7 @@ int binarySearchInsertPos(const vector<T>& sortedArray, T elem)
 }
 
 template <class T>
-int linearSearchInsertPos(const vector<T>& sortedArray, T elem)
+int linearSearchInsertPos(const vector<T>& sortedArray, const T& elem)
 {
 	int len = static_cast<int>(sortedArray.size());
 	if (elem <= sortedArray[0])
@@ -331,6 +331,23 @@ int linearSearchInsertPos(const vector<T>& sortedArray, T elem)
 			return i + 1;
 	}
 	return len;
+}
+
+template <class T, class Dist>
+int findNearestPoint(const vector<T>& array, const T& elem, float threshold, Dist dist)
+{
+	float minDistance = FLT_MAX;
+	int ret = -1;
+	int len = static_cast<int>(array.size());
+	for (int i = 0; i < len; ++i)
+	{
+		if (dist(elem, array[i]) < minDistance && dist(elem, array[i]) < threshold)
+		{
+			ret = i;
+			minDistance = dist(elem, array[i]);
+		}
+	}
+	return ret;
 }
 
 void DumpToObjFile(const string& filename, const vector<double>& vertexBuff);

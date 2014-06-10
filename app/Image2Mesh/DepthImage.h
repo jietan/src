@@ -36,6 +36,8 @@ public:
 	const cv::Mat1f& Data() const;
 	float Depth(int idx) const;
 	float Depth(int ithRow, int jthCol) const;
+	float DepthForNormal(int idx) const;
+	float DepthForNormal(int ithRow, int jthCol) const;
 
 	float MaxDepth() const;
 	float MinDepth() const;
@@ -51,19 +53,22 @@ public:
 	int UpperNeighbor(int idx) const;
 	int LowerNeighbor(int idx) const;
 
-	static float msDepthThreshold;
-	static float msCurvatureTheshold;
+	static float msDepthFarThreshold;
+	static float msDepthNearThreshold;
+	static float msAngleThreshold;
 
 private:
 	void copyFrom(const DepthImage& rhs);
 	void depthToPoints();
 	void depthToNormals();
+	void selectAndCopy();
 
 	vector<Vector3f> mPoints;
 	vector<Vector3f> mNormals;
 	
 	cv::Mat1w mOriginalData;
 	cv::Mat1f mData;
+	cv::Mat1f mDataForNormal;
 
 	cv::Mat3f mNormalImage;
 	cv::Mat3f mPointImage;

@@ -7,36 +7,10 @@ using namespace std;
 #include <Eigen/Dense>
 using namespace Eigen;
 
+#include "extendedDepthPixel.h"
 #include "DepthImage.h"
 #include "KDTree.h"
 
-class ExtendedDepthPixel
-{
-public:
-	ExtendedDepthPixel() : d(0), n(Vector3f::Ones())
-	{
-
-	}
-	ExtendedDepthPixel(float depth, const Vector3f& normal) : d(depth), n(normal)
-	{
-
-	}
-
-	bool operator< (const ExtendedDepthPixel& rhs)
-	{
-		return this->d < rhs.d;
-	}
-	bool operator<= (const ExtendedDepthPixel& rhs)
-	{
-		return this->d <= rhs.d;
-	}
-	bool operator >(const ExtendedDepthPixel& rhs)
-	{
-		return this->d > rhs.d;
-	}
-	float d;
-	Vector3f n;
-};
 
 class DepthCamera
 {

@@ -242,7 +242,7 @@ void ImageSegmentation::expand(const cv::Mat& depthImg, int seed, int numRows, i
 
 		normalAccumulator += getNormal(current);
 		Vector3d avgNormal = normalAccumulator.normalized();
-		double cosineThreshold = cos(angleThreshold / 180 * PI);
+		double cosineThreshold = cos(angleThreshold / 180 * M_PI);
 
 		int left = leftNeighbor(current, numRows, numCols);
 		int right = rightNeighbor(current, numRows, numCols);
@@ -405,7 +405,7 @@ bool ImageSegmentation::isNormalContinous(int idx1, int idx2, double angleThresh
 	indexTo2d(idx2, v2, u2, mNormalImg.rows, mNormalImg.cols);
 	cv::Vec3d n1 = mNormalImg.at<cv::Vec3d>(v1, u1);
 	cv::Vec3d n2 = mNormalImg.at<cv::Vec3d>(v2, u2);
-	double cosineThreshold = cos(angleThreshold / 180 * PI);
+	double cosineThreshold = cos(angleThreshold / 180 * M_PI);
 
 	if (cv::dot<double>(n1, n2) > cosineThreshold) return true;
 	else return false;

@@ -1,8 +1,9 @@
 #include "DepthImage.h"
 #include "utility/mathlib.h"
 
-float DepthImage::msDepthThreshold = 2.5;
-float DepthImage::msCurvatureTheshold = 5000;
+float DepthImage::msDepthFarThreshold = 2.5f;
+float DepthImage::msDepthNearThreshold = 0.2f;
+float DepthImage::msAngleThreshold = 0.15;
 
 DepthImage::DepthImage()
 {
@@ -40,9 +41,12 @@ void DepthImage::ReadFromFile(const string& filename)
 			mData.at<float>(i, j) = mOriginalData.at<ushort>(i, j);
 		}
 	}
-	//cv::Mat smoothedData;
-	//cv::bilateralFilter(mData, smoothedData, 5, 1000, 5);
-	//mData = smoothedData;
+	cv::Mat smoothedData;
+	cv::medianBlur(mData, smoothedData, 5);
+	mData = smoothedData.clone();
+	//mDataForNormal = mData;
+	cv::bilateralFilter(mData, mDataForNormal, 5, 1000, 5);
+	
 	double minValue;
 	double maxValue;
 	cv::Point minLoc;
@@ -98,12 +102,25 @@ const cv::Mat1f& DepthImage::Data() const
 {
 	return mData;
 }
+
+float DepthImage::DepthForNormal(int idx) const
+{
+	int u, v;
+	indexTo2d(idx, v, u, NumRows(), NumCols());
+	return DepthForNormal(v, u);
+}
+float DepthImage::DepthForNormal(int ithRow, int jthCol) const
+{
+	return mDataForNormal.at<float>(ithRow, jthCol);
+}
+
 float DepthImage::Depth(int idx) const
 {
 	int u, v;
 	indexTo2d(idx, v, u, NumRows(), NumCols());
 	return Depth(v, u);
 }
+
 float DepthImage::Depth(int ithRow, int jthCol) const
 {
 	return mData.at<float>(ithRow, jthCol);
@@ -137,9 +154,35 @@ void DepthImage::SetData(const cv::Mat1f& depthData)
 void DepthImage::Process(const Matrix4f& cameraPose)
 {
 	mCameraPose = cameraPose;
+
 	depthToPoints();
 	depthToNormals();
+	selectAndCopy();
 	CHECK(mPoints.size() == mNormals.size()) << "Numbers of points and normals do not agree in DepthImage::Process().";
+}
+
+
+void DepthImage::selectAndCopy()
+{
+	for (int v = 0; v < mData.rows; ++v)
+	{
+		for (int u = 0; u < mData.cols; ++u)
+		{
+			float d = mData.at<float>(v, u);
+			float z = d / 1000.f;
+			const cv::Vec3f& nCV = mNormalImage.at<cv::Vec3f>(v, u);
+			Vector3f n(nCV[0], nCV[1], nCV[2]);
+
+			if (z > msDepthFarThreshold || z < msDepthNearThreshold || abs(n.dot(Vector3f(0, 0, 1))) < msAngleThreshold) continue;
+
+			const cv::Vec3f& pCV = mPointImage.at <cv::Vec3f>(v, u);
+			Eigen::Vector3f gp = (mCameraPose * Eigen::Vector4f(pCV[0], pCV[1], pCV[2], 1)).head(3);
+			Vector3f gn = mCameraPose.block(0, 0, 3, 3) * n;
+
+			mPoints.push_back(gp);
+			mNormals.push_back(gn);
+		}
+	}
 }
 void DepthImage::depthToPoints()
 {
@@ -156,18 +199,15 @@ void DepthImage::depthToPoints()
 		{
 			float d = mData.at<float>(v, u);
 			float z = d / 1000.f;
-			if (z > msDepthThreshold) continue;
-			
+
 			float x = (u - cx) * z / fx;
 			float y = (v - cy) * z / fy;
 
-			Eigen::Vector4f w = mCameraPose * Eigen::Vector4f(x, y, z, 1);
-
-			mPointImage.at<cv::Vec3f>(v, u) = cv::Vec3f(w[0], w[1], w[2]);
-			mPoints.push_back(w.head(3));
+			mPointImage.at<cv::Vec3f>(v, u) = cv::Vec3f(x, y, z);
 		}
 	}
 }
+
 void DepthImage::depthToNormals()
 {
 	int numRows = mData.rows;
@@ -181,45 +221,30 @@ void DepthImage::depthToNormals()
 	for (int i = 0; i < numTotalPixels; ++i)
 	{
 		int current = i;
-		float dCurrent = Depth(current);
-		if (dCurrent / 1000 > msDepthThreshold) continue;
 
 		int u, v;
 		indexTo2d(current, v, u, numRows, numCols);
 
 		int left = LeftNeighbor(current);
 		int right = RightNeighbor(current);
-		float dLeft = Depth(left);
-		float dRight = Depth(right);
-		if (abs(2 * dCurrent - dLeft - dRight) > msCurvatureTheshold)
-		{
-			float diff = abs(dRight - dCurrent) > abs(dCurrent - dLeft) ? dCurrent - dLeft : dRight - dCurrent;
-			tangentialAxis1 = Vector3f(1, 0, diff);
-		}
-		else
-		{
-			tangentialAxis1 = Vector3f(2, 0, dRight - dLeft);
-		}
+		float dLeft = DepthForNormal(left);
+		float dRight = DepthForNormal(right);
+
+		tangentialAxis1 = Vector3f(2, 0, dRight - dLeft);
+
 
 		int upper = UpperNeighbor(current);
 		int lower = LowerNeighbor(current);
-		float dUpper = Depth(upper);
-		float dLower = Depth(lower);
-		if (abs(2 * dCurrent - dUpper - dLower) > msCurvatureTheshold)
-		{
-			float diff = abs(dUpper - dCurrent) > abs(dCurrent - dLower) ? dLower - dCurrent : dCurrent - dUpper;
-			tangentialAxis2 = Vector3f(0, 1, diff);
-		}
-		else
-		{
-			tangentialAxis2 = Vector3f(0, 2, dLower - dUpper);
-		}
+		float dUpper = DepthForNormal(upper);
+		float dLower = DepthForNormal(lower);
+
+		tangentialAxis2 = Vector3f(0, 2, dLower - dUpper);
+
 		Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
 		normal = -normal.normalized();
-		Vector3f gn = mCameraPose.block(0, 0, 3, 3) * normal;
 
-		mNormalImage.at<cv::Vec3f>(v, u) = cv::Vec3f(gn[0], gn[1], gn[2]);
-		mNormals.push_back(gn);
+
+		mNormalImage.at<cv::Vec3f>(v, u) = cv::Vec3f(normal[0], normal[1], normal[2]);
 	}
 }
 

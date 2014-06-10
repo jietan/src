@@ -9,6 +9,11 @@ using namespace google;
 #include "KDTree.h"
 #include <intrin.h>
 
+float dist(const ExtendedDepthPixel& lhs, const ExtendedDepthPixel& rhs)
+{
+	return (abs(lhs.d - rhs.d));
+}
+
 DepthCamera::DepthCamera()
 {
 	mMinDepth = FLT_MAX;
@@ -344,11 +349,12 @@ void DepthCamera::SaveDepthThresholdingImage(const string& filename, int numThre
 void DepthCamera::SaveDepthOnionImage(const string& filename)
 {
 
-	int count = 1;
-	//int count = 0;
+	//int count = 1;
+	int count = 0;
 	cv::Mat1f onionImage;
 	onionImage.create(mHeight, mWidth);
-
+	cv::Mat1i maskImage;
+	maskImage.create(mHeight, mWidth);
 
 	while (true)
 	{
@@ -362,30 +368,36 @@ void DepthCamera::SaveDepthOnionImage(const string& filename)
 				{
 					onionImage.at<float>(i, j) = 0;
 				}
-				//else if (len <= count)
-				//{
-				//	onionImage.at<float>(i, j) = 0;
-				//}
-				//else
-				//{
-				//	onionImage.at<float>(i, j) = mSimplifiedDepthMap[i][j][count];
-				//	numValidPx++;
-				//}
 				else if (len <= count)
 				{
-					onionImage.at<float>(i, j) = mDepthMap[i][j][0].d;
+					onionImage.at<float>(i, j) = 0;// mDepthMap[i][j][len - 1].d;
 				}
 				else
 				{
-					onionImage.at<float>(i, j) = mDepthMap[i][j][len - count].d;
+					onionImage.at<float>(i, j) = mDepthMap[i][j][count].d;
+					if (!mMask.empty())
+						maskImage.at<int>(i, j) = mMask[i][j][count];
 					numValidPx++;
 				}
+				//else if (len <= count)
+				//{
+				//	onionImage.at<float>(i, j) = mDepthMap[i][j][0].d;
+				//	if (!mMask.empty())
+				//		maskImage.at<int>(i, j) = mMask[i][j][0];
+				//}
+				//else
+				//{
+				//	onionImage.at<float>(i, j) = mDepthMap[i][j][len - count].d;
+				//	if (!mMask.empty())
+				//		maskImage.at<int>(i, j) = mMask[i][j][len - count];
+				//	numValidPx++;
+				//}
 			}
 		}
 		if (!numValidPx) break;
 		char newFileName[512];
-		sprintf(newFileName, "%s%03dOnion.png", filename.c_str(), count);
-		saveDepthImageVisualization(newFileName, &onionImage);
+		sprintf(newFileName, "%sOnion%03d.png", filename.c_str(), count);
+		saveDepthImageVisualization(newFileName, &onionImage, &maskImage);
 		count++;
 	}
 }
@@ -649,62 +661,148 @@ void DepthCamera::Compare(const DepthCamera& rhs, vector<vector<vector<ExtendedD
 		mergedDepthMap[i].resize(mWidth);
 		mask[i].resize(mWidth);
 		
+
 		for (int j = 0; j < mWidth; ++j)
 		{
 			//check whether the depth samples from mesh are presented as points
 			if (mDepthMap[i][j].empty()) continue;
-			vector<ExtendedDepthPixel> processingDepthMapFromMesh;
+
 			int selfSize = static_cast<int>(mDepthMap[i][j].size());
 			int rhsSize = static_cast<int>(rhs.mDepthMap[i][j].size());
+			vector<ExtendedDepthPixel> processingDepthMapFromMesh;
+			vector<ExtendedDepthPixel> processingDepthSampleFromPoints;
+
+			//VectorXi nearestSurfaceId = VectorXi::Constant(selfSize, - 1);
+			//VectorXi numPointsAgreeWithSurface = VectorXi::Zero(rhsSize);
+
+			//if (rhsSize == 0)
+			//{
+			//	processingDepthSampleFromPoints = mDepthMap[i][j];
+			//}
+			//else
+			//{
+			//	for (int ithDepthSample = 0; ithDepthSample < selfSize; ++ithDepthSample)
+			//	{
+			//		int id = findNearestPoint(rhs.mDepthMap[i][j], mDepthMap[i][j][ithDepthSample], pointMeshMergingThreshold, dist);
+			//		nearestSurfaceId[ithDepthSample] = id;
+			//		if (id >= 0)
+			//		{
+			//			numPointsAgreeWithSurface[id] += 1;
+			//		}
+			//	}
+
+
+			//	for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
+			//	{
+			//		int mergeingStart = 0;
+			//		if (numPointsAgreeWithSurface[ithDepthSample] == 0)
+			//		{
+			//			int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
+			//			if (insertPos == 0 || insertPos == selfSize)
+			//				continue;
+			//			processingDepthMapFromMesh.push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			//		}
+			//	}
+			//	if (selfSize > 2)
+			//		printf("hello");
+			//	int startId = 0;
+			//	int countToMerge = 1;
+			//	int prevId = nearestSurfaceId[0];
+			//	for (int ithDepthSample = 1; ithDepthSample < selfSize; ++ithDepthSample)
+			//	{
+			//		int currentNearestId = nearestSurfaceId[ithDepthSample];
+			//		if (currentNearestId == -1)
+			//		{
+			//			processingDepthSampleFromPoints.push_back(mDepthMap[i][j][ithDepthSample]);
+			//		}
+			//		else if (currentNearestId == prevId)
+			//		{
+			//			countToMerge++;
+			//		}
+			//		else
+			//		{
+			//			if (countToMerge > 0)
+			//				processingDepthSampleFromPoints.push_back(mDepthMap[i][j][startId + countToMerge / 2]);
+			//			startId = ithDepthSample;
+			//			countToMerge = 1;
+			//			prevId = currentNearestId;
+			//		}
+			//	}
+			//	if (countToMerge > 0)
+			//		processingDepthSampleFromPoints.push_back(mDepthMap[i][j][startId + countToMerge / 2]);
+			//}
+
 			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
 			{
 				int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
-				if (insertPos == 0)
-					continue;
-				else if (insertPos == selfSize && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
-					continue;
-				else if (abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos].d) < pointMeshMergingThreshold || abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
-					continue;
-				else
-					processingDepthMapFromMesh.push_back(rhs.mDepthMap[i][j][ithDepthSample]);
-			}
-			
-
-			//merge source two list of depth samples
-			
-			rhsSize = static_cast<int>(processingDepthMapFromMesh.size());
-			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
-			{
-				processingDepthMapFromMesh[ithDepthSample].n = Vector3f::Zero(); // make it color so we can see it clearly in mesh lab.
-			}
-			int selfIdx = 0;
-			int rhsIdx = 0;
-			while (selfIdx < selfSize && rhsIdx < rhsSize)
-			{
-				if (mDepthMap[i][j][selfIdx] <= processingDepthMapFromMesh[rhsIdx])
+				if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
 				{
-					mergedDepthMap[i][j].push_back(mDepthMap[i][j][selfIdx]);
+					continue;
+				}
+				else if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) < pointMeshMergingThreshold)
+				{
+					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 					mask[i][j].push_back(MASK_KNOWN);
-					selfIdx++;
+					continue;
+				}
+				else if (insertPos == selfSize && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
+				{
+					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+					mask[i][j].push_back(MASK_KNOWN);
+					continue;
+				}
+				else if (abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos].d) < pointMeshMergingThreshold || abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
+				{
+					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+					mask[i][j].push_back(MASK_KNOWN);
+					continue;
 				}
 				else
 				{
-					mergedDepthMap[i][j].push_back(processingDepthMapFromMesh[rhsIdx]);
+					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 					mask[i][j].push_back(MASK_UNKNOWN);
-					rhsIdx++;
+					//processingDepthMapFromMesh.push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 				}
 			}
-			if (selfIdx >= selfSize - 1)
-			{
-				mergedDepthMap[i][j].insert(mergedDepthMap[i][j].end(), processingDepthMapFromMesh.begin() + rhsIdx, processingDepthMapFromMesh.end());
-				mask[i][j].insert(mask[i][j].end(), rhsSize - rhsIdx, MASK_UNKNOWN);
+			//processingDepthSampleFromPoints = mDepthMap[i][j];
+			////
 
-			}
-			if (rhsIdx >= rhsSize - 1)
-			{
-				mergedDepthMap[i][j].insert(mergedDepthMap[i][j].end(), mDepthMap[i][j].begin() + selfIdx, mDepthMap[i][j].end());
-				mask[i][j].insert(mask[i][j].end(), selfSize - selfIdx, MASK_KNOWN);
-			}
+			////merge source two list of depth samples
+			//
+			//rhsSize = static_cast<int>(processingDepthMapFromMesh.size());
+			//selfSize = static_cast<int>(processingDepthSampleFromPoints.size());
+			//for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
+			//{
+			//	processingDepthMapFromMesh[ithDepthSample].n = Vector3f::Zero(); // make it color so we can see it clearly in mesh lab.
+			//}
+			//int selfIdx = 0;
+			//int rhsIdx = 0;
+			//while (selfIdx < selfSize && rhsIdx < rhsSize)
+			//{
+			//	if (processingDepthSampleFromPoints[selfIdx] <= processingDepthMapFromMesh[rhsIdx])
+			//	{
+			//		mergedDepthMap[i][j].push_back(processingDepthSampleFromPoints[selfIdx]);
+			//		mask[i][j].push_back(MASK_KNOWN);
+			//		selfIdx++;
+			//	}
+			//	else
+			//	{
+			//		mergedDepthMap[i][j].push_back(processingDepthMapFromMesh[rhsIdx]);
+			//		mask[i][j].push_back(MASK_UNKNOWN);
+			//		rhsIdx++;
+			//	}
+			//}
+			//if (selfIdx >= selfSize - 1)
+			//{
+			//	mergedDepthMap[i][j].insert(mergedDepthMap[i][j].end(), processingDepthMapFromMesh.begin() + rhsIdx, processingDepthMapFromMesh.end());
+			//	mask[i][j].insert(mask[i][j].end(), rhsSize - rhsIdx, MASK_UNKNOWN);
+
+			//}
+			//if (rhsIdx >= rhsSize - 1)
+			//{
+			//	mergedDepthMap[i][j].insert(mergedDepthMap[i][j].end(), processingDepthSampleFromPoints.begin() + selfIdx, processingDepthSampleFromPoints.end());
+			//	mask[i][j].insert(mask[i][j].end(), selfSize - selfIdx, MASK_KNOWN);
+			//}
 		}
 	}
 	

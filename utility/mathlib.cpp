@@ -2,7 +2,7 @@
 #include "mathlib.h"
 #include "polarDecomposition.h"
 
-
+const static DOUBLE PI = 3.14159265359;
 DecoQuaternion::DecoQuaternion(DOUBLE angle, vector3 rotationAxis)
 {
 	DOUBLE sn = sin(angle / 2);

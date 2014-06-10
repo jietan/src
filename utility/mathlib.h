@@ -7,9 +7,9 @@
 #include "Eigen/Dense"
 using namespace std;
 
-#define LinearInterpolate( value1, value2, alpha ) ( ( 1.0 - alpha ) * value1 + alpha * value2 )
+#define LinearInterpolate(value1,value2,alpha) ( ( 1.0 - alpha ) * value1 + alpha * value2 )
 
-const static DOUBLE PI = 3.14159265359;
+
 const static DOUBLE EPSILON_FLOAT = 1e-6;
 const static DOUBLE MAX_DOUBLE = 1e300;
 const static DOUBLE MIN_DOUBLE = -1e300;
