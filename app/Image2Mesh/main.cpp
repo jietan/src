@@ -42,6 +42,7 @@ using namespace Eigen;
 #include "DepthInpainting.h"
 #include "DepthCamera.h"
 #include "utility/ConfigManager.h"
+#include "MultilayerDepthImage.h"
 
 
 //#include "gflags/gflags.h"
@@ -674,7 +675,7 @@ int main(int argc, char** argv)
 		string filename = "results/DepthFromMultiview.data";
 		dCamera.ReadMultilayerDepthImage(filename);
 		dCamera.ProcessMultiLayerDepthImage();
-		dCamera.SimplifyMultilayerDepthImage();
+		dCamera.SimplifyMultiLayerDepthImage();
 		dCamera.SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview.data");
 		dCamera.GetPointCloud(points, normals);
 		SavePointCloud("results/simplifiedDepthFromMultiview.ply", points, colors, normals);
@@ -742,7 +743,7 @@ int main(int argc, char** argv)
 		dCameraMesh.ReadMultilayerDepthImage(filename);
 		dCameraMesh.ProcessMultiLayerDepthImage();
 
-		vector<vector<vector <ExtendedDepthPixel> > > mergedDepthMap;
+		MultilayerDepthImage mergedDepthMap;
 		vector<vector<vector<int> > > depthMask;
 		dCameraPoints.Compare(dCameraMesh, mergedDepthMap, depthMask);
 		DepthCamera dCameraCombined;
@@ -751,27 +752,26 @@ int main(int argc, char** argv)
 		dCameraCombined.SetData(mergedDepthMap);
 		dCameraCombined.SetMask(depthMask);
 		dCameraCombined.ProcessMultiLayerDepthImage();
-		dCameraCombined.SaveDepthThresholdingImage("results/combinedPointMeshDepthImage.png", 20);
-		dCameraCombined.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png");
 		dCameraCombined.GetPointCloud(points, normals);
 		SavePointCloud("results/combinedPointMeshDepthImage.ply", points, colors, normals);
+		mergedDepthMap.SaveDepthThresholdingImage("results/combinedPointMeshDepthImage.png", 20, &depthMask);
+		mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png", &depthMask);
 	}
 	else if (task == 6)
 	{
 		/* two different ways to visualize the multi-layer depth image */
-		DepthCamera dCamera;
-		dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
-		dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+		MultilayerDepthImage MLDI;
+
 		string filename = "results/simplifiedDepthFromMultiview.data";
-		dCamera.ReadMultilayerDepthImage(filename);
-		dCamera.ProcessMultiLayerDepthImage();
+		MLDI.Read(filename);
+		MLDI.Process();
 
 		string outFileName = "results/simplifiedDepthFromMultiview.png";
-		dCamera.SaveDepthImage(outFileName);
-		dCamera.SaveDepthThresholdingImage(outFileName, 20);
+		MLDI.Save(outFileName);
+		MLDI.SaveDepthThresholdingImage(outFileName, 20);
 
 		outFileName = "results/simplifiedDepthFromMultiview.png";
-		dCamera.SaveDepthOnionImage(outFileName);
+		MLDI.SaveDepthOnionImage(outFileName);
 
 	}
 }

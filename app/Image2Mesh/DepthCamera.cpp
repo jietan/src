@@ -16,8 +16,7 @@ float dist(const ExtendedDepthPixel& lhs, const ExtendedDepthPixel& rhs)
 
 DepthCamera::DepthCamera()
 {
-	mMinDepth = FLT_MAX;
-	mMaxDepth = 0;
+
 }
 DepthCamera::~DepthCamera()
 {
@@ -32,6 +31,25 @@ void DepthCamera::SetIntrinsicParameters(int numPxWidth, int numPxHeight, float 
 void DepthCamera::SetExtrinsicParameters(const Matrix4f& pose)
 {
 	mPose = pose;
+}
+
+void DepthCamera::SaveMultilayerDepthImage(const string& filename)
+{
+	mDepthMap.Save(filename);
+}
+void DepthCamera::ReadMultilayerDepthImage(const string& filename)
+{
+	mDepthMap.Read(filename);
+
+}
+void DepthCamera::ProcessMultiLayerDepthImage()
+{
+	mDepthMap.Process();
+}
+
+void DepthCamera::SimplifyMultiLayerDepthImage()
+{
+	mDepthMap.Simplify();
 }
 
 void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3i>& indices)
@@ -80,11 +98,9 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 	mKDTree.addMesh(&mesh, identity, NULL, 1);
 	mKDTree.process();
 
-	mDepthMap.resize(mHeight);
+	mDepthMap.Create(mHeight, mWidth);
 	for (int i = 0; i < mHeight; ++i)
-	{
-		mDepthMap[i].resize(mWidth);
-		
+	{	
 		//if (i > 250) continue;
 		LOG(INFO) << "DepthCamera::Capture() is processing " << i << "th row.";
 
@@ -111,10 +127,10 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 		}
 	}
 	ProcessMultiLayerDepthImage();
-	fromMultiLayerToSinglelLayerDepthImage();
+	
 
 	string depthImageFileName = "results/depthFromMultiviewFromMesh.png";
-	SaveDepthImage(depthImageFileName);
+	mDepthMap.SaveDepthImage(depthImageFileName);
 	string mutlilayerDepthImageFilename = "results/depthFromMultiviewFromMesh.data";
 	SaveMultilayerDepthImage(mutlilayerDepthImageFilename);
 	
@@ -123,7 +139,7 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>& normals)
 {
 	
-	mDepthMap.resize(mHeight);
+	mDepthMap.Create(mHeight, mWidth);
 	//Vector3f rayOrigin = mPose.col(3).head(3);
 	//for (int i = 0; i < mHeight; ++i)
 	//{
@@ -147,10 +163,7 @@ void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>
 	//		
 	//	}
 	//}
-	for (int i = 0; i < mHeight; ++i)
-	{
-		mDepthMap[i].resize(mWidth);
-	}
+
 	int numPoints = static_cast<int>(points.size());
 	int numPointsOnePercent = numPoints / 100;
 	vector<Vector3f> pointsInCameraSpace;
@@ -192,15 +205,10 @@ void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>
 	string depthImageFileName = "results/depthFromMultiview.png";
 	string mutlilayerDepthImageFilename = "results/depthFromMultiview.data";
 	
-	SaveMultilayerDepthImage(mutlilayerDepthImageFilename);
-	SaveDepthImage(depthImageFileName);
+	mDepthMap.Save(mutlilayerDepthImageFilename);
+	mDepthMap.SaveDepthImage(depthImageFileName);
 }
 
-void DepthCamera::ProcessMultiLayerDepthImage()
-{
-	findMinMaxDepth();
-	fromMultiLayerToSinglelLayerDepthImage();
-}
 
 void DepthCamera::GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& normals)
 {
@@ -236,7 +244,7 @@ void DepthCamera::GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& norm
 	}
 }
 
-void DepthCamera::SetData(const vector<vector<vector<ExtendedDepthPixel> > >& depthMap)
+void DepthCamera::SetData(const MultilayerDepthImage& depthMap)
 {
 	mDepthMap = depthMap;
 }
@@ -246,353 +254,7 @@ void DepthCamera::SetMask(const vector<vector<vector<int> > >& mask)
 	mMask = mask;
 }
 
-void DepthCamera::ReadMultilayerDepthImage(const string& filename)
-{
-	LOG(INFO) << "Start DepthCamera::ReadMultilayerDepthImage()";
-	ifstream inFile(filename.c_str(), ios::in | ios::binary);
-	inFile.read((char*)&mWidth, sizeof(mWidth));
-	inFile.read((char*)&mHeight, sizeof(mHeight));
-	mDepthMap.resize(mHeight);
-	for (int i = 0; i < mHeight; ++i)
-	{
-		mDepthMap[i].resize(mWidth);
-		for (int j = 0; j < mWidth; ++j)
-		{
-			int len = 0;
-			inFile.read((char*)&len, sizeof(int));
-			if (len)
-			{
-				//mDepthMap[i][j].resize(len);
-				for (int k = 0; k < len; ++k)
-				{
-					float depth, nx, ny, nz;
-					
-					inFile.read((char*)&depth, sizeof(float));
-					inFile.read((char*)&nx, sizeof(float));
-					inFile.read((char*)&ny, sizeof(float));
-					inFile.read((char*)&nz, sizeof(float));
-					if (depth > 0)
-						mDepthMap[i][j].push_back(ExtendedDepthPixel(depth, Vector3f(nx, ny, nz)));
-				}
-			}
-		}
-	}
-	LOG(INFO) << "End DepthCamera::ReadMultilayerDepthImage()";
-}
-void DepthCamera::SaveMultilayerDepthImage(const string& filename)
-{
-	LOG(INFO) << "Start DepthCamera::SaveMultilayerDepthImage()";
-	ofstream outFile(filename.c_str(), ios::out | ios::binary);
-	outFile.write((char*)&mWidth, sizeof(mWidth));
-	outFile.write((char*)&mHeight, sizeof(mHeight));
-	
-	const vector<vector<vector<ExtendedDepthPixel> > >& image = mDepthMap;
-	for (int i = 0; i < mHeight; ++i)
-	{
-		for (int j = 0; j < mWidth; ++j)
-		{
-			int len = static_cast<int>(image[i][j].size());
-			outFile.write((char*)&len, sizeof(len));
-			for (int k = 0; k < len; ++k)
-			{
-				outFile.write((char*)&(image[i][j][k].d), sizeof(float));
-				outFile.write((char*)&(image[i][j][k].n[0]), sizeof(float));
-				outFile.write((char*)&(image[i][j][k].n[1]), sizeof(float));
-				outFile.write((char*)&(image[i][j][k].n[2]), sizeof(float));
-			}
-		}
-	}
-	LOG(INFO) << "End DepthCamera::SaveMultilayerDepthImage()";
-}
 
-void DepthCamera::SaveDepthThresholdingImage(const string& filename, int numThresholds)
-{
-	float stepSize = (mMaxDepth - mMinDepth) / numThresholds;
-	cv::Mat1f thresholdImage;
-	cv::Mat1i maskImage;
-	thresholdImage.create(mHeight, mWidth);
-	maskImage.create(mHeight, mWidth);
-	for (int ithImage = 0; ithImage < numThresholds; ++ithImage)
-	{
-		float threshold = mMinDepth - EPSILON_FLOAT + stepSize * ithImage;
-		for (int i = 0; i < mHeight; ++i)
-		{
-			for (int j = 0; j < mWidth; ++j)
-			{
-				maskImage.at<int>(i, j) = 0;
-				if (mDepthMap[i][j].empty())
-				{
-					thresholdImage.at<float>(i, j) = 0;
-				}
-				else
-				{
-					int idToInsert = linearSearchInsertPos<ExtendedDepthPixel>(mDepthMap[i][j], ExtendedDepthPixel(threshold, Vector3f::Zero()));
-					if (idToInsert == mDepthMap[i][j].size())
-					{
-						thresholdImage.at<float>(i, j) = 0;
-					}
-					else
-					{
-						thresholdImage.at<float>(i, j) = mDepthMap[i][j][idToInsert].d;
-						if (!mMask.empty())
-							maskImage.at<int>(i, j) = mMask[i][j][idToInsert];
-					}
-				}
-			}
-		}
-		char newFileName[512];
-		sprintf(newFileName, "%s%03d.png", filename.c_str(), ithImage);
-		saveDepthImageVisualization(newFileName, &thresholdImage, &maskImage);
-	}
-}
-
-void DepthCamera::SaveDepthOnionImage(const string& filename)
-{
-
-	//int count = 1;
-	int count = 0;
-	cv::Mat1f onionImage;
-	onionImage.create(mHeight, mWidth);
-	cv::Mat1i maskImage;
-	maskImage.create(mHeight, mWidth);
-
-	while (true)
-	{
-		int numValidPx = 0;
-		for (int i = 0; i < mHeight; ++i)
-		{
-			for (int j = 0; j < mWidth; ++j)
-			{
-				int len = static_cast<int>(mDepthMap[i][j].size());
-				if (mDepthMap[i][j].empty())
-				{
-					onionImage.at<float>(i, j) = 0;
-				}
-				else if (len <= count)
-				{
-					onionImage.at<float>(i, j) = 0;// mDepthMap[i][j][len - 1].d;
-				}
-				else
-				{
-					onionImage.at<float>(i, j) = mDepthMap[i][j][count].d;
-					if (!mMask.empty())
-						maskImage.at<int>(i, j) = mMask[i][j][count];
-					numValidPx++;
-				}
-				//else if (len <= count)
-				//{
-				//	onionImage.at<float>(i, j) = mDepthMap[i][j][0].d;
-				//	if (!mMask.empty())
-				//		maskImage.at<int>(i, j) = mMask[i][j][0];
-				//}
-				//else
-				//{
-				//	onionImage.at<float>(i, j) = mDepthMap[i][j][len - count].d;
-				//	if (!mMask.empty())
-				//		maskImage.at<int>(i, j) = mMask[i][j][len - count];
-				//	numValidPx++;
-				//}
-			}
-		}
-		if (!numValidPx) break;
-		char newFileName[512];
-		sprintf(newFileName, "%sOnion%03d.png", filename.c_str(), count);
-		saveDepthImageVisualization(newFileName, &onionImage, &maskImage);
-		count++;
-	}
-}
-
-
-void DepthCamera::SimplifyMultilayerDepthImage()
-{
-	const float depthMergeThreshold = 20;
-	
-	vector<vector<vector<ExtendedDepthPixel> > > sDepthMap;
-	sDepthMap.resize(mHeight);
-	for (int i = 0; i < mHeight; ++i)
-	{
-		LOG(INFO) << "DepthCamera::simplifyMultilayerDepthImage() is processing " << i << "th row.";
-		sDepthMap[i].resize(mWidth);
-		for (int j = 0; j < mWidth; ++j)
-		{
-
-			if (mDepthMap[i][j].empty()) continue;
-			int nDepthValues = static_cast<int>(mDepthMap[i][j].size());
-			float depthCenter = mDepthMap[i][j][0].d;
-			Vector3f normalCenter = mDepthMap[i][j][0].n;
-			int count = 1;
-			for (int k = 1; k < nDepthValues; ++k)
-			{
-				float currentDepth = mDepthMap[i][j][k].d;
-				Vector3f currentNormal = mDepthMap[i][j][k].n;
-				if (abs(depthCenter - currentDepth) < depthMergeThreshold)
-				{
-					depthCenter = (depthCenter * count + currentDepth) / (count + 1);
-					normalCenter += currentNormal;
-					count++;
-				}
-				else
-				{
-					normalCenter.normalize();
-					sDepthMap[i][j].push_back(ExtendedDepthPixel(depthCenter, normalCenter));
-					depthCenter = currentDepth;
-					normalCenter = currentNormal;
-					count = 1;
-				}
-			}
-			normalCenter.normalize();
-			sDepthMap[i][j].push_back(ExtendedDepthPixel(depthCenter, normalCenter));
-		}
-	}
-	mDepthMap = sDepthMap;
-	return;
-
-	//const int numDepthSegments = 10;
-	//vector<vector<vector<ExtendedDepthPixel> > > simplifiedDepthMap;
-	//simplifiedDepthMap.resize(mHeight);
-	//for (int i = 0; i < mHeight; ++i)
-	//{
-	//	simplifiedDepthMap[i].resize(mWidth);
-	//	LOG(INFO) << "DepthCamera::simplifyMultilayerDepthImage() is processing " << i << "th row.";
-	//	for (int j = 0; j < mWidth; ++j)
-	//	{
-	//		if (mDepthMap[i][j].empty()) continue;
-
-	//		vector<float> simplifiedDepths;
-	//		int depthListLen = static_cast<int>(mDepthMap[i][j].size());
-	//		simplifiedDepths.resize(depthListLen);
-	//		cv::Mat labels;
-	//		
-	//		for (int ithDepth = 0; ithDepth < depthListLen; ++ithDepth)
-	//		{
-	//			simplifiedDepths[ithDepth] = mDepthMap[i][j][ithDepth].d;
-	//		}
-
-	//		if (mDepthMap[i][j].size() > numDepthSegments)
-	//		{
-
-	//			cv::Mat depthData(simplifiedDepths, true);
-	//			cv::Mat centers;
-	//			cv::kmeans(depthData, numDepthSegments, labels, cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 10, 1.0), 1, cv::KMEANS_PP_CENTERS, centers);
-	//			
-	//			simplifiedDepths.clear();
-	//			for (int ithCenter = 0; ithCenter < numDepthSegments; ++ithCenter)
-	//				simplifiedDepths.push_back(centers.at<float>(ithCenter));
-	//			sort(simplifiedDepths.begin(), simplifiedDepths.end());
-	//		}
-	//		else
-	//		{
-	//			labels.create(static_cast<int>(mDepthMap[i][j].size()), 1, CV_32S);
-	//		}
-	//		
-	//		int nDepthValues = static_cast<int>(simplifiedDepths.size());
-	//		vector<set<int> > groups;
-	//		set<int> group;
-
-	//		for (int k = 0; k < nDepthValues; ++k)
-	//		{
-	//			float currentDepth = simplifiedDepths[k];
-	//			float nextDepth = k + 1 < nDepthValues ? simplifiedDepths[k + 1] : simplifiedDepths[k];
-	//			if (abs(nextDepth - currentDepth) < depthMergeThreshold)
-	//			{
-	//				group.insert(group.end(), k);
-	//				group.insert(group.end(), k + 1);
-	//			}
-	//			else
-	//			{
-	//				groups.push_back(group);
-	//				group.clear();
-	//			}
-	//		}
-	//		vector<ExtendedDepthPixel> mergedDepthPixels;
-	//		mergePointsAndNormals(mDepthMap[i][j], labels, groups, mergedDepthPixels);
-	//		simplifiedDepthMap[i][j] = mergedDepthPixels;
-
-	//	}
-	//}
-	//mDepthMap = simplifiedDepthMap;
-
-	//SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview.data");
-}
-
-void DepthCamera::mergePointsAndNormals(const vector<ExtendedDepthPixel>& originalDepthPixel, const cv::Mat& labels, const vector<set<int> >& groups, vector<ExtendedDepthPixel>& mergedDepthPixel)
-{
-	int numGroups = static_cast<int>(groups.size());
-	int numDepths = static_cast<int>(originalDepthPixel.size());
-	mergedDepthPixel.resize(numGroups);
-	for (int ithGroup = 0; ithGroup < numGroups; ++ithGroup)
-	{
-		int count = 0;
-		float accumDepth = 0;
-		Vector3f accumNormal = Vector3f::Zero();
-		for (int jthPx = 0; jthPx < numDepths; ++jthPx)
-		{
-			int currentLabel = labels.at<int>(jthPx);
-			if (groups[ithGroup].find(currentLabel) != groups[ithGroup].end())
-			{
-				count++;
-				accumDepth += originalDepthPixel[jthPx].d;
-				accumNormal += originalDepthPixel[jthPx].n;
-			}
-		}
-		accumDepth /= count;
-		accumNormal.normalize();
-		mergedDepthPixel[ithGroup] = ExtendedDepthPixel(accumDepth, accumNormal);
-	}
-}
-
-void DepthCamera::saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask)
-{
-	cv::Mat visualizationImage(mHeight, mWidth, CV_8UC3);
-	for (int i = 0; i < mHeight; ++i)
-	{
-		for (int j = 0; j < mWidth; ++j)
-		{
-			float normalizedDepth = 255 * ((image->at<float>(i, j) - mMinDepth) / (1.3f * (mMaxDepth - mMinDepth)) + 0.2f);
-			uchar col = static_cast<uchar>(Clamp<float>(normalizedDepth, 0, 255));
-			visualizationImage.at<cv::Vec3b>(i, j) = cv::Vec3b(col, col, col);
-			if (mask && mask->at<int>(i, j) == 1)
-				visualizationImage.at<cv::Vec3b>(i, j) = cv::Vec3b(200, 0, 200);
-		}
-	}
-	imwrite(filename, visualizationImage);
-}
-void DepthCamera::findMinMaxDepth()
-{
-	mMinDepth = FLT_MAX;
-	mMaxDepth = 0;
-	for (int i = 0; i < mHeight; ++i)
-	{
-		for (int j = 0; j < mWidth; ++j)
-		{
-			if (!mDepthMap[i][j].empty())
-			{
-				if (mDepthMap[i][j].begin()->d < mMinDepth)
-					mMinDepth = mDepthMap[i][j].begin()->d;
-				if (mDepthMap[i][j].rbegin()->d > mMaxDepth)
-					mMaxDepth = mDepthMap[i][j].rbegin()->d;
-			}
-		}
-	}
-}
-void DepthCamera::fromMultiLayerToSinglelLayerDepthImage()
-{
-	mSensorMeasurement.create(mHeight, mWidth);
-	for (int i = 0; i < mHeight; ++i)
-	{
-		for (int j = 0; j < mWidth; ++j)
-		{
-			if (mDepthMap[i][j].empty())
-			{
-				mSensorMeasurement.at<float>(i, j) = 0;
-			}
-			else
-			{
-				mSensorMeasurement.at<float>(i, j) = mDepthMap[i][j].begin()->d;
-			}
-		}
-	}
-}
 
 Vector3f DepthCamera::constructRayDirection(int i, int j)
 {
@@ -627,38 +289,21 @@ void DepthCamera::constructDepthMap(const Vector3f& rayOrigin, const Vector3f& r
 	}
 }
 
-void DepthCamera::SaveDepthImage(const string& filename)
-{
-	int numRows = mHeight;
-	int numCols = mWidth;
-	cv::Mat1w imageToWrite;
-	imageToWrite.create(numRows, numCols);
-	for (int i = 0; i < numRows; ++i)
-	{
-		for (int j = 0; j < numCols; ++j)
-		{
-			imageToWrite.at<ushort>(i, j) = static_cast<ushort>(mSensorMeasurement.at<float>(i, j));
-		}
-	}
-	cv::imwrite(filename, imageToWrite);
-}
 
 // assuming self is a noisy depth camera view but represent the truth, rhs is from the view of Poisson constructed mesh.
-void DepthCamera::Compare(const DepthCamera& rhs, vector<vector<vector<ExtendedDepthPixel> > >& mergedDepthMap, vector<vector<vector<int> > >& mask)
+void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDepthMap, vector<vector<vector<int> > >& mask)
 {
 	const int MASK_UNKNOWN = 1;
 	const int MASK_KNOWN = 0;
 	const float pointMeshMergingThreshold = 50;
 
-
-	mergedDepthMap.clear();
-	mergedDepthMap.resize(mHeight);
+	mergedDepthMap.Create(mHeight, mWidth);
 
 	mask.clear();
 	mask.resize(mHeight);
 	for (int i = 0; i < mHeight; ++i)
 	{
-		mergedDepthMap[i].resize(mWidth);
+		
 		mask[i].resize(mWidth);
 		
 
@@ -805,5 +450,5 @@ void DepthCamera::Compare(const DepthCamera& rhs, vector<vector<vector<ExtendedD
 			//}
 		}
 	}
-	
+	mergedDepthMap.Process();
 }

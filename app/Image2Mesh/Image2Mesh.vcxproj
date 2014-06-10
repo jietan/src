@@ -264,6 +264,7 @@
     <ClCompile Include="ImageSegmentation.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MultilayerDepthImage.cpp" />
     <ClCompile Include="Segment.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -290,6 +291,7 @@
     <ClInclude Include="extendedDepthPixel.h" />
     <ClInclude Include="ImageSegmentation.h" />
     <ClInclude Include="KDTree.h" />
+    <ClInclude Include="MultilayerDepthImage.h" />
     <ClInclude Include="Segment.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,6 +1,8 @@
 #ifndef _EXTENDED_DEPTH_PIXEL_H
 #define _EXTENDED_DEPTH_PIXEL_H
 
+#include <Eigen/Dense>
+using namespace Eigen;
 
 
 class ExtendedDepthPixel
