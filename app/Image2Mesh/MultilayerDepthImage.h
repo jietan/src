@@ -20,16 +20,20 @@ public:
 	void Simplify();
 	void Process();
 	void SaveDepthImage(const string& filename);
+	int Width() const;
+	int Height() const;
+	int NumLayers() const;
 	/* to fit the original vector interface */
 	vector<vector<ExtendedDepthPixel> >& operator[] (int i);
 	const vector<vector<ExtendedDepthPixel> >& operator[] (int i) const;
 private:
 	void saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask);
 	void findMinMaxDepth();
-	
+	void findNumLayers();
 	vector<vector<vector<ExtendedDepthPixel> > > mData;
 	int mWidth;
 	int mHeight;
+	int mLayers;
 	float mMinDepth;
 	float mMaxDepth;
 };

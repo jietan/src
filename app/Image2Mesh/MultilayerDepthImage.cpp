@@ -3,10 +3,11 @@
 #include <fstream>
 #include "utility/utility.h"
 #include "utility/mathlib.h"
-using namespace google;
+
 
 MultilayerDepthImage::MultilayerDepthImage() : mWidth(0),
 mHeight(0),
+mLayers(0),
 mMinDepth(0),
 mMaxDepth(0)
 {
@@ -30,6 +31,7 @@ const vector<vector<ExtendedDepthPixel> >& MultilayerDepthImage::operator[] (int
 void MultilayerDepthImage::Process()
 {
 	findMinMaxDepth();
+	findNumLayers();
 }
 
 void MultilayerDepthImage::Create(int nRows, int nCol)
@@ -280,6 +282,20 @@ void MultilayerDepthImage::saveDepthImageVisualization(const string& filename, c
 	}
 	imwrite(filename, visualizationImage);
 }
+void MultilayerDepthImage::findNumLayers()
+{
+	mLayers = 0;
+	if (mData.empty())
+		return;
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			if (mLayers < mData[i][j].size())
+				mLayers = static_cast<int>(mData[i][j].size());
+		}
+	}
+}
 void MultilayerDepthImage::findMinMaxDepth()
 {
 	mMinDepth = FLT_MAX;
@@ -299,4 +315,15 @@ void MultilayerDepthImage::findMinMaxDepth()
 	}
 }
 
-
+int MultilayerDepthImage::Width() const
+{
+	return mWidth;
+}
+int MultilayerDepthImage::Height() const
+{
+	return mHeight;
+}
+int MultilayerDepthImage::NumLayers() const
+{
+	return mLayers;
+}
