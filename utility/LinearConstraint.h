@@ -23,26 +23,26 @@ public:
 	LinearConstraint();
 	~LinearConstraint();
 	void SetSize(int numCons, int numDofs);
-    void Set(const MatrixXd& A, const VectorXd& lb, const VectorXi& bLowerBounded, const VectorXd& ub, const VectorXi& bUpperBounded);
+    void Set(const Eigen::MatrixXd& A, const Eigen::VectorXd& lb, const Eigen::VectorXi& bLowerBounded, const Eigen::VectorXd& ub, const Eigen::VectorXi& bUpperBounded);
 	void Union (const LinearConstraint& rhs);
     void Union(LinearConstraint* rhs);
-	const MatrixXd& GetLhs() const;
-	const VectorXd& GetRhs() const;
-	const VectorXd& GetLowerBounds() const;
-	const VectorXi& GetIsLowerBounded() const;
-	const VectorXd& GetUpperBounds() const;
-	const VectorXi& GetIsUpperBounded() const;
-    bool CheckValidation(const VectorXd& sol);
+	const Eigen::MatrixXd& GetLhs() const;
+	const Eigen::VectorXd& GetRhs() const;
+	const Eigen::VectorXd& GetLowerBounds() const;
+	const Eigen::VectorXi& GetIsLowerBounded() const;
+	const Eigen::VectorXd& GetUpperBounds() const;
+	const Eigen::VectorXi& GetIsUpperBounded() const;
+    bool CheckValidation(const Eigen::VectorXd& sol);
     int GetNumConstraints() const;
     int GetNumVariables() const;
     const vector<ConstraintValidationT>& GetConstraintSatisfactionType() const;
 
 private:
-	MatrixXd mA; //Linear inequality constraint
-	VectorXd mlb; 
-	VectorXd mub;
-	VectorXi mIsConstraintsLowerBounded;
-	VectorXi mIsConstraintsUpperBounded;
+	Eigen::MatrixXd mA; //Linear inequality constraint
+	Eigen::VectorXd mlb; 
+	Eigen::VectorXd mub;
+	Eigen::VectorXi mIsConstraintsLowerBounded;
+	Eigen::VectorXi mIsConstraintsUpperBounded;
 
     vector<ConstraintValidationT> mIsConstraintSatisfied;
 };

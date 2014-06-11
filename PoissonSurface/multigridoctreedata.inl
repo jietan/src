@@ -753,7 +753,7 @@ bool Octree< Degree , OutputDensity >::_inBounds( Point3D< Real > p ) const
 }
 
 template< int Degree,  bool OutputDensity >
-int Octree< Degree , OutputDensity >::setTree( const vector<Vector3f>& points, const vector<Vector3f>& inNormals, int maxDepth , int minDepth , 
+int Octree< Degree , OutputDensity >::setTree( const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& inNormals, int maxDepth , int minDepth , 
 											  int splatDepth , Real samplesPerNode , Real scaleFactor ,
 											  bool useConfidence , bool useNormalWeights , Real constraintWeight , int adaptiveExponent , XForm4x4< Real > xForm )
 {

@@ -1,6 +1,7 @@
 #include "DepthInpainting.h"
 
 
+const int MASK_UNKNOWN = 1;
 
 
 
@@ -28,6 +29,7 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 	mPatchWidth = patchWidth;
 	mResultImage = *mDepthImage;
 	const int maxNumIterations = 5;
+	computeFeatureImage();
 	gatherFeatures();
 	for (int ithLayer = 1; ithLayer < 2; ++ithLayer)
 	{
@@ -37,9 +39,14 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 		{
 			select();
 			vote();
-			reconstructHoleDepth();
-
-
+			reconstructHoleDepth(ithLayer);
+			int numHolePixels = static_cast<int>(mHoleFilledDepth.size());
+			for (int ithHolePixel = 0; ithHolePixel < numHolePixels; ++ithHolePixel)
+			{
+				Eigen::Vector3i pxCoord = mHolePixelCoordinates[ithHolePixel];
+				mResultImage[pxCoord[0]][pxCoord[1]][pxCoord[2]].d = mHoleFilledDepth[ithHolePixel];
+			}
+			recomputeHoleFeatureImage(ithLayer);
 		}
 		computeFilledPixelNormals();
 	}
@@ -53,9 +60,18 @@ void DepthImageInpainting::SaveResultImage(const string& filename)
 	//imwrite(filename, resultImage);
 }
 
+int DepthImageInpainting::GetPixelFeatureDim() const
+{
+	return 2;
+}
+int DepthImageInpainting::GetPatchFeatureDim() const
+{
+	return mPatchWidth * mPatchWidth * GetPixelFeatureDim();
+}
+
 void DepthImageInpainting::gatherFeatures()
 {
-	// build vector<VectorXf> mFeatures and vector<Vector3i> mFeatureCoordinates.
+	// build vector<Eigen::VectorXf> mFeatures and vector<Vector3i> mFeatureCoordinates.
 	
 	for (int l = 0; l < mLayers; ++l)
 	{
@@ -63,16 +79,31 @@ void DepthImageInpainting::gatherFeatures()
 		{
 			for (int j = 0; j < mWidth; ++j)
 			{
-
+				Eigen::Vector3i coord(i, j, l);
+				if (checkPatchValidity(coord))
+				{
+					Eigen::VectorXf patchFeature = computeFeatureForPatch(coord);
+					mFeatures.push_back(patchFeature);
+					mFeatureCoordinates.push_back(coord);
+				}
 			}
 		}
 	}
+
+	mKDTree.setDim(GetPatchFeatureDim());
+	int numPatches = static_cast<int>(mFeatures.size());
+	for (int i = 0; i < numPatches; ++i)
+	{
+		mKDTree.add(mFeatures[i]);
+	}
+	mKDTree.initANN();
 }
 void DepthImageInpainting::gatherHolesForLayer(int layer)
 {
 	// build vector<Vector3i> mHolePixelCoordinates and MatrixXi mHolePixelIdx.
 	CHECK(mMaskImage) << "No mask specified in DepthImageInpainting::gatherHolesForLayer();";
-	mHolePixelIdx = MatrixXi::Constant(mHeight, mWidth, -1);
+	mHolePixelCoordinates.clear();
+	mHolePixelIdx = Eigen::MatrixXi::Constant(mHeight, mWidth, -1);
 	for (int i = 0; i < mHeight; ++i)
 	{
 		for (int j = 0; j < mWidth; ++j)
@@ -82,15 +113,107 @@ void DepthImageInpainting::gatherHolesForLayer(int layer)
 			if ((*mMaskImage)[i][j][layer])
 			{
 				mHolePixelIdx(i, j) = static_cast<int>(mHolePixelCoordinates.size());
-				mHolePixelCoordinates.push_back(Vector3i(i, j, layer));
+				mHolePixelCoordinates.push_back(Eigen::Vector3i(i, j, layer));
 			}
 		}
 	}
 }
+
+Eigen::SparseMatrix<float> DepthImageInpainting::constructPoissonLhs(int layer)
+{
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	vector<Eigen::Triplet<float> > triplet;
+	Eigen::SparseMatrix<float> ret(numHolePixels, numHolePixels);
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		Eigen::Vector3i coord = mHolePixelCoordinates[i];
+		CHECK(layer == coord[2]) << "Layers do not agree in DepthImageInpainting::constructPoissonRhs().";
+		int numNormalBoundary = 4;
+		
+		for (int neighborOffsetI = -1; neighborOffsetI <= 1; ++neighborOffsetI)
+		{
+			for (int neighborOffsetJ = -1; neighborOffsetJ <= 1; ++neighborOffsetJ)
+			{
+				int neighborI = coord[0] + neighborOffsetI;
+				int neighborJ = coord[1] + neighborOffsetJ;
+				if (neighborI == neighborJ) continue;
+				if (neighborI < 0 || neighborI >= mHeight || neighborJ < 0 || neighborJ >= mWidth || (*mMaskImage)[neighborI][neighborJ].empty())
+				{
+					numNormalBoundary--;
+					//neumann boundary condition
+				}
+				else if ((*mMaskImage)[neighborI][neighborJ][layer] == MASK_UNKNOWN)
+				{
+					//normal situation
+					int j = mHolePixelIdx(neighborI, neighborJ);
+					triplet.push_back(Eigen::Triplet<float>(i, j, -1));
+				}
+				else
+				{
+					//dirichlet boundary condition
+					
+				}
+
+			}
+		}
+		triplet.push_back(Eigen::Triplet<float>(i, i, static_cast<float>(numNormalBoundary)));
+	}
+	ret.setFromTriplets(triplet.begin(), triplet.end());
+	return ret;
+}
+Eigen::VectorXf DepthImageInpainting::constructPoissonRhs(int layer)
+{
+	
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	Eigen::VectorXf ret = Eigen::VectorXf::Zero(numHolePixels);
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		Eigen::Vector3i coord = mHolePixelCoordinates[i];
+		CHECK(layer == coord[2]) << "Layers do not agree in DepthImageInpainting::constructPoissonRhs().";
+		for (int neighborOffsetI = -1; neighborOffsetI <= 1; ++neighborOffsetI)
+		{
+			for (int neighborOffsetJ = -1; neighborOffsetJ <= 1; ++neighborOffsetJ)
+			{
+				int neighborI = coord[0] + neighborOffsetI;
+				int neighborJ = coord[1] + neighborOffsetJ;
+				if (neighborI == neighborJ) continue;
+				if (neighborI < 0 || neighborI >= mHeight || neighborJ < 0 || neighborJ >= mWidth || (*mMaskImage)[neighborI][neighborJ].empty())
+				{
+					//neumann boundary condition
+				}
+				else if ((*mMaskImage)[neighborI][neighborJ][layer] == MASK_UNKNOWN)
+				{
+					//normal situation
+					ret[i] += neighborOffsetI * mFeatureImage[neighborI][neighborJ][layer][0] + neighborOffsetJ * mFeatureImage[neighborI][neighborJ][layer][1];
+				}
+				else
+				{
+					//dirichlet boundary condition
+					ret[i] += neighborOffsetI * mFeatureImage[neighborI][neighborJ][layer][0] + neighborOffsetJ * mFeatureImage[neighborI][neighborJ][layer][1];
+				}
+
+			}
+		}
+
+	}
+	ret *= -0.5;
+	return ret;
+}
+
 void DepthImageInpainting::reconstructHoleDepth(int layer)
 {
-	// build vector<float> mHoleFilledDepth from vector<VectorXf> mHolePatchFeatures.
+	// build vector<float> mHoleFilledDepth from vector<Eigen::VectorXf> mHolePatchFeatures.
 
+	Eigen::SparseMatrix<float> Lhs = constructPoissonLhs(layer);
+	Eigen::VectorXf rhs = constructPoissonRhs(layer);
+	Eigen::SimplicialCholesky<Eigen::SparseMatrix<float> > chol(Lhs);  // performs a Cholesky factorization of A
+	Eigen::VectorXf x = chol.solve(rhs);
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	mHoleFilledDepth.resize(numHolePixels);
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		mHoleFilledDepth[i] = x[i];
+	}
 }
 
 void DepthImageInpainting::select()
@@ -100,38 +223,179 @@ void DepthImageInpainting::select()
 	mHolePatchCoordinates.resize(numHolePixels);
 	for (int ithPx = 0; ithPx < numHolePixels; ++ithPx)
 	{
-		mHolePatchCoordinates[ithPx] = findNearestPatch(mHolePixelCoordinates[ithPx] - Vector3i(mPatchWidth / 2, mPatchWidth, 0));
+		mHolePatchCoordinates[ithPx] = findNearestPatch(mHolePixelCoordinates[ithPx]);
 	}
 }
 void DepthImageInpainting::vote()
 {
-	// build vector<VectorXf> mHolePatchFeatures.
+	// build vector<Eigen::VectorXf> mHolePatchFeatures.
 	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
 	mHolePatchFeatures.resize(numHolePixels);
 	for (int ithPx = 0; ithPx < numHolePixels; ++ithPx)
 	{
-		mHolePatchFeatures[ithPx] = computeFeatureForPixel(mHolePatchCoordinates[ithPx]);
+		mHolePatchFeatures[ithPx] = mFeatureImage[mHolePatchCoordinates[ithPx][0]][mHolePatchCoordinates[ithPx][1]][mHolePatchCoordinates[ithPx][2]];
 	}
 }
-Vector3i DepthImageInpainting::findNearestPatch(const Vector3i& coord)
+Eigen::Vector3i DepthImageInpainting::findNearestPatch(const Eigen::Vector3i& coord)
 {
-
+	const int kNN = 1;
+	Eigen::VectorXf currentPatchFeatures = computeFeatureForPatch(coord);
+	vector<int> idx = mKDTree.kSearch(currentPatchFeatures, kNN);
+	Eigen::Vector3i nearestPatchCoord = mFeatureCoordinates[idx[0]];
+	return nearestPatchCoord;
 }
 
-
-VectorXf DepthImageInpainting::computeFeatureForPatch(const Vector3i& coord)
+Eigen::VectorXf DepthImageInpainting::computeFeatureForPixel(const Eigen::Vector3i& coord)
 {
-	VectorXf ret = VectorXf::Zero(2 * mPatchWidth * mPatchWidth);
-	return ret;
+	Eigen::VectorXf ret = Eigen::VectorXf::Zero(2);
+	int layer = coord[2];
+	int currentI = coord[0];
+	int currentJ = coord[1];
 
+	int leftNeighborI = coord[0] - 1;
+	int leftNeighborJ = coord[1];
+	int rightNeighborI = coord[0] + 1;
+	int rightNeighborJ = coord[1];
+	int validCount = 0;
+	float leftValue = mResultImage[currentI][currentJ][layer].d;
+	float rightValue = leftValue;
+	
+	if (checkPixelValidity(Eigen::Vector3i(leftNeighborI, leftNeighborJ, layer)))
+	{
+		leftValue = mResultImage[leftNeighborI][leftNeighborJ][layer].d;
+		validCount++;
+	}
+	if (checkPixelValidity(Eigen::Vector3i(rightNeighborI, rightNeighborJ, layer)))
+	{
+		rightValue = mResultImage[rightNeighborI][rightNeighborJ][layer].d;
+		validCount++;
+	}
+	if (validCount)
+	{
+		ret[0] = (rightValue - leftValue) / validCount;
+	}
+	else
+	{
+		ret[0] = 0;
+	}
+
+	int upperNeighborI = coord[0];
+	int upperNeighborJ = coord[1] - 1;
+	int lowerNeighborI = coord[0];
+	int lowerNeighborJ = coord[1] + 1;
+	validCount = 0;
+	float upperValue = mResultImage[currentI][currentJ][layer].d;
+	float lowerValue = upperValue;
+	if (checkPixelValidity(Eigen::Vector3i(upperNeighborI, upperNeighborJ, layer)))
+	{
+		upperValue = mResultImage[upperNeighborI][upperNeighborJ][layer].d;
+		validCount++;
+	}
+	if (checkPixelValidity(Eigen::Vector3i(lowerNeighborI, lowerNeighborJ, layer)))
+	{
+		lowerValue = mResultImage[lowerNeighborI][lowerNeighborJ][layer].d;
+		validCount++;
+	}
+	if (validCount)
+	{
+		ret[1] = (lowerValue - upperValue) / validCount;
+	}
+	else
+	{
+		ret[1] = 0;
+	}
+	return ret;
 }
-VectorXf DepthImageInpainting::computeFeatureForPixel(const Vector3i& coord)
+Eigen::VectorXf DepthImageInpainting::computeFeatureForPatch(const Eigen::Vector3i& coord)
 {
-	VectorXf ret = VectorXf::Zero(2);
+	Eigen::VectorXf ret = Eigen::VectorXf::Zero(GetPatchFeatureDim());
+	int count = 0;
+	int pixelFeatureDim = GetPixelFeatureDim();
+	int layer = coord[2];
+	for (int i = -mPatchWidth / 2; i <= mPatchWidth / 2; ++i)
+	{
+		for (int j = -mPatchWidth / 2; j <= mPatchWidth / 2; ++j)
+		{
+			int neighborCoordI = coord[0] + i;
+			int neighborCoordJ = coord[1] + j;
+			if (!checkPixelValidity(Eigen::Vector3i(neighborCoordI, neighborCoordJ, layer)))
+			{
+				for (int ithFeaturePerPixel = 0; ithFeaturePerPixel < pixelFeatureDim; ++ithFeaturePerPixel)
+				{
+					ret[count + ithFeaturePerPixel] = 0;
+				}
+			}
+			else
+			{
+				for (int ithFeaturePerPixel = 0; ithFeaturePerPixel < pixelFeatureDim; ++ithFeaturePerPixel)
+				{
+					ret[count + ithFeaturePerPixel] = mFeatureImage[neighborCoordI][neighborCoordJ][layer][ithFeaturePerPixel];
+				}
+
+			}
+			count += pixelFeatureDim;
+		}
+	}
 	return ret;
+}
+
+void DepthImageInpainting::recomputeHoleFeatureImage(int layer)
+{
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		Eigen::Vector3i pxCoord = mHolePixelCoordinates[i];
+		mFeatureImage[pxCoord[0]][pxCoord[1]][pxCoord[2]] = computeFeatureForPixel(pxCoord);
+	}
+}
+void DepthImageInpainting::computeFeatureImage()
+{
+	mFeatureImage.resize(mHeight);
+	for (int i = 0; i < mHeight; ++i)
+	{
+		mFeatureImage[i].resize(mWidth);
+		for (int j = 0; j < mWidth; ++j)
+		{
+			int numLayers = static_cast<int>(mDepthImage[i][j].size());
+			for (int l = 0; l < numLayers; ++l)
+			{
+				mFeatureImage[i][j][l] = computeFeatureForPixel(Eigen::Vector3i(i, j, l));
+			}
+		}
+	}
 }
 
 void DepthImageInpainting::computeFilledPixelNormals()
 {
 
+}
+
+bool DepthImageInpainting::checkPixelValidity(const Eigen::Vector3i &coord)
+{
+	int coordI = coord[0];
+	int coordJ = coord[1];
+	int layer = coord[2];
+	if (coordI < 0 || coordI >= mHeight || coordJ < 0 || coordJ >= mWidth)
+		return false;
+	if ((*mDepthImage)[coordI][coordJ].size() <= layer)
+		return false;
+	if ((*mMaskImage)[coordI][coordJ][layer] == MASK_UNKNOWN)
+		return false;
+	return true;
+}
+
+bool DepthImageInpainting::checkPatchValidity(const Eigen::Vector3i & coord)
+{
+	int layer = coord[2];
+	for (int i = -mPatchWidth / 2; i <= mPatchWidth / 2; ++i)
+	{
+		for (int j = -mPatchWidth / 2; j <= mPatchWidth / 2; ++j)
+		{
+			int neighborCoordI = coord[0] + i;
+			int neighborCoordJ = coord[1] + j;
+			if (!checkPixelValidity(Eigen::Vector3i(neighborCoordI, neighborCoordJ, layer)))
+				return false;
+		}
+	}
+	return true;
 }

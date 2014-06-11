@@ -7,12 +7,12 @@ class HashData
 {
 public:
 	HashData();
-	HashData(const VectorXd& data, int count = 1);
+	HashData(const Eigen::VectorXd& data, int count = 1);
 	~HashData();
 
-	void Combine(const VectorXd& newData);
+	void Combine(const Eigen::VectorXd& newData);
 
-	VectorXd mData;
+	Eigen::VectorXd mData;
 	int mCount;
 
 };
@@ -22,14 +22,14 @@ class SpaceHash
 public:
 	SpaceHash();
 	~SpaceHash();
-	void AddData(const VectorXd& data);
-	void AddData(const vector<VectorXd>& data);
-	void AddDataAndCombine(const VectorXd& data, double epsilon = 1e-6);
-	void AddDataAndCombine(const vector<VectorXd>& data, double epsilon = 1e-6);
-	vector<VectorXd> GetData() const;
+	void AddData(const Eigen::VectorXd& data);
+	void AddData(const vector<Eigen::VectorXd>& data);
+	void AddDataAndCombine(const Eigen::VectorXd& data, double epsilon = 1e-6);
+	void AddDataAndCombine(const vector<Eigen::VectorXd>& data, double epsilon = 1e-6);
+	vector<Eigen::VectorXd> GetData() const;
 private:
 	vector<vector<HashData> > mBuckets;
 
-	int hashFunc1(const VectorXd& data) const;
+	int hashFunc1(const Eigen::VectorXd& data) const;
 };
 #endif

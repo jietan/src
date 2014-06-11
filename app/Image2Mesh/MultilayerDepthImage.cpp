@@ -70,7 +70,7 @@ void MultilayerDepthImage::Read(const string& filename)
 					inFile.read((char*)&ny, sizeof(float));
 					inFile.read((char*)&nz, sizeof(float));
 					if (depth > 0)
-						mData[i][j].push_back(ExtendedDepthPixel(depth, Vector3f(nx, ny, nz)));
+						mData[i][j].push_back(ExtendedDepthPixel(depth, Eigen::Vector3f(nx, ny, nz)));
 				}
 			}
 		}
@@ -143,7 +143,7 @@ void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, in
 				}
 				else
 				{
-					int idToInsert = linearSearchInsertPos<ExtendedDepthPixel>(mData[i][j], ExtendedDepthPixel(threshold, Vector3f::Zero()));
+					int idToInsert = linearSearchInsertPos<ExtendedDepthPixel>(mData[i][j], ExtendedDepthPixel(threshold, Eigen::Vector3f::Zero()));
 					if (idToInsert == mData[i][j].size())
 					{
 						thresholdImage.at<float>(i, j) = 0;
@@ -236,12 +236,12 @@ void MultilayerDepthImage::Simplify()
 			if (mData[i][j].empty()) continue;
 			int nDepthValues = static_cast<int>(mData[i][j].size());
 			float depthCenter = mData[i][j][0].d;
-			Vector3f normalCenter = mData[i][j][0].n;
+			Eigen::Vector3f normalCenter = mData[i][j][0].n;
 			int count = 1;
 			for (int k = 1; k < nDepthValues; ++k)
 			{
 				float currentDepth = mData[i][j][k].d;
-				Vector3f currentNormal = mData[i][j][k].n;
+				Eigen::Vector3f currentNormal = mData[i][j][k].n;
 				if (abs(depthCenter - currentDepth) < depthMergeThreshold)
 				{
 					depthCenter = (depthCenter * count + currentDepth) / (count + 1);

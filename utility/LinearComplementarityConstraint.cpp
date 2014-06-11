@@ -49,11 +49,11 @@ LinearConstraint LinearComplementarityConstraint::GetLinearConstraint(const vect
     }
     return ret;
 }
-void LinearComplementarityConstraint::SetA(const MatrixXd& A)
+void LinearComplementarityConstraint::SetA(const Eigen::MatrixXd& A)
 {
     mA = A;
 }
-void LinearComplementarityConstraint::SetB(const MatrixXd& b)
+void LinearComplementarityConstraint::SetB(const Eigen::MatrixXd& b)
 {
     mb = b;
 }

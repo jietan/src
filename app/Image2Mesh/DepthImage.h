@@ -9,7 +9,6 @@
 using namespace std;
 
 #include <Eigen/Dense>
-using namespace Eigen;
 
 class DepthImage
 {
@@ -25,13 +24,13 @@ public:
 
 	void SetData(const cv::Mat1f& depthData);
 
-	void Process(const Matrix4f& cameraPose);
+	void Process(const Eigen::Matrix4f& cameraPose);
 
 	int NumRows() const;
 	int NumCols() const;
 
-	const vector<Vector3f>& GetPoints() const;
-	const vector<Vector3f>& GetNormals() const; //these two vectors should not be indexed by indexFrom2D because of the theshholding when processing the depth image.
+	const vector<Eigen::Vector3f>& GetPoints() const;
+	const vector<Eigen::Vector3f>& GetNormals() const; //these two vectors should not be indexed by indexFrom2D because of the theshholding when processing the depth image.
 
 	const cv::Mat1f& Data() const;
 	float Depth(int idx) const;
@@ -42,11 +41,11 @@ public:
 	float MaxDepth() const;
 	float MinDepth() const;
 	
-	Vector3f GlobalNormal(int idx) const;
-	Vector3f GlobalNormal(int ithRow, int jthCol) const;
+	Eigen::Vector3f GlobalNormal(int idx) const;
+	Eigen::Vector3f GlobalNormal(int ithRow, int jthCol) const;
 
-	Vector3f GlobalPoint(int idx) const;
-	Vector3f GlobalPoint(int ithRow, int jthCol) const;
+	Eigen::Vector3f GlobalPoint(int idx) const;
+	Eigen::Vector3f GlobalPoint(int ithRow, int jthCol) const;
 
 	int LeftNeighbor(int idx) const;
 	int RightNeighbor(int idx) const;
@@ -63,8 +62,8 @@ private:
 	void depthToNormals();
 	void selectAndCopy();
 
-	vector<Vector3f> mPoints;
-	vector<Vector3f> mNormals;
+	vector<Eigen::Vector3f> mPoints;
+	vector<Eigen::Vector3f> mNormals;
 	
 	cv::Mat1w mOriginalData;
 	cv::Mat1f mData;
@@ -76,7 +75,7 @@ private:
 	float mMinDepth;
 	float mMaxDepth;
 
-	Matrix4f mCameraPose;
+	Eigen::Matrix4f mCameraPose;
 };
 
 #endif

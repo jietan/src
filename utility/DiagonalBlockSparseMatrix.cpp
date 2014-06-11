@@ -34,7 +34,7 @@ int DiagonalBlockSparseMatrix::GetNumCols() const
 	return numCols;
 
 }
-void DiagonalBlockSparseMatrix::Solve(const VectorXd& rhs, VectorXd& sol)
+void DiagonalBlockSparseMatrix::Solve(const Eigen::VectorXd& rhs, Eigen::VectorXd& sol)
 {
 	int numRows = GetNumRows();
 	int numCols = GetNumCols();
@@ -48,8 +48,8 @@ void DiagonalBlockSparseMatrix::Solve(const VectorXd& rhs, VectorXd& sol)
 	for (int i = 0; i < numDiagElements; ++i)
 	{
 		int numColsElement = mDiagElements[i].GetNumCols();	
-		VectorXd partSol(numColsElement);
-		VectorXd partRhs = rhs.segment(numUntilLast, numColsElement);
+		Eigen::VectorXd partSol(numColsElement);
+		Eigen::VectorXd partRhs = rhs.segment(numUntilLast, numColsElement);
 #if LLT_SOLVE
 		mDiagElements[i].LltSolve(partRhs, partSol);
 #else
@@ -59,7 +59,7 @@ void DiagonalBlockSparseMatrix::Solve(const VectorXd& rhs, VectorXd& sol)
 		numUntilLast += numColsElement;
 	}
 }
-void DiagonalBlockSparseMatrix::Solve(const MatrixXd& rhs, MatrixXd& sol)
+void DiagonalBlockSparseMatrix::Solve(const Eigen::MatrixXd& rhs, Eigen::MatrixXd& sol)
 {
 	int numRows = GetNumRows();
 	int numCols = GetNumCols();
@@ -74,8 +74,8 @@ void DiagonalBlockSparseMatrix::Solve(const MatrixXd& rhs, MatrixXd& sol)
 	for (int i = 0; i < numDiagElements; ++i)
 	{
 		int numColsElement = mDiagElements[i].GetNumCols();	
-		MatrixXd partSol(numColsElement, rhsCols);
-		MatrixXd partRhs = rhs.block(numUntilLast, 0, numColsElement, rhsCols);
+		Eigen::MatrixXd partSol(numColsElement, rhsCols);
+		Eigen::MatrixXd partRhs = rhs.block(numUntilLast, 0, numColsElement, rhsCols);
 		
 #if LLT_SOLVE
 		mDiagElements[i].LltSolve(partRhs, partSol);

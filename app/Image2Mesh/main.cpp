@@ -33,7 +33,6 @@ using namespace std;
 using namespace std;
 
 #include <Eigen/Dense>
-using namespace Eigen;
 
 #include "DepthImage.h"
 #include "grid.h"
@@ -195,7 +194,7 @@ int ReadCorrespondence(vector<pair<string, string> >& correspondence)
 	return numCorrespondence - 1;
 }
 
-int ReadCameraPoses(vector<MatrixXf>& cameraPose)
+int ReadCameraPoses(vector<Eigen::MatrixXf>& cameraPose)
 {
 	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
@@ -204,7 +203,7 @@ int ReadCameraPoses(vector<MatrixXf>& cameraPose)
 
 	ifstream inFile(filename);
 	
-	MatrixXf pose = MatrixXf::Zero(4, 4);
+	Eigen::MatrixXf pose = Eigen::MatrixXf::Zero(4, 4);
 	while (inFile.good())
 	{
 		int ithFrame;
@@ -235,20 +234,20 @@ cv::Mat ReadColorImage(const string& filename)
 	return ret;
 }
 
-void ColorImageToColors(const cv::Mat& colorImg, vector<Vector3i>& colors)
+void ColorImageToColors(const cv::Mat& colorImg, vector<Eigen::Vector3i>& colors)
 {
 	for (int v =  0; v < colorImg.rows; ++v)
 	{
 		for (int u = 0; u < colorImg.cols; ++u)
 		{
 			cv::Vec3b cl = colorImg.at<cv::Vec3b>(v, u);
-			Vector3i color(cl[2], cl[1], cl[0]);
+			Eigen::Vector3i color(cl[2], cl[1], cl[0]);
 			colors.push_back(color);
 		}
 	}
 }
 
-void ReadPointCloud(const string& filename, vector<Vector3f>& points, vector<Vector3f>& normals)
+void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
 {
 	points.clear();
 	normals.clear();
@@ -258,8 +257,8 @@ void ReadPointCloud(const string& filename, vector<Vector3f>& points, vector<Vec
 	Point3D< Real > p, n;
 	while (pointStream->nextPoint(p, n))
 	{
-		Vector3f pt(p[0], p[1], p[2]);
-		Vector3f normal(n[0], n[1], n[2]);
+		Eigen::Vector3f pt(p[0], p[1], p[2]);
+		Eigen::Vector3f normal(n[0], n[1], n[2]);
 		points.push_back(pt);
 		normals.push_back(normal);
 	}
@@ -267,7 +266,7 @@ void ReadPointCloud(const string& filename, vector<Vector3f>& points, vector<Vec
 }
 
 
-void SavePointCloud(const string& filename, const vector<Vector3f>& points, const vector<Vector3i>& colors, const vector<Vector3f>& normals)
+void SavePointCloud(const string& filename, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3i>& colors, const vector<Eigen::Vector3f>& normals)
 {
 
 	std::vector<PlyOrientedVertex<Real> > vertices;
@@ -281,7 +280,7 @@ void SavePointCloud(const string& filename, const vector<Vector3f>& points, cons
 }
 
 template< class Vertex >
-int Points2Mesh(const vector<Vector3f>& points, const vector<Vector3f>& normals, CoredMeshData< Vertex >& mesh)
+int Points2Mesh(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, CoredMeshData< Vertex >& mesh)
 {
 	int i;
 	int paramNum = sizeof(params)/sizeof(cmdLineReadable*);
@@ -377,7 +376,7 @@ void SaveMesh(const string& filename, CoredMeshData< Vertex >* mesh)
 	PlyWritePolygons(const_cast<char*>(filename.c_str()), mesh , PLY_ASCII);
 }
 
-void ComputeBoundingBox(const vector<Vector3f>& points, Vector3f& minPt, Vector3f& maxPt)
+void ComputeBoundingBox(const vector<Eigen::Vector3f>& points, Eigen::Vector3f& minPt, Eigen::Vector3f& maxPt)
 {
 	int numPoints = static_cast<int>(points.size());
 	CHECK(numPoints > 0) << "Empty point cloud to ComputeBoundingBox.";
@@ -395,12 +394,12 @@ void ComputeBoundingBox(const vector<Vector3f>& points, Vector3f& minPt, Vector3
 	}
 }
 
-void MergePoints(const vector<Vector3f>& points, const vector<Vector3f>& normals, const vector<int>& indices, vector<Vector3f>& newPoints, vector<Vector3f>& newNormals)
+void MergePoints(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, const vector<int>& indices, vector<Eigen::Vector3f>& newPoints, vector<Eigen::Vector3f>& newNormals)
 {
 	if (indices.empty()) return;
 	int numPoints = static_cast<int>(indices.size());
-	Vector3f avgPoint = Vector3f::Zero();
-	Vector3f avgNormal = Vector3f::Zero();
+	Eigen::Vector3f avgPoint = Eigen::Vector3f::Zero();
+	Eigen::Vector3f avgNormal = Eigen::Vector3f::Zero();
 
 	for (int i = 0; i < numPoints; ++i)
 	{
@@ -413,9 +412,9 @@ void MergePoints(const vector<Vector3f>& points, const vector<Vector3f>& normals
 	newNormals.push_back(avgNormal);
 }
 
-void SubsamplePointCloud(const vector<Vector3f>& points, const vector<Vector3f>& normals, float mergeDistance, vector<Vector3f>& newPoints, vector<Vector3f>& newNormals)
+void SubsamplePointCloud(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, float mergeDistance, vector<Eigen::Vector3f>& newPoints, vector<Eigen::Vector3f>& newNormals)
 {
-	Vector3f minPoint, maxPoint;
+	Eigen::Vector3f minPoint, maxPoint;
 	ComputeBoundingBox(points, minPoint, maxPoint);
 	//for (int i = 0; i < 3; ++i)
 	//{
@@ -435,9 +434,9 @@ void SubsamplePointCloud(const vector<Vector3f>& points, const vector<Vector3f>&
 	cout << maxPoint << endl;
 	
 
-	Vector3f resolutionFloat = (maxPoint - minPoint) / mergeDistance;
-	Vector3i resolution(int(resolutionFloat[0]) + 1, int(resolutionFloat[1]) + 1, int(resolutionFloat[2]) + 1);
-	resolutionFloat = Vector3f(static_cast<float>(resolution[0]), static_cast<float>(resolution[1]), static_cast<float>(resolution[2]));
+	Eigen::Vector3f resolutionFloat = (maxPoint - minPoint) / mergeDistance;
+	Eigen::Vector3i resolution(int(resolutionFloat[0]) + 1, int(resolutionFloat[1]) + 1, int(resolutionFloat[2]) + 1);
+	resolutionFloat = Eigen::Vector3f(static_cast<float>(resolution[0]), static_cast<float>(resolution[1]), static_cast<float>(resolution[2]));
 	if (resolution[0] * resolution[1] * resolution[2] > 1000 * 1000 * 1000)
 	{
 		CHECK(0) << "Too much memory required to subsample point cloud!!!";
@@ -471,10 +470,10 @@ void SubsamplePointCloud(const vector<Vector3f>& points, const vector<Vector3f>&
 	}
 }
 
-void AlignBoundingBox(vector<Vector3f>& points, vector<Vector3f>& normals)
+void AlignBoundingBox(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
 {
 	int numPoints = static_cast<int>(points.size());
-	Vector3f avgPoint = Vector3f::Zero();
+	Eigen::Vector3f avgPoint = Eigen::Vector3f::Zero();
 	for (int i = 0; i < numPoints; ++i)
 	{
 		avgPoint += points[i];
@@ -484,16 +483,16 @@ void AlignBoundingBox(vector<Vector3f>& points, vector<Vector3f>& normals)
 	{
 		points[i] -= avgPoint;
 	}
-	MatrixXf pointMatrix = MatrixXf(numPoints, 3);
+	Eigen::MatrixXf pointMatrix = Eigen::MatrixXf(numPoints, 3);
 	for (int i = 0; i < numPoints; ++i)
 	{
 		pointMatrix.row(i) = points[i];
 	}
-	MatrixXf pointMatrixT = pointMatrix.transpose();
-	Matrix3f cov = pointMatrixT * pointMatrix;
-	SelfAdjointEigenSolver<Matrix3f> eigensolver(cov);
-	Matrix3f rot = eigensolver.eigenvectors();
-	Matrix3f rotT = rot.transpose();
+	Eigen::MatrixXf pointMatrixT = pointMatrix.transpose();
+	Eigen::Matrix3f cov = pointMatrixT * pointMatrix;
+	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigensolver(cov);
+	Eigen::Matrix3f rot = eigensolver.eigenvectors();
+	Eigen::Matrix3f rotT = rot.transpose();
 	for (int i = 0; i < numPoints; ++i)
 	{
 		points[i] = rotT * points[i];
@@ -532,7 +531,7 @@ cv::Mat1f PreprocessDepthImage(const cv::Mat& depthImg)
 	//return ret;
 }
 
-void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string, string> >& correspondences, const vector<MatrixXf>& cameraPoses, vector<Vector3f>& points, vector<Vector3f>& normals)
+void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string, string> >& correspondences, const vector<Eigen::MatrixXf>& cameraPoses, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
 {
 	int depthImageStepSize = 1;
 	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "DepthImageStepSize", depthImageStepSize);
@@ -557,7 +556,7 @@ void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string,
 
 }
 
-void BuildMultiLayerDepthImage(const vector<Vector3f>& points, const vector<Vector3f>& normals, const Matrix4f& cameraPose)
+void BuildMultiLayerDepthImage(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, const Eigen::Matrix4f& cameraPose)
 {
 	DepthCamera dCamera;
 	dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
@@ -584,7 +583,7 @@ int main(int argc, char** argv)
 	vector<pair<string, string> > correspondences;
 	int numImages = ReadCorrespondence(correspondences);
 
-	vector<MatrixXf> cameraPoses;
+	vector<Eigen::MatrixXf> cameraPoses;
 	int numViews = ReadCameraPoses(cameraPoses);
 	
 	int numFrames = numImages < numViews ? numImages : numViews;
@@ -632,9 +631,9 @@ int main(int argc, char** argv)
 	//segmenter.Segment(depthImgAfterPreprocessing, 30, 85);
 	//segmenter.SaveSegmentedImage("TestSegmentation.png");
 
-	vector<Vector3f> points;
-	vector<Vector3f> normals;
-	vector<Vector3i> colors;
+	vector<Eigen::Vector3f> points;
+	vector<Eigen::Vector3f> normals;
+	vector<Eigen::Vector3i> colors;
 
 	int task = 0;
 	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "Task", task);
@@ -651,7 +650,7 @@ int main(int argc, char** argv)
 		if (bSaveAllPoints)
 			SavePointCloud(filename, points, colors, normals);
 		float mergeDistance = 0.005f;
-		vector<Vector3f> newPoints, newNormals;
+		vector<Eigen::Vector3f> newPoints, newNormals;
 		SubsamplePointCloud(points, normals, mergeDistance, newPoints, newNormals);
 		string simplifiedPointCloudFilename = filename;
 		simplifiedPointCloudFilename += "simplified.ply";
@@ -707,20 +706,20 @@ int main(int argc, char** argv)
 		vector< std::vector< int > > polygons;
 		int ft;
 		PlyReadPolygons(const_cast<char*>(filename.c_str()), vertices, polygons, PlyVertex< float >::Properties, PlyVertex< float >::Components, ft);
-		vector<Vector3f> verticesEigen;
-		vector<Vector3i> indicesEigen;
+		vector<Eigen::Vector3f> verticesEigen;
+		vector<Eigen::Vector3i> indicesEigen;
 		int numVertices = static_cast<int>(vertices.size());
 		verticesEigen.resize(numVertices);
 		for (int i = 0; i < numVertices; ++i)
 		{
-			verticesEigen[i] = Vector3f(vertices[i].point[0], vertices[i].point[1], vertices[i].point[2]);
+			verticesEigen[i] = Eigen::Vector3f(vertices[i].point[0], vertices[i].point[1], vertices[i].point[2]);
 		}
 		int numFaces = static_cast<int>(polygons.size());
 		indicesEigen.resize(numFaces);
 		for (int i = 0; i < numFaces; ++i)
 		{
 			CHECK(polygons[i].size() == 3) << "Non-triangular polygon detected in main().";
-			indicesEigen[i] = Vector3i(polygons[i][0], polygons[i][1], polygons[i][2]);
+			indicesEigen[i] = Eigen::Vector3i(polygons[i][0], polygons[i][1], polygons[i][2]);
 		}
 		dCamera.Capture(verticesEigen, indicesEigen);
 	}

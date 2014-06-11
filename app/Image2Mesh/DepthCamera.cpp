@@ -28,7 +28,7 @@ void DepthCamera::SetIntrinsicParameters(int numPxWidth, int numPxHeight, float 
 	mHeight = numPxHeight;
 	mFocalLength = focalLenth;
 }
-void DepthCamera::SetExtrinsicParameters(const Matrix4f& pose)
+void DepthCamera::SetExtrinsicParameters(const Eigen::Matrix4f& pose)
 {
 	mPose = pose;
 }
@@ -52,27 +52,27 @@ void DepthCamera::SimplifyMultiLayerDepthImage()
 	mDepthMap.Simplify();
 }
 
-void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3i>& indices)
+void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& indices)
 {
 	const int maxNumDepthLayers = 20;
 	const float maxDepth = 50;
 	//Vector3f rayOrigin = mPose.col(3).head(3);
-	Vector3f rayOrigin = Vector3f::Zero();
+	Eigen::Vector3f rayOrigin = Eigen::Vector3f::Zero();
 
 	int numVertices = static_cast<int>(vertices.size());
 	int numFaces = static_cast<int>(indices.size());
-	vector<Vector3f> faceNormals;
+	vector<Eigen::Vector3f> faceNormals;
 	faceNormals.resize(numFaces);
 	for (int i = 0; i < numFaces; ++i)
 	{
-		Vector3f v01 = vertices[indices[i][1]] - vertices[indices[i][0]];
-		Vector3f v02 = vertices[indices[i][2]] - vertices[indices[i][0]];
-		Vector3f n = v01.cross(v02);
+		Eigen::Vector3f v01 = vertices[indices[i][1]] - vertices[indices[i][0]];
+		Eigen::Vector3f v02 = vertices[indices[i][2]] - vertices[indices[i][0]];
+		Eigen::Vector3f n = v01.cross(v02);
 		n.normalize();
 		faceNormals[i] = n;
 	}
 
-	Matrix4f poseInv = mPose.inverse();
+	Eigen::Matrix4f poseInv = mPose.inverse();
 	aiMatrix4x4 identity;
 	aiMesh mesh;
 
@@ -82,7 +82,7 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 	mesh.mVertices = new aiVector3D[mesh.mNumVertices];
 	for (int i = 0; i < numVertices; ++i)
 	{
-		Vector4f verticesInCameraSpace = poseInv * Vector4f(vertices[i][0], vertices[i][1], vertices[i][2], 1);
+		Eigen::Vector4f verticesInCameraSpace = poseInv * Eigen::Vector4f(vertices[i][0], vertices[i][1], vertices[i][2], 1);
 		mesh.mVertices[i] = aiVector3D(verticesInCameraSpace[0], verticesInCameraSpace[1], verticesInCameraSpace[2]);
 	}
 	mesh.mFaces = new aiFace[mesh.mNumFaces];
@@ -107,7 +107,7 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 		for (int j = 0; j < mWidth; ++j)
 		{
 			
-			Vector3f rayDir = constructRayDirection(i, j);
+			Eigen::Vector3f rayDir = constructRayDirection(i, j);
 
 			aiVector3D rayDirection(rayDir[0], rayDir[1], rayDir[2]);
 			aiVector3D rayStart(rayOrigin[0], rayOrigin[1], rayOrigin[2]);
@@ -118,7 +118,7 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 				int triangleId;
 				bool bHit = mKDTree.intersect(rayStart, rayEnd, intersectionPt, triangleId);
 				if (!bHit) break;
-				Vector3f intersection(intersectionPt[0], intersectionPt[1], intersectionPt[2]);
+				Eigen::Vector3f intersection(intersectionPt[0], intersectionPt[1], intersectionPt[2]);
 				float distance = (intersection - rayOrigin).norm();
 				float depth = intersectionPt[2];
 				mDepthMap[i][j].push_back(ExtendedDepthPixel(depth * 1000, faceNormals[triangleId]));
@@ -136,7 +136,7 @@ void DepthCamera::Capture(const vector<Vector3f>& vertices, const vector<Vector3
 	
 }
 
-void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>& normals)
+void DepthCamera::Capture(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals)
 {
 	
 	mDepthMap.Create(mHeight, mWidth);
@@ -166,9 +166,9 @@ void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>
 
 	int numPoints = static_cast<int>(points.size());
 	int numPointsOnePercent = numPoints / 100;
-	vector<Vector3f> pointsInCameraSpace;
+	vector<Eigen::Vector3f> pointsInCameraSpace;
 	pointsInCameraSpace.resize(numPoints);
-	Matrix4f poseInv = mPose.inverse();
+	Eigen::Matrix4f poseInv = mPose.inverse();
 	float fx = mFocalLength;
 	float fy = mFocalLength;
 	float cx = (mWidth - 1) / 2.f;
@@ -177,7 +177,7 @@ void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>
 	{
 		if (i % numPointsOnePercent == 0)
 			LOG(INFO) << "DepthCamera::Capture() finished " << i / numPointsOnePercent << " percent.";
-		pointsInCameraSpace[i] = (poseInv * Vector4f(points[i][0], points[i][1], points[i][2], 1)).head(3);
+		pointsInCameraSpace[i] = (poseInv * Eigen::Vector4f(points[i][0], points[i][1], points[i][2], 1)).head(3);
 		double x = pointsInCameraSpace[i][0];
 		double y = pointsInCameraSpace[i][1];
 		double z = pointsInCameraSpace[i][2];
@@ -210,7 +210,7 @@ void DepthCamera::Capture(const vector<Vector3f>& points, const vector<Vector3f>
 }
 
 
-void DepthCamera::GetPointCloud(vector<Vector3f>& points, vector<Vector3f>& normals)
+void DepthCamera::GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
 {
 	points.clear();
 	normals.clear();
@@ -256,9 +256,9 @@ void DepthCamera::SetMask(const vector<vector<vector<int> > >& mask)
 
 
 
-Vector3f DepthCamera::constructRayDirection(int i, int j)
+Eigen::Vector3f DepthCamera::constructRayDirection(int i, int j)
 {
-	Vector3f ret;
+	Eigen::Vector3f ret;
 
 	float fx = mFocalLength;
 	float fy = mFocalLength;
@@ -274,7 +274,7 @@ Vector3f DepthCamera::constructRayDirection(int i, int j)
 	return ret;
 }
 
-void DepthCamera::constructDepthMap(const Vector3f& rayOrigin, const Vector3f& rayDir, const vector<Vector3f>& points, const vector<Vector3f>& normals, vector<float>& depthMap)
+void DepthCamera::constructDepthMap(const Eigen::Vector3f& rayOrigin, const Eigen::Vector3f& rayDir, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, vector<float>& depthMap)
 {
 	int numPoints = static_cast<int>(points.size());
 	const double distThreshold = 0.01;

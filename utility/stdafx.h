@@ -19,6 +19,5 @@
 
 using namespace google;
 using namespace std;
-using namespace Eigen;
 
 // TODO: reference additional headers your program requires here

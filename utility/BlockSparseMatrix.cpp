@@ -432,7 +432,7 @@ bool BlockSparseMatrix::ConjugateGradientSolve(const Eigen::MatrixXd& rhs, Eigen
 //	mbLLTDirty = true;
 //}
 
-void BlockSparseMatrix::ConvertFromEigenMatrix(const MatrixXd& mat)
+void BlockSparseMatrix::ConvertFromEigenMatrix(const Eigen::MatrixXd& mat)
 {
     mMatrix = mat;
     CHECK(mat.rows() == mNumBlocksHeight * mBlockHeight && mat.cols() == mNumBlocksWidth * mBlockWidth);

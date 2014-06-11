@@ -39,7 +39,7 @@ public:
 	bool ConjugateGradientSolve(const Eigen::VectorXd& rhs, Eigen::VectorXd& sol);
 	bool ConjugateGradientSolve(const Eigen::MatrixXd& rhs, Eigen::MatrixXd& sol);
 	bool CheckSolution(const Eigen::VectorXd& rhs, const Eigen::VectorXd& sol);
-    void ConvertFromEigenMatrix(const MatrixXd& mat);
+    void ConvertFromEigenMatrix(const Eigen::MatrixXd& mat);
 	//void ShrinkRowBlock(int ithRowBlock);
 	//void ShrinkColBlock(int ithColBlock);
 	bool LltSolve(const Eigen::VectorXd& rhs, Eigen::VectorXd& sol);

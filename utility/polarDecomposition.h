@@ -43,7 +43,6 @@
 */
 
 #include "Eigen/Dense"
-using namespace Eigen;
 
 class PolarDecomposition
 {
@@ -58,7 +57,7 @@ public:
   // M is not modified
   // All matrices are row-major
   static double DoPolarDecomposition(const double * M, double * Q, double * S, double tol = 1.0e-6);
-  static void DoPolarDecomposition(const Matrix3d& M, Matrix3d& Q, Matrix3d& S, double tol = 1.0e-6);
+  static void DoPolarDecomposition(const Eigen::Matrix3d& M, Eigen::Matrix3d& Q, Eigen::Matrix3d& S, double tol = 1.0e-6);
 protected:
 
   // va, vb, and v are 3-vectors

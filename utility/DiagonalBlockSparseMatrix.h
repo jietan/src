@@ -2,7 +2,6 @@
 #define _DIAGONAL_BLOCK_SPARSE_MATRIX_H
 
 #include "Eigen/Dense"
-using namespace Eigen;
 
 #include <vector>
 using namespace std;
@@ -19,8 +18,8 @@ public:
 	void SetToZero();
 	int GetNumRows() const;
 	int GetNumCols() const;
-	void Solve(const VectorXd& rhs, VectorXd& sol);
-	void Solve(const MatrixXd& rhs, MatrixXd& sol);
+	void Solve(const Eigen::VectorXd& rhs, Eigen::VectorXd& sol);
+	void Solve(const Eigen::MatrixXd& rhs, Eigen::MatrixXd& sol);
 	void AddDiagElement(BlockSparseMatrix element);
 
 private:

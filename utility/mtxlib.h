@@ -213,7 +213,7 @@ public:
   // TODO
   explicit vector3(const vector4 &v);
 
-  vector3 (const Vector3d& v) : x(v[0]), y(v[1]), z(v[2]) {}
+  vector3 (const Eigen::Vector3d& v) : x(v[0]), y(v[1]), z(v[2]) {}
 public:
   // Operators
   // Array indexing
@@ -380,9 +380,9 @@ public:
 	return o;
 }
 */
-  Vector3d ConvertToEigen() const
+  Eigen::Vector3d ConvertToEigen() const
   {
-      Vector3d ret(x, y, z);
+      Eigen::Vector3d ret(x, y, z);
       return ret;
   }
   // Debug
@@ -643,9 +643,9 @@ public:
 	  col[1].set(m[3], m[4], m[5]);
 	  col[2].set(m[6], m[7], m[8]);
   }
-  Matrix3d ConvertToEigen() const
+  Eigen::Matrix3d ConvertToEigen() const
   {
-      Matrix3d ret;
+      Eigen::Matrix3d ret;
       ret << col[0][0], col[1][0], col[2][0],
              col[0][1], col[1][1], col[2][1],
              col[0][2], col[1][2], col[2][2];

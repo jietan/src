@@ -70,7 +70,7 @@ public:
     double GetPoint(double t) const;
     void EnablePeriodicity(bool bEnable);
     void Sample(int numSamples, vector<double>& t, vector<double>& h) const;
-    void Sample(int numSamples, VectorXd& t, VectorXd& h) const;
+    void Sample(int numSamples, Eigen::VectorXd& t, Eigen::VectorXd& h) const;
     const vector<ControlPoint>& GetControlPoints() const;
 private:
     void calculateSplines();

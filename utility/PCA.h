@@ -9,7 +9,7 @@ public:
 	PCA();
 	~PCA();
 
-	void Analyze(const vector<VectorXd>& data, vector<double>& eigenValues, vector<VectorXd>& basis);
+	void Analyze(const vector<Eigen::VectorXd>& data, vector<double>& eigenValues, vector<Eigen::VectorXd>& basis);
 
 private:
 
@@ -20,9 +20,9 @@ private:
 
 	int mDim;
 	int mNumPoints;
-	MatrixXd mData;
+	Eigen::MatrixXd mData;
 	vector<double> mEigenValues;
-	vector<VectorXd> mBasis;
+	vector<Eigen::VectorXd> mBasis;
 };
 
 #endif

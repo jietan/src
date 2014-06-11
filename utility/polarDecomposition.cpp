@@ -129,12 +129,12 @@ double PolarDecomposition::DoPolarDecomposition(const double * M, double * Q, do
 
 
 
-void PolarDecomposition::DoPolarDecomposition(const Matrix3d& M, Matrix3d& Q, Matrix3d& S, double tol)
+void PolarDecomposition::DoPolarDecomposition(const Eigen::Matrix3d& M, Eigen::Matrix3d& Q, Eigen::Matrix3d& S, double tol)
 {
-    JacobiSVD<MatrixXd> svd(M, ComputeThinU | ComputeThinV);
-    MatrixXd U = svd.matrixU();
-    MatrixXd V = svd.matrixV();
-    VectorXd singularValues = svd.singularValues();
+	Eigen::JacobiSVD<Eigen::MatrixXd> svd(M, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::MatrixXd U = svd.matrixU();
+    Eigen::MatrixXd V = svd.matrixV();
+    Eigen::VectorXd singularValues = svd.singularValues();
     Q = U * (V.transpose());
     if (Q.determinant() < 0)
     {

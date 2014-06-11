@@ -2,7 +2,7 @@
 #define _DEPTH_INPAINTING_H
 
 #include <Eigen/Dense>
-using namespace Eigen;
+#include <Eigen/Sparse>
 
 #include <vector>
 using namespace std;
@@ -10,6 +10,7 @@ using namespace std;
 #include "MultilayerDepthImage.h"
 #include "extendedDepthPixel.h"
 #include "utility/utility.h"
+#include "sehoon/ANNHelper.h"
 
 class DepthImageInpainting
 {
@@ -20,31 +21,42 @@ public:
 	void SetMaskImage(vector<vector<vector<int> > >* maskImage);
 	void Inpaint(int patchWidth);
 	void SaveResultImage(const string& filename);
-
+	int GetPixelFeatureDim() const;
+	int GetPatchFeatureDim() const;
 private:
 	void gatherFeatures();
 	void gatherHolesForLayer(int layer);
-	void reconstructHoleDepth();
+	void reconstructHoleDepth(int layer);
 	void select();
 	void vote();
-	Vector3i findNearestPatch(const Vector3i& coord);
-	VectorXf computeFeatureForPatch(const Vector3i& coord);
-	VectorXf computeFeatureForPixel(const Vector3i& coord);
+	Eigen::Vector3i findNearestPatch(const Eigen::Vector3i& coord);
+	Eigen::VectorXf computeFeatureForPatch(const Eigen::Vector3i& coord);
+	Eigen::VectorXf computeFeatureForPixel(const Eigen::Vector3i& coord);
+	void computeFeatureImage();
+	bool checkPatchValidity(const Eigen::Vector3i & coord);
+	bool checkPixelValidity(const Eigen::Vector3i & coord);
+	Eigen::SparseMatrix<float> constructPoissonLhs(int layer);
+	Eigen::VectorXf constructPoissonRhs(int layer);
 	void computeFilledPixelNormals();
+	void recomputeHoleFeatureImage(int layer);
 	MultilayerDepthImage* mDepthImage;
 	vector<vector<vector<int> > >* mMaskImage;
+	vector<vector<vector<Eigen::VectorXf> > > mFeatureImage;
 	MultilayerDepthImage mResultImage;
 	int mHeight;
 	int mWidth;
 	int mLayers;
 	int mPatchWidth;
-	vector<VectorXf> mFeatures;
-	vector<Vector3i> mFeatureCoordinates;
-	vector<Vector3i> mHolePixelCoordinates;
-	MatrixXi mHolePixelIdx;
-	vector<Vector3i> mHolePatchCoordinates;
-	vector<VectorXf> mHolePatchFeatures;
+	vector<Eigen::VectorXf> mFeatures;
+	vector<Eigen::Vector3i> mFeatureCoordinates;
+	vector<Eigen::Vector3i> mHolePixelCoordinates;
+	Eigen::MatrixXi mHolePixelIdx;
+	vector<Eigen::Vector3i> mHolePatchCoordinates;
+	vector<Eigen::VectorXf> mHolePatchFeatures;
 	vector<float> mHoleFilledDepth;
+	sehoon::ann::KDTree mKDTree;
+
+
 };
 
 #endif

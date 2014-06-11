@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "myFileReader.h"
 
-void ReadDofs(const string& filename, vector<VectorXd>& data)
+void ReadDofs(const string& filename, vector<Eigen::VectorXd>& data)
 {
 	ifstream inFile(filename.c_str());
 	
@@ -9,7 +9,7 @@ void ReadDofs(const string& filename, vector<VectorXd>& data)
 	{
 		int dim;
 		inFile >> dim;
-		VectorXd dof = VectorXd::Zero(dim);
+		Eigen::VectorXd dof = Eigen::VectorXd::Zero(dim);
 		for (int i = 0; i < dim; ++i)
 		{
 			inFile >> skipws >> dof[i];

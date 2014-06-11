@@ -132,7 +132,7 @@ DecoArchive& operator<< (DecoArchive& Ar, BYTE value)
 
 }
 
-DecoArchive& operator<< (DecoArchive& Ar, const Vector3d& vec)
+DecoArchive& operator<< (DecoArchive& Ar, const Eigen::Vector3d& vec)
 {
 	for (int i = 0; i < 3; ++i)
 		Ar << vec[i];
@@ -203,7 +203,7 @@ DecoArchive& operator>> (DecoArchive& Ar, char &chr)
 	return Ar;
 }
 
-DecoArchive& operator>> (DecoArchive& Ar, Vector3d& vec)
+DecoArchive& operator>> (DecoArchive& Ar, Eigen::Vector3d& vec)
 {
 	for (int i = 0; i < 3; ++i)
 		Ar >> vec[i];

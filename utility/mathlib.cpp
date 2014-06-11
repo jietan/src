@@ -846,7 +846,7 @@ BOOL PointInLine (const vector3& pt, const vector3& a, const vector3& b, BOOL bS
 		return FALSE;
 }
 
-double PointRayDistance(const Vector3f& pt, const Vector3f& origin, const Vector3f& dir, double& rayDepth)
+double PointRayDistance(const Eigen::Vector3f& pt, const Eigen::Vector3f& origin, const Eigen::Vector3f& dir, double& rayDepth)
 {
 	vector3 point(pt[0], pt[1], pt[2]);
 	vector3 o(origin[0], origin[1], origin[2]);
@@ -920,7 +920,7 @@ DOUBLE PointTriangleDistance(const vector3& pt, const vector3& a, const vector3&
 	}
 }
 
-DOUBLE RayPolylineDistance(const vector3& origin, const vector3& dir, const vector<Vector3d>& polyLine, double& depth)
+DOUBLE RayPolylineDistance(const vector3& origin, const vector3& dir, const vector<Eigen::Vector3d>& polyLine, double& depth)
 {
     int numSegments = static_cast<int>(polyLine.size()) - 1;
     double minDist = 1e20;
@@ -1105,9 +1105,9 @@ vector3 TriangleNormal(const vector3& a, const vector3& b, const vector3& c)
 	return cross.normalize();
 }
 
-MatrixXd GetTangentialDirs(const vector3& normal, int numDirs)
+Eigen::MatrixXd GetTangentialDirs(const vector3& normal, int numDirs)
 {
-	MatrixXd ret = MatrixXd::Zero(3, numDirs);
+	Eigen::MatrixXd ret = Eigen::MatrixXd::Zero(3, numDirs);
 	vector3 y = normal;
 	y.normalize();
 	vector3 x = vector3(1, 0, 0);
@@ -1147,9 +1147,9 @@ matrix33 FormulateSkewSymmetricMatrix(const vector3& vec)
     return ret;
 }
 
-Matrix3d FormulateSkewSymmetricMatrix(const Vector3d& vec)
+Eigen::Matrix3d FormulateSkewSymmetricMatrix(const Eigen::Vector3d& vec)
 {
-	Matrix3d ret;
+	Eigen::Matrix3d ret;
 	ret(0, 0) = 0;
 	ret(0, 1) = -vec[2];
 	ret(0, 2) = vec[1];
@@ -1200,7 +1200,7 @@ matrix33 ShapeMatch(const vector<vector3>& vertices1, const vector<vector3>& ver
 		ret += OuterProduct1(v2[i], v1[i]);
 	}
 
-	Matrix3d R, S, transformation;
+	Eigen::Matrix3d R, S, transformation;
 	transformation << ret[0][0], ret[1][0], ret[2][0],
 		ret[0][1], ret[1][1], ret[2][1],
 		ret[0][2], ret[1][2], ret[2][2];

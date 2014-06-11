@@ -3,6 +3,6 @@
 
 #include "stdafx.h"
 
-void ReadDofs(const string& filename, vector<VectorXd>& data);
+void ReadDofs(const string& filename, vector<Eigen::VectorXd>& data);
 
 #endif

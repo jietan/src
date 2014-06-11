@@ -106,12 +106,12 @@ void PiecewiseCubicSpline::Sample(int numSamples, vector<double>& t, vector<doub
     }
 }
 
-void PiecewiseCubicSpline::Sample(int numSamples, VectorXd& t, VectorXd& h) const
+void PiecewiseCubicSpline::Sample(int numSamples, Eigen::VectorXd& t, Eigen::VectorXd& h) const
 {
     vector<double> vecT, vecH;
     Sample(numSamples, vecT, vecH);
-    t = VectorXd::Zero(numSamples);
-    h = VectorXd::Zero(numSamples);
+    t = Eigen::VectorXd::Zero(numSamples);
+    h = Eigen::VectorXd::Zero(numSamples);
     for (int i = 0; i < numSamples; ++i)
     {
         t[i] = vecT[i];

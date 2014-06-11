@@ -6,7 +6,6 @@
 using namespace std;
 
 #include <Eigen/Dense>
-using namespace Eigen;
 
 #define MAX_NUM_SEGMENTS 12
 
@@ -15,7 +14,7 @@ using namespace Eigen;
 class Segmentation
 {
 public:
-	MatrixXi mSegmentedImg;
+	Eigen::MatrixXi mSegmentedImg;
 	vector<set<int> > mSegmentedPixelIdx;
 	void Rebuild();
 	int NumSegments() const

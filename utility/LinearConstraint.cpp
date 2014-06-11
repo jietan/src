@@ -12,14 +12,14 @@ LinearConstraint::~LinearConstraint()
 }
 void LinearConstraint::SetSize(int numCons, int numDofs)
 {
-	mA = MatrixXd::Zero(numCons, numDofs);
-	mlb = VectorXd::Zero(numCons);
-	mub = VectorXd::Zero(numCons);
-	mIsConstraintsLowerBounded = VectorXi::Zero(numCons);
-	mIsConstraintsUpperBounded = VectorXi::Zero(numCons);
+	mA = Eigen::MatrixXd::Zero(numCons, numDofs);
+	mlb = Eigen::VectorXd::Zero(numCons);
+	mub = Eigen::VectorXd::Zero(numCons);
+	mIsConstraintsLowerBounded = Eigen::VectorXi::Zero(numCons);
+	mIsConstraintsUpperBounded = Eigen::VectorXi::Zero(numCons);
 }
 
-void LinearConstraint::Set(const MatrixXd& A, const VectorXd& lb, const VectorXi& bLowerBounded, const VectorXd& ub, const VectorXi& bUpperBounded)
+void LinearConstraint::Set(const Eigen::MatrixXd& A, const Eigen::VectorXd& lb, const Eigen::VectorXi& bLowerBounded, const Eigen::VectorXd& ub, const Eigen::VectorXi& bUpperBounded)
 {
     mA = A;
     mlb = lb;
@@ -29,23 +29,23 @@ void LinearConstraint::Set(const MatrixXd& A, const VectorXd& lb, const VectorXi
 }
 
 
-const MatrixXd& LinearConstraint::GetLhs() const
+const Eigen::MatrixXd& LinearConstraint::GetLhs() const
 {
 	return mA;
 }
-const VectorXd& LinearConstraint::GetLowerBounds() const
+const Eigen::VectorXd& LinearConstraint::GetLowerBounds() const
 {
 	return mlb;
 }
-const VectorXi& LinearConstraint::GetIsLowerBounded() const
+const Eigen::VectorXi& LinearConstraint::GetIsLowerBounded() const
 {
 	return mIsConstraintsLowerBounded;
 }
-const VectorXd& LinearConstraint::GetUpperBounds() const
+const Eigen::VectorXd& LinearConstraint::GetUpperBounds() const
 {
 	return mub;
 }
-const VectorXi& LinearConstraint::GetIsUpperBounded() const
+const Eigen::VectorXi& LinearConstraint::GetIsUpperBounded() const
 {
 	return mIsConstraintsUpperBounded;
 }
@@ -69,11 +69,11 @@ void LinearConstraint::Union(const LinearConstraint& rhs)
 
 	CHECK(mA.cols() == rhs.mA.cols());
 	int numRows = mA.rows() + rhs.mA.rows();
-	MatrixXd A = MatrixXd::Zero(numRows, mA.cols());
-	VectorXd lb = VectorXd::Zero(numRows);
-	VectorXd ub = VectorXd::Zero(numRows);
-	VectorXi isConstraintsLowerBounded = VectorXi::Zero(numRows);
-	VectorXi isConstraintsUpperBounded = VectorXi::Zero(numRows);
+	Eigen::MatrixXd A = Eigen::MatrixXd::Zero(numRows, mA.cols());
+	Eigen::VectorXd lb = Eigen::VectorXd::Zero(numRows);
+	Eigen::VectorXd ub = Eigen::VectorXd::Zero(numRows);
+	Eigen::VectorXi isConstraintsLowerBounded = Eigen::VectorXi::Zero(numRows);
+	Eigen::VectorXi isConstraintsUpperBounded = Eigen::VectorXi::Zero(numRows);
 
 	A.block(0, 0, mA.rows(), mA.cols()) = mA;
 	A.block(mA.rows(), 0, rhs.mA.rows(), rhs.mA.cols()) = rhs.mA;
@@ -102,11 +102,11 @@ int LinearConstraint::GetNumVariables() const
     return mA.cols();
 }
 
-bool LinearConstraint::CheckValidation(const VectorXd& sol)
+bool LinearConstraint::CheckValidation(const Eigen::VectorXd& sol)
 {
     bool ret = true;
     mIsConstraintSatisfied.clear();
-    VectorXd reconstructedb = mA * sol;
+    Eigen::VectorXd reconstructedb = mA * sol;
     int numConstraints = mA.rows();
     for (int i = 0; i < numConstraints; ++i)
     {

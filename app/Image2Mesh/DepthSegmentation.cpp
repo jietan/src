@@ -19,8 +19,8 @@ DepthSegmentation::~DepthSegmentation()
 }
 const Segmentation& DepthSegmentation::Segment(int numSegments)
 {
-	const vector<Vector3f>& points = mDepthImage->GetPoints();
-	const vector<Vector3f>& normals = mDepthImage->GetNormals();
+	const vector<Eigen::Vector3f>& points = mDepthImage->GetPoints();
+	const vector<Eigen::Vector3f>& normals = mDepthImage->GetNormals();
 
 	int numPoints = static_cast<int>(points.size());
 	cv::Mat1f pointsData;
@@ -47,7 +47,7 @@ const Segmentation& DepthSegmentation::Segment(int numSegments)
 	cv::kmeans(pointsData, numSegments, labels, cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 10, 1.0), 1, cv::KMEANS_PP_CENTERS);
 
 //	mLabelImage = cv::Mat(mNumRows, mNumCols, CV_8U);
-	mSegmentation.mSegmentedImg = MatrixXi::Zero(mNumRows, mNumCols);
+	mSegmentation.mSegmentedImg = Eigen::MatrixXi::Zero(mNumRows, mNumCols);
 	mSegmentation.mSegmentedPixelIdx.clear();
 	mSegmentation.mSegmentedPixelIdx.resize(numSegments);
 
@@ -72,7 +72,7 @@ const Segmentation& DepthSegmentation::Segment(int numSegments)
 void DepthSegmentation::initializeAdjacency()
 {
 	int numSegments = NumSegments();
-	mSegmentAdjacency = MatrixXi::Constant(numSegments, numSegments, 0);
+	mSegmentAdjacency = Eigen::MatrixXi::Constant(numSegments, numSegments, 0);
 	mBoundaryIdx.resize(numSegments);
 	int count = 0;
 
@@ -107,7 +107,7 @@ void DepthSegmentation::initializeAdjacency()
 void DepthSegmentation::initializeSimilarity()
 {
 	int numSegments = NumSegments();
-	mSegmentSimilarity = MatrixXf::Constant(numSegments, numSegments, -1);
+	mSegmentSimilarity = Eigen::MatrixXf::Constant(numSegments, numSegments, -1);
 	for (int i = 0; i < numSegments; ++i)
 	{
 		for (int j = 0; j < numSegments; ++j)
@@ -123,10 +123,10 @@ void DepthSegmentation::initializeSimilarity()
 	}
 }
 
-VectorXd DepthSegmentation::normalizeHistogram(const VectorXi& hist)
+Eigen::VectorXd DepthSegmentation::normalizeHistogram(const Eigen::VectorXi& hist)
 {
 	int numPixels = hist.sum();
-	VectorXd ret = hist.cast<double>();
+	Eigen::VectorXd ret = hist.cast<double>();
 	ret /= numPixels;
 	return ret;
 }
@@ -138,55 +138,55 @@ void DepthSegmentation::initializeNormalHistogram()
 	mNormalHistogramNormalized.resize(numSegments);
 	for (int i = 0; i < numSegments; ++i)
 	{
-		VectorXi hist = computeNormalHistogram(i);
-		VectorXd histNormalized = normalizeHistogram(hist);
+		Eigen::VectorXi hist = computeNormalHistogram(i);
+		Eigen::VectorXd histNormalized = normalizeHistogram(hist);
 		mNormalHistogram[i] = hist;
 		mNormalHistogramNormalized[i] = histNormalized;
 	}
 }
 
-VectorXi DepthSegmentation::computeNormalHistogram(int ithSegment)
+Eigen::VectorXi DepthSegmentation::computeNormalHistogram(int ithSegment)
 {
 	const double phi = (1 + sqrt(5)) / 2.0;
-	Vector3f faceNormalIcosahedron[NUM_ICOSAGEDRON_FACES] =
+	Eigen::Vector3f faceNormalIcosahedron[NUM_ICOSAGEDRON_FACES] =
 	{
-		Vector3f(-1, -1, -1),
-		Vector3f(-1, -1, 1),
-		Vector3f(-1, 1, -1),
-		Vector3f(-1, 1, 1),
-		Vector3f(1, -1, -1),
-		Vector3f(1, -1, 1),
-		Vector3f(1, 1, -1),
-		Vector3f(1, 1, 1),
+		Eigen::Vector3f(-1, -1, -1),
+		Eigen::Vector3f(-1, -1, 1),
+		Eigen::Vector3f(-1, 1, -1),
+		Eigen::Vector3f(-1, 1, 1),
+		Eigen::Vector3f(1, -1, -1),
+		Eigen::Vector3f(1, -1, 1),
+		Eigen::Vector3f(1, 1, -1),
+		Eigen::Vector3f(1, 1, 1),
 
-		Vector3f(0, -1 / phi, -phi),
-		Vector3f(0, -1 / phi, phi),
-		Vector3f(0, 1 / phi, -phi),
-		Vector3f(0, 1 / phi, phi),
+		Eigen::Vector3f(0, -1 / phi, -phi),
+		Eigen::Vector3f(0, -1 / phi, phi),
+		Eigen::Vector3f(0, 1 / phi, -phi),
+		Eigen::Vector3f(0, 1 / phi, phi),
 
-		Vector3f(-1 / phi, -phi, 0),
-		Vector3f(-1 / phi, phi, 0),
-		Vector3f(1 / phi, -phi, 0),
-		Vector3f(1 / phi, phi, 0),
+		Eigen::Vector3f(-1 / phi, -phi, 0),
+		Eigen::Vector3f(-1 / phi, phi, 0),
+		Eigen::Vector3f(1 / phi, -phi, 0),
+		Eigen::Vector3f(1 / phi, phi, 0),
 
-		Vector3f(-phi, 0, -1 / phi),
-		Vector3f(-phi, 0, 1 / phi),
-		Vector3f(phi, 0, -1 / phi),
-		Vector3f(phi, 0, 1 / phi),
+		Eigen::Vector3f(-phi, 0, -1 / phi),
+		Eigen::Vector3f(-phi, 0, 1 / phi),
+		Eigen::Vector3f(phi, 0, -1 / phi),
+		Eigen::Vector3f(phi, 0, 1 / phi),
 	};
 	for (int i = 0; i < NUM_ICOSAGEDRON_FACES; ++i)
 	{
 		faceNormalIcosahedron[i].normalize();
 	}
-	VectorXi hist = VectorXi::Zero(NUM_ICOSAGEDRON_FACES);
-	const vector<Vector3f>& normals = mDepthImage->GetNormals();
+	Eigen::VectorXi hist = Eigen::VectorXi::Zero(NUM_ICOSAGEDRON_FACES);
+	const vector<Eigen::Vector3f>& normals = mDepthImage->GetNormals();
 
-	VectorXd normalClassificationBins = VectorXd::Zero(NUM_ICOSAGEDRON_FACES);
+	Eigen::VectorXd normalClassificationBins = Eigen::VectorXd::Zero(NUM_ICOSAGEDRON_FACES);
 
 	for (set<int>::const_iterator it = mSegmentation.mSegmentedPixelIdx[ithSegment].begin(); it != mSegmentation.mSegmentedPixelIdx[ithSegment].end(); ++it)
 	{
 		int idx = *it;
-		Vector3f n = normals[idx];
+		Eigen::Vector3f n = normals[idx];
 		for (int ithClass = 0; ithClass < NUM_ICOSAGEDRON_FACES; ++ithClass)
 		{
 			normalClassificationBins[ithClass] = faceNormalIcosahedron[ithClass].dot(n);
@@ -278,11 +278,11 @@ double DepthSegmentation::computeSimilarity(int ithSegment, int jthSegment)
 	float maxDepthDiffAlongBoundary = computeBoundaryDepthDifference(ithSegment, jthSegment);
 
 	if (maxDepthDiffAlongBoundary / 1000.0 > 0.05) return -1;
-	const VectorXd& histI = mNormalHistogramNormalized[ithSegment];
-	const VectorXd& histJ = mNormalHistogramNormalized[jthSegment];
+	const Eigen::VectorXd& histI = mNormalHistogramNormalized[ithSegment];
+	const Eigen::VectorXd& histJ = mNormalHistogramNormalized[jthSegment];
 	CHECK(histI.size() == histJ.size()) << "Histogram with different length in DepthSegmentation::computeSimilarity()";
 	int histLen = histI.size();
-	VectorXd minHist = VectorXd::Zero(histLen);
+	Eigen::VectorXd minHist = Eigen::VectorXd::Zero(histLen);
 	for (int i = 0; i < histLen; ++i)
 	{
 		minHist[i] = histI[i] > histJ[i] ? histJ[i] : histI[i];
@@ -363,7 +363,7 @@ void DepthSegmentation::mergeSegments()
 void DepthSegmentation::SaveSegmentedImage(const string& filename)
 {
 	cv::Mat labelImage(mNumRows, mNumCols, CV_8U);
-	Matrix<uchar, Dynamic, Dynamic>labelImageEigen = mSegmentation.mSegmentedImg.cast<uchar>();
+	Eigen::Matrix<uchar, Eigen::Dynamic, Eigen::Dynamic>labelImageEigen = mSegmentation.mSegmentedImg.cast<uchar>();
 	cv::eigen2cv(labelImageEigen, labelImage);
 	
 	cv::Mat labelBoundaryImage;

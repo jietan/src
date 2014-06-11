@@ -41,7 +41,7 @@ public:
 	friend DecoArchive& operator<< (DecoArchive& Ar, char chr);
 	friend DecoArchive& operator<< (DecoArchive& Ar, BYTE vlaue);
 	friend DecoArchive& operator<< (DecoArchive& Ar, SHORT value);
-	friend DecoArchive& operator<< (DecoArchive& Ar, const Vector3d& vec);
+	friend DecoArchive& operator<< (DecoArchive& Ar, const Eigen::Vector3d& vec);
 	template <typename T>
 	friend DecoArchive& operator<< (DecoArchive& Ar, const vector<T>& array)
 	{
@@ -62,7 +62,7 @@ public:
 	friend DecoArchive& operator>> (DecoArchive& Ar, string &str);
 	friend DecoArchive& operator>> (DecoArchive& Ar, char &chr);
 	friend DecoArchive& operator>> (DecoArchive& Ar, BYTE& vlaue);
-	friend DecoArchive& operator>> (DecoArchive& Ar, Vector3d& vec);
+	friend DecoArchive& operator>> (DecoArchive& Ar, Eigen::Vector3d& vec);
 	template <typename T>
 	friend DecoArchive& operator>> (DecoArchive& Ar, vector<T>& array)
 	{

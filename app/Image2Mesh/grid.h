@@ -9,11 +9,11 @@ public:
 	{
 
 	}
-	Grid(const Vector3f& minPoint, const Vector3f& maxPoint, const Vector3i& resolution)
+	Grid(const Eigen::Vector3f& minPoint, const Eigen::Vector3f& maxPoint, const Eigen::Vector3i& resolution)
 	{
 		SetResolutionInfo(minPoint, maxPoint, resolution);
 	}
-	void SetResolutionInfo(const Vector3f& minPoint, const Vector3f& maxPoint, const Vector3i& resolution)
+	void SetResolutionInfo(const Eigen::Vector3f& minPoint, const Eigen::Vector3f& maxPoint, const Eigen::Vector3i& resolution)
 	{
 		mMinPoint = minPoint;
 		mMaxPoint = maxPoint;
@@ -30,7 +30,7 @@ public:
 			}
 		}
 	}
-	const Vector3i& GetResolution() const
+	const Eigen::Vector3i& GetResolution() const
 	{
 		return mResolution;
 	}
@@ -38,9 +38,9 @@ public:
 	{
 
 	}
-	bool Pos2Idx(const Vector3f& pos, int&i, int& j, int& k)
+	bool Pos2Idx(const Eigen::Vector3f& pos, int&i, int& j, int& k)
 	{
-		Vector3f OffsetFromMin = pos - mMinPoint;
+		Eigen::Vector3f OffsetFromMin = pos - mMinPoint;
 		i = static_cast<int>(OffsetFromMin[0] / mGridSize[0]);
 		j = static_cast<int>(OffsetFromMin[1] / mGridSize[1]);
 		k = static_cast<int>(OffsetFromMin[2] / mGridSize[2]);
@@ -56,10 +56,10 @@ public:
 
 private:
 	vector<vector<vector<type> > > mData;
-	Vector3f mMinPoint;
-	Vector3f mMaxPoint;
-	Vector3i mResolution;
-	Vector3f mGridSize;
+	Eigen::Vector3f mMinPoint;
+	Eigen::Vector3f mMaxPoint;
+	Eigen::Vector3i mResolution;
+	Eigen::Vector3f mGridSize;
 };
 
 #endif

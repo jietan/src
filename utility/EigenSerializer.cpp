@@ -4,7 +4,7 @@
 
 
 
-void EigenSerializer::ReadVectorFromFileDouble(const string& filename, VectorXd& vec, bool bBinary)
+void EigenSerializer::ReadVectorFromFileDouble(const string& filename, Eigen::VectorXd& vec, bool bBinary)
 {
 	if (bBinary)
 	{
@@ -12,7 +12,7 @@ void EigenSerializer::ReadVectorFromFileDouble(const string& filename, VectorXd&
 		int length;
 		Ar >> length;
 	    
-		vec = VectorXd::Zero(length);
+		vec = Eigen::VectorXd::Zero(length);
 		for (int i = 0; i < length; ++i)
 		{
 	        
@@ -24,7 +24,7 @@ void EigenSerializer::ReadVectorFromFileDouble(const string& filename, VectorXd&
 
 	}
 }
-void EigenSerializer::ReadMatrixFromFileDouble(const string& filename, MatrixXd& mat, bool bBinary)
+void EigenSerializer::ReadMatrixFromFileDouble(const string& filename, Eigen::MatrixXd& mat, bool bBinary)
 {
 	if (bBinary)
 	{
@@ -32,7 +32,7 @@ void EigenSerializer::ReadMatrixFromFileDouble(const string& filename, MatrixXd&
 		int numRows, numCols;
 		Ar >> numRows;
 		Ar >> numCols;
-		mat = MatrixXd::Zero(numRows, numCols);
+		mat = Eigen::MatrixXd::Zero(numRows, numCols);
 		for (int i = 0; i < numRows; ++i)
 		{
 			for (int j = 0; j < numCols; ++j)
@@ -73,7 +73,7 @@ void EigenSerializer::ReadMatrixFromFileDouble(const string& filename, MatrixXd&
 			}
 			if (ithRow == 0)
 			{
-				mat = MatrixXd::Zero(n, n);
+				mat = Eigen::MatrixXd::Zero(n, n);
 			}
 			for (int i = 0; i < n; ++i)
 				mat(ithRow, i) = value[i]; 
@@ -82,7 +82,7 @@ void EigenSerializer::ReadMatrixFromFileDouble(const string& filename, MatrixXd&
 	}
 }
 
-void EigenSerializer::ReadVectorFromFileInt(const string& filename, VectorXi& vec, bool bBinary)
+void EigenSerializer::ReadVectorFromFileInt(const string& filename, Eigen::VectorXi& vec, bool bBinary)
 {
 	if (bBinary)
 	{
@@ -90,7 +90,7 @@ void EigenSerializer::ReadVectorFromFileInt(const string& filename, VectorXi& ve
 		int length;
 		Ar >> length;
 
-		vec = VectorXi::Zero(length);
+		vec = Eigen::VectorXi::Zero(length);
 		for (int i = 0; i < length; ++i)
 		{
 
@@ -100,7 +100,7 @@ void EigenSerializer::ReadVectorFromFileInt(const string& filename, VectorXi& ve
 }
 
 
-void EigenSerializer::SaveMatrixToFileDouble(const string& filename, const MatrixXd& mat, bool bBinary)
+void EigenSerializer::SaveMatrixToFileDouble(const string& filename, const Eigen::MatrixXd& mat, bool bBinary)
 {
     if (bBinary)
     {
@@ -123,7 +123,7 @@ void EigenSerializer::SaveMatrixToFileDouble(const string& filename, const Matri
     }
 }
 
-void EigenSerializer::SaveVectorToFileDouble(const string& filename, const VectorXd& vec, bool bBinary)
+void EigenSerializer::SaveVectorToFileDouble(const string& filename, const Eigen::VectorXd& vec, bool bBinary)
 {
     if (bBinary)
     {
@@ -142,7 +142,7 @@ void EigenSerializer::SaveVectorToFileDouble(const string& filename, const Vecto
     }
 }
 
-void EigenSerializer::SaveVectorToFileInt(const string& filename, const VectorXi& vec, bool bBinary)
+void EigenSerializer::SaveVectorToFileInt(const string& filename, const Eigen::VectorXi& vec, bool bBinary)
 {
     if (bBinary)
     {
@@ -161,19 +161,19 @@ void EigenSerializer::SaveVectorToFileInt(const string& filename, const VectorXi
     }
 }
 
-void EigenSerializer::SaveToFileAsciiDouble(const string& filename, const MatrixXd& mat)
+void EigenSerializer::SaveToFileAsciiDouble(const string& filename, const Eigen::MatrixXd& mat)
 {
     ofstream out(filename.c_str());
 	SaveToFileAsciiDouble(out, mat);
 }
 
-void EigenSerializer::SaveToFileAsciiInt(const string& filename, const MatrixXi& mat)
+void EigenSerializer::SaveToFileAsciiInt(const string& filename, const Eigen::MatrixXi& mat)
 {
     ofstream out(filename.c_str());
 	SaveToFileAsciiInt(out, mat);
 }
 
-void EigenSerializer::SaveToFileAsciiDouble(ofstream& out, const MatrixXd& mat)
+void EigenSerializer::SaveToFileAsciiDouble(ofstream& out, const Eigen::MatrixXd& mat)
 {
 	out << "[";
 	int numRows = mat.rows();
@@ -192,7 +192,7 @@ void EigenSerializer::SaveToFileAsciiDouble(ofstream& out, const MatrixXd& mat)
 	out << endl;
 }
 
-void EigenSerializer::SaveToFileAsciiInt(ofstream& out, const MatrixXi& mat)
+void EigenSerializer::SaveToFileAsciiInt(ofstream& out, const Eigen::MatrixXi& mat)
 {
 	out << "[";
 	int numRows = mat.rows();
@@ -212,7 +212,7 @@ void EigenSerializer::SaveToFileAsciiInt(ofstream& out, const MatrixXi& mat)
 	out << endl;
 }
 
-void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const MatrixXd& mat)
+void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const Eigen::MatrixXd& mat)
 {
 	int numRows = mat.rows();
 	int numCols = mat.cols();
@@ -229,7 +229,7 @@ void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, cons
 
 }
 
-void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const VectorXd& vec)
+void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const Eigen::VectorXd& vec)
 {
 	out << varName << " = [ ";
 	for (int i = 0; i < vec.size(); ++i)
@@ -240,7 +240,7 @@ void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, cons
 
 }
 
-void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const MatrixXi& mat)
+void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const Eigen::MatrixXi& mat)
 {
 	int numRows = mat.rows();
 	int numCols = mat.cols();
@@ -257,7 +257,7 @@ void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, cons
 
 }
 
-void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const VectorXi& vec)
+void EigenSerializer::OutputToMFormat(ofstream& out, const string& varName, const Eigen::VectorXi& vec)
 {
 	out << varName << " = [ ";
 	for (int i = 0; i < vec.size(); ++i)

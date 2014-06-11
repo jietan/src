@@ -12,13 +12,13 @@ PCA::~PCA()
 
 }
 
-void PCA::Analyze(const vector<VectorXd>& data, vector<double>& eigenValues, vector<VectorXd>& basis)
+void PCA::Analyze(const vector<Eigen::VectorXd>& data, vector<double>& eigenValues, vector<Eigen::VectorXd>& basis)
 {
 	mNumPoints = static_cast<int>(data.size());
 	if (!mNumPoints) return;
 
 	mDim = data[0].size();
-	mData = MatrixXd::Zero(mDim, mNumPoints);
+	mData = Eigen::MatrixXd::Zero(mDim, mNumPoints);
 	for (int i = 0; i < mNumPoints; ++i)
 	{
 		mData.col(i) = data[i];
@@ -35,7 +35,7 @@ void PCA::Analyze(const vector<VectorXd>& data, vector<double>& eigenValues, vec
 
 void PCA::centerData()
 {
-	VectorXd sumVector = VectorXd::Zero(mDim);
+	Eigen::VectorXd sumVector = Eigen::VectorXd::Zero(mDim);
 	for (int i = 0; i < mNumPoints; ++i)
 	{
 		sumVector += mData.col(i);
@@ -67,7 +67,7 @@ void PCA::scaleData()
 
 void PCA::checkCenterAndScale()
 {
-	VectorXd sumVector = VectorXd::Zero(mDim);
+	Eigen::VectorXd sumVector = Eigen::VectorXd::Zero(mDim);
 	for (int i = 0; i < mNumPoints; ++i)
 	{
 		sumVector += mData.col(i);
@@ -87,9 +87,9 @@ void PCA::checkCenterAndScale()
 }
 void PCA::performSVD()
 {
-	JacobiSVD<MatrixXd> svd(mData, ComputeThinU | ComputeThinV);
-	MatrixXd U = svd.matrixU();
-	VectorXd singularValues = svd.singularValues();
+	Eigen::JacobiSVD<Eigen::MatrixXd> svd(mData, Eigen::ComputeThinU | Eigen::ComputeThinV);
+	Eigen::MatrixXd U = svd.matrixU();
+	Eigen::VectorXd singularValues = svd.singularValues();
 	mEigenValues.resize(mDim);
 	mBasis.resize(mDim);
 

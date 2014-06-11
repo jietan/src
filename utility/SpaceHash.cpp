@@ -7,7 +7,7 @@ HashData::HashData()
 {
 
 }
-HashData::HashData(const VectorXd& data, int count) : mData(data), mCount(count)
+HashData::HashData(const Eigen::VectorXd& data, int count) : mData(data), mCount(count)
 {
 
 }
@@ -17,7 +17,7 @@ HashData::~HashData()
 }
 
 
-void HashData::Combine(const VectorXd& newData)
+void HashData::Combine(const Eigen::VectorXd& newData)
 {
 	//mData = (mData * mCount + newData) / (mCount + 1);
 	mCount++;
@@ -30,12 +30,12 @@ SpaceHash::~SpaceHash()
 {
 
 }
-void SpaceHash::AddData(const VectorXd& data)
+void SpaceHash::AddData(const Eigen::VectorXd& data)
 {
 	int bucketId = hashFunc1(data);
 	mBuckets[bucketId].push_back(HashData(data));
 }
-void SpaceHash::AddData(const vector<VectorXd>& data)
+void SpaceHash::AddData(const vector<Eigen::VectorXd>& data)
 {
 	int numDataEntries = static_cast<int>(data.size());
 	for (int i = 0; i < numDataEntries; ++i)
@@ -43,7 +43,7 @@ void SpaceHash::AddData(const vector<VectorXd>& data)
 		AddData(data);
 	}
 }
-void SpaceHash::AddDataAndCombine(const VectorXd& data, double epsilon)
+void SpaceHash::AddDataAndCombine(const Eigen::VectorXd& data, double epsilon)
 {
 	int bucketId = hashFunc1(data);
 	int prevBucketId = (bucketId + mBuckets.size() - 1) % mBuckets.size();
@@ -68,7 +68,7 @@ void SpaceHash::AddDataAndCombine(const VectorXd& data, double epsilon)
 
 	mBuckets[bucketId].push_back(data);
 }
-void SpaceHash::AddDataAndCombine(const vector<VectorXd>& data, double epsilon)
+void SpaceHash::AddDataAndCombine(const vector<Eigen::VectorXd>& data, double epsilon)
 {
 	int numDataEntries = static_cast<int>(data.size());
 	for (int i = 0; i < numDataEntries; ++i)
@@ -76,9 +76,9 @@ void SpaceHash::AddDataAndCombine(const vector<VectorXd>& data, double epsilon)
 		AddDataAndCombine(data[i], epsilon);
 	}
 }
-vector<VectorXd> SpaceHash::GetData() const
+vector<Eigen::VectorXd> SpaceHash::GetData() const
 {
-	vector<VectorXd> ret;
+	vector<Eigen::VectorXd> ret;
 	int numBuckets = static_cast<int>(mBuckets.size());
 
 	for (int i = 0; i < numBuckets; ++i)
@@ -91,7 +91,7 @@ vector<VectorXd> SpaceHash::GetData() const
 	}
 	return ret;
 }
-int SpaceHash::hashFunc1(const VectorXd& data) const
+int SpaceHash::hashFunc1(const Eigen::VectorXd& data) const
 {
 	return static_cast<int>(data.norm()) % mBuckets.size();
 }

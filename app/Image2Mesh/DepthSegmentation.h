@@ -4,7 +4,6 @@
 #include "DepthImage.h"
 #include "Segment.h"
 #include <Eigen/Dense>
-using namespace Eigen;
 
 class DepthSegmentation
 {
@@ -21,8 +20,8 @@ private:
 	void initializeAdjacency();
 	void initializeNormalHistogram();
 	void initializeSimilarity();
-	VectorXi computeNormalHistogram(int ithSegment);
-	VectorXd normalizeHistogram(const VectorXi& hist);
+	Eigen::VectorXi computeNormalHistogram(int ithSegment);
+	Eigen::VectorXd normalizeHistogram(const Eigen::VectorXi& hist);
 	double computeSimilarity(int ithSegment, int jthSegment);
 	void mergeSegments(int ithSegment, int jthSegment);
 	//void DepthSegmentation::preComputeBoundaryPixels();
@@ -32,11 +31,11 @@ private:
 	Segmentation mSegmentation;
 	//cv::Mat mLabelImage;
 	
-	MatrixXi mSegmentAdjacency;
-	MatrixXf mSegmentSimilarity;
+	Eigen::MatrixXi mSegmentAdjacency;
+	Eigen::MatrixXf mSegmentSimilarity;
 
-	vector<VectorXi> mNormalHistogram;
-	vector<VectorXd> mNormalHistogramNormalized;
+	vector<Eigen::VectorXi> mNormalHistogram;
+	vector<Eigen::VectorXd> mNormalHistogramNormalized;
 	vector<set<int> > mBoundaryIdx;
 	int mNumRows;
 	int mNumCols;

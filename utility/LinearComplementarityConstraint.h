@@ -16,8 +16,8 @@ public:
     virtual ~LinearComplementarityConstraint();
     
     virtual LinearConstraint GetLinearConstraint(const vector<int>& isEqualityOnZ);
-    virtual void SetA(const MatrixXd& A);
-    virtual void SetB(const MatrixXd& b);
+    virtual void SetA(const Eigen::MatrixXd& A);
+	virtual void SetB(const Eigen::MatrixXd& b);
     virtual void SetVariableInfo(int varOffset, int varSize);
     virtual int GetNumConstraints() const;
     virtual int GetNumVariables() const;
@@ -25,8 +25,8 @@ public:
 protected:
     int mVarOffset;
     int mVarSize;
-    MatrixXd mA;
-    VectorXd mb;
+    Eigen::MatrixXd mA;
+	Eigen::VectorXd mb;
 };
 
 #endif

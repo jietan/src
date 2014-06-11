@@ -2,17 +2,16 @@
 #define _EXTENDED_DEPTH_PIXEL_H
 
 #include <Eigen/Dense>
-using namespace Eigen;
 
 
 class ExtendedDepthPixel
 {
 public:
-	ExtendedDepthPixel() : d(0), n(Vector3f::Ones())
+	ExtendedDepthPixel() : d(0), n(Eigen::Vector3f::Ones())
 	{
 
 	}
-	ExtendedDepthPixel(float depth, const Vector3f& normal) : d(depth), n(normal)
+	ExtendedDepthPixel(float depth, const Eigen::Vector3f& normal) : d(depth), n(normal)
 	{
 
 	}
@@ -30,7 +29,7 @@ public:
 		return this->d > rhs.d;
 	}
 	float d;
-	Vector3f n;
+	Eigen::Vector3f n;
 };
 
 #endif

@@ -25,8 +25,8 @@ void ImageSegmentation::depthImageToNormalsFeaturePreserving(const cv::Mat& dept
 	mNormalImg.create(numRows, numCols);
 	int numTotalPixels = numRows * numCols;
 
-	Vector3d tangentialAxis1;
-	Vector3d tangentialAxis2;
+	Eigen::Vector3d tangentialAxis1;
+	Eigen::Vector3d tangentialAxis2;
 
 	for (int i = 0; i < numTotalPixels; ++i)
 	{
@@ -43,11 +43,11 @@ void ImageSegmentation::depthImageToNormalsFeaturePreserving(const cv::Mat& dept
 		if (abs(2 * dCurrent - dLeft - dRight) > curvatureTheshold)
 		{
 			double diff = abs(dRight - dCurrent) > abs(dCurrent - dLeft) ? dCurrent - dLeft : dRight - dCurrent;
-			tangentialAxis1 = Vector3d(1, 0, diff);
+			tangentialAxis1 = Eigen::Vector3d(1, 0, diff);
 		}
 		else
 		{
-			tangentialAxis1 = Vector3d(2, 0, dRight - dLeft);
+			tangentialAxis1 = Eigen::Vector3d(2, 0, dRight - dLeft);
 		}
 
 		int upper = upperNeighbor(current, numRows, numCols);
@@ -57,13 +57,13 @@ void ImageSegmentation::depthImageToNormalsFeaturePreserving(const cv::Mat& dept
 		if (abs(2 * dCurrent - dUpper - dLower) > curvatureTheshold)
 		{
 			double diff = abs(dUpper - dCurrent) > abs(dCurrent - dLower) ? dLower - dCurrent : dCurrent - dUpper;
-			tangentialAxis2 = Vector3d(0, 1, diff);
+			tangentialAxis2 = Eigen::Vector3d(0, 1, diff);
 		}
 		else
 		{
-			tangentialAxis2 = Vector3d(0, 2, dLower - dUpper);
+			tangentialAxis2 = Eigen::Vector3d(0, 2, dLower - dUpper);
 		}
-		Vector3d normal = tangentialAxis1.cross(tangentialAxis2);
+		Eigen::Vector3d normal = tangentialAxis1.cross(tangentialAxis2);
 		normal = -normal.normalized();
 		mNormalImg.at<cv::Vec3d>(v, u) = cv::Vec3d(normal[0], normal[1], normal[2]);
 	}
@@ -80,48 +80,48 @@ void ImageSegmentation::depthImageToNormals(const cv::Mat& depthImg)
 			float d = depthImg.at<float>(v, u);
 			double z = d / 1000.0;
 
-			Vector3d tangentialAxis1;
-			Vector3d tangentialAxis2;
+			Eigen::Vector3d tangentialAxis1;
+			Eigen::Vector3d tangentialAxis2;
 
 			if (v == 0)
 			{
 				double dYPlus = depthImg.at<float>(v + 1, u);
 				double dYMinus = depthImg.at<float>(v, u);
-				tangentialAxis2 = Vector3d(0, 1, dYPlus - dYMinus);
+				tangentialAxis2 = Eigen::Vector3d(0, 1, dYPlus - dYMinus);
 			}
 			else if (v == depthImg.rows - 1)
 			{
 				double dYPlus = depthImg.at<float>(v, u);
 				double dYMinus = depthImg.at<float>(v - 1, u);
-				tangentialAxis2 = Vector3d(0, 1, dYPlus - dYMinus);
+				tangentialAxis2 = Eigen::Vector3d(0, 1, dYPlus - dYMinus);
 			}
 			else
 			{
 				double dYPlus = depthImg.at<float>(v + 1, u);
 				double dYMinus = depthImg.at<float>(v - 1, u);
-				tangentialAxis2 = Vector3d(0, 2, dYPlus - dYMinus);
+				tangentialAxis2 = Eigen::Vector3d(0, 2, dYPlus - dYMinus);
 			}
 			if (u == 0)
 			{
 				double dXPlus = depthImg.at<float>(v, u + 1);
 				double dXMinus = depthImg.at<float>(v, u);
-				tangentialAxis1 = Vector3d(1, 0, dXPlus - dXMinus);
+				tangentialAxis1 = Eigen::Vector3d(1, 0, dXPlus - dXMinus);
 			}
 			else if (u == depthImg.cols - 1)
 			{
 				double dXPlus = depthImg.at<float>(v, u);
 				double dXMinus = depthImg.at<float>(v, u - 1);
-				tangentialAxis1 = Vector3d(1, 0, dXPlus - dXMinus);
+				tangentialAxis1 = Eigen::Vector3d(1, 0, dXPlus - dXMinus);
 			}
 			else
 			{
 				double dXPlus = depthImg.at<float>(v, u + 1);
 				double dXMinus = depthImg.at<float>(v, u - 1);
-				tangentialAxis1 = Vector3d(2, 0, dXPlus - dXMinus);
+				tangentialAxis1 = Eigen::Vector3d(2, 0, dXPlus - dXMinus);
 			}
 
 
-			Vector3d normal = tangentialAxis1.cross(tangentialAxis2);
+			Eigen::Vector3d normal = tangentialAxis1.cross(tangentialAxis2);
 			normal = -normal.normalized();
 			mNormalImg.at<cv::Vec3d>(v, u) = cv::Vec3d(normal[0], normal[1], normal[2]);
 		}
@@ -143,7 +143,7 @@ const Segmentation& ImageSegmentation::Segment(const cv::Mat& depthImg, double d
 	int numTotalPixels = numRows * numCols;
 	
 	Segmentation& ret = mSegmentation;
-	ret.mSegmentedImg = MatrixXi::Constant(numRows, numCols, 0);
+	ret.mSegmentedImg = Eigen::MatrixXi::Constant(numRows, numCols, 0);
 	depthImageToNormalsFeaturePreserving(depthImg, 1);
 	//depthImageToNormals(depthImg);
 	computeBoundaryImages(depthImg, depthThreshold, angleThreshold);
@@ -221,7 +221,7 @@ void ImageSegmentation::expand(const cv::Mat& depthImg, int seed, int numRows, i
 	vector<int> bVisited;
 	bVisited.resize(numRows * numCols, 0);
 	int counter = 0;
-	Vector3d normalAccumulator = Vector3d::Zero();
+	Eigen::Vector3d normalAccumulator = Eigen::Vector3d::Zero();
 
 	while (!neighbors.empty())
 	{
@@ -241,7 +241,7 @@ void ImageSegmentation::expand(const cv::Mat& depthImg, int seed, int numRows, i
 		unsegmentedPixelIdx.erase(current);
 
 		normalAccumulator += getNormal(current);
-		Vector3d avgNormal = normalAccumulator.normalized();
+		Eigen::Vector3d avgNormal = normalAccumulator.normalized();
 		double cosineThreshold = cos(angleThreshold / 180 * M_PI);
 
 		int left = leftNeighbor(current, numRows, numCols);
@@ -379,7 +379,7 @@ int ImageSegmentation::lowerNeighbor(int idx, int numRows, int numCols)
 		v = numRows - 1;
 	return indexTo1d(v, u, numRows, numCols);
 }
-bool ImageSegmentation::isSegmented(int idx, const MatrixXi& segmentedImg)
+bool ImageSegmentation::isSegmented(int idx, const Eigen::MatrixXi& segmentedImg)
 {
 	int u, v;
 	indexTo2d(idx, v, u, segmentedImg.rows(), segmentedImg.cols());
@@ -423,11 +423,11 @@ float ImageSegmentation::getDepth(const cv::Mat& depthImg, int idx)
 	return depthImg.at<float>(v, u);
 }
 
-Vector3d ImageSegmentation::getNormal(int idx)
+Eigen::Vector3d ImageSegmentation::getNormal(int idx)
 {
 	int u, v;
 	indexTo2d(idx, v, u, mNormalImg.rows, mNormalImg.cols);
 	const cv::Vec3d& n = mNormalImg.at<cv::Vec3d>(v, u);
-	return Vector3d(n[0], n[1], n[2]);
+	return Eigen::Vector3d(n[0], n[1], n[2]);
 
 }

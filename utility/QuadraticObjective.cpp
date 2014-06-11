@@ -26,12 +26,12 @@ void QPObjective::AddChild(QPObjective* objective, int priority)
 	mChildObjectives.push_back(objective);
 }
 
-const MatrixXd& QPObjective::GetQuadraticTerm()
+const Eigen::MatrixXd& QPObjective::GetQuadraticTerm()
 {
 	int numChildren = static_cast<int>(mChildObjectives.size());
 	if (numChildren) //intermediate objective node
 	{
-		mQuadraticTerm = MatrixXd::Zero(mDim, mDim);
+		mQuadraticTerm = Eigen::MatrixXd::Zero(mDim, mDim);
 		for (int i = 0; i < numChildren; ++i)
 		{
 			mQuadraticTerm += mChildObjectives[i]->GetWeight() * mChildObjectives[i]->GetQuadraticTerm();
@@ -39,12 +39,12 @@ const MatrixXd& QPObjective::GetQuadraticTerm()
 	}
 	return mQuadraticTerm;
 }
-const VectorXd& QPObjective::GetLinearTerm()
+const Eigen::VectorXd& QPObjective::GetLinearTerm()
 {
 	int numChildren = static_cast<int>(mChildObjectives.size());
 	if (numChildren) //intermediate objective node
 	{
-		mLinearTerm = VectorXd::Zero(mDim);
+		mLinearTerm = Eigen::VectorXd::Zero(mDim);
 		for (int i = 0; i < numChildren; ++i)
 		{
 			mLinearTerm += mChildObjectives[i]->GetWeight() * mChildObjectives[i]->GetLinearTerm();
@@ -86,11 +86,11 @@ int QPObjective::GetDim() const
 	return mDim;
 }
 
-void QPObjective::SetQuadraticTerm(const MatrixXd& quadratic)
+void QPObjective::SetQuadraticTerm(const Eigen::MatrixXd& quadratic)
 {
 	mQuadraticTerm = quadratic;
 }
-void QPObjective::SetLinearTerm(const VectorXd& linear)
+void QPObjective::SetLinearTerm(const Eigen::VectorXd& linear)
 {
 	mLinearTerm = linear;
 }
@@ -99,9 +99,9 @@ void QPObjective::SetConstantTerm(double constant)
 	mConstantTerm = constant;
 }
 
-VectorXd QPObjective::EvaluateGradient(const VectorXd& sol)
+Eigen::VectorXd QPObjective::EvaluateGradient(const Eigen::VectorXd& sol)
 {
-    VectorXd ret = VectorXd::Zero(sol.size());
+    Eigen::VectorXd ret = Eigen::VectorXd::Zero(sol.size());
     ret = 0.5 * mQuadraticTerm * sol + mLinearTerm;
     return ret;
 }
@@ -118,9 +118,9 @@ void QPObjective::PadZeros(int numDimToPad)
     else
     {
         int newDim = mDim + numDimToPad;
-        MatrixXd newQuadratic = MatrixXd::Zero(newDim, newDim);
-        VectorXd newLinear = VectorXd::Zero(newDim);
-        MatrixXd newLhs = MatrixXd::Zero(mLhs.rows(), mLhs.cols() + numDimToPad);
+        Eigen::MatrixXd newQuadratic = Eigen::MatrixXd::Zero(newDim, newDim);
+        Eigen::VectorXd newLinear = Eigen::VectorXd::Zero(newDim);
+        Eigen::MatrixXd newLhs = Eigen::MatrixXd::Zero(mLhs.rows(), mLhs.cols() + numDimToPad);
 
         newQuadratic.block(0, 0, mDim, mDim) = mQuadraticTerm;
         newLinear.segment(0, mDim) = mLinearTerm;
@@ -133,7 +133,7 @@ void QPObjective::PadZeros(int numDimToPad)
     }
 }
 
-void QPObjective::SetLhsAndRhs(const MatrixXd& lhs, const VectorXd& rhs)
+void QPObjective::SetLhsAndRhs(const Eigen::MatrixXd& lhs, const Eigen::VectorXd& rhs)
 {
     CHECK(mChildObjectives.empty());
 
@@ -150,7 +150,7 @@ void QPObjective::SetLhsAndRhs(const MatrixXd& lhs, const VectorXd& rhs)
 }
 
 
-const MatrixXd& QPObjective::GetLhs()
+const Eigen::MatrixXd& QPObjective::GetLhs()
 {
     if (mChildObjectives.empty())
         return mLhs;
@@ -161,15 +161,15 @@ const MatrixXd& QPObjective::GetLhs()
         int numCols = 0;
         for (int i = 0; i < numChildren; ++i)
         {
-            const MatrixXd& childLhs = mChildObjectives[i]->GetLhs();
+            const Eigen::MatrixXd& childLhs = mChildObjectives[i]->GetLhs();
             numRows += childLhs.rows();
             numCols = childLhs.cols();
         }
-        mLhs = MatrixXd::Zero(numRows, numCols);
+        mLhs = Eigen::MatrixXd::Zero(numRows, numCols);
         int currentRow = 0;
         for (int i = 0; i < numChildren; ++i)
         {
-            const MatrixXd& childLhs = mChildObjectives[i]->GetLhs();
+            const Eigen::MatrixXd& childLhs = mChildObjectives[i]->GetLhs();
             double weight = mChildObjectives[i]->GetWeight();
             mLhs.block(currentRow, 0, childLhs.rows(), numCols) = weight * childLhs;
             currentRow += childLhs.rows();
@@ -177,7 +177,7 @@ const MatrixXd& QPObjective::GetLhs()
     }
     return mLhs;
 }
-const VectorXd& QPObjective::GetRhs()
+const Eigen::VectorXd& QPObjective::GetRhs()
 {
     if (mChildObjectives.empty())
         return mRhs;
@@ -187,15 +187,15 @@ const VectorXd& QPObjective::GetRhs()
         int numRows = 0;
         for (int i = 0; i < numChildren; ++i)
         {
-            const VectorXd& childRhs = mChildObjectives[i]->GetRhs();
+            const Eigen::VectorXd& childRhs = mChildObjectives[i]->GetRhs();
             numRows += childRhs.rows();
 
         }
-        mRhs = VectorXd::Zero(numRows);
+        mRhs = Eigen::VectorXd::Zero(numRows);
         int currentRow = 0;
         for (int i = 0; i < numChildren; ++i)
         {
-            const VectorXd& childRhs = mChildObjectives[i]->GetRhs();
+            const Eigen::VectorXd& childRhs = mChildObjectives[i]->GetRhs();
             double weight = mChildObjectives[i]->GetWeight();
             mRhs.segment(currentRow, childRhs.rows()) = weight * childRhs;
             currentRow += childRhs.rows();
@@ -209,7 +209,7 @@ const string& QPObjective::GetName() const
     return mName;
 }
 
-double QPObjective::GetObjectiveFuncValue(const VectorXd& sol, int ithChild)
+double QPObjective::GetObjectiveFuncValue(const Eigen::VectorXd& sol, int ithChild)
 {
     int numChildren = static_cast<int>(mChildObjectives.size());
     if (ithChild >= numChildren)
@@ -218,11 +218,11 @@ double QPObjective::GetObjectiveFuncValue(const VectorXd& sol, int ithChild)
         return mChildObjectives[ithChild]->OutputObjectiveFuncValues(sol, false);
 }
 
-double QPObjective::OutputObjectiveFuncValues(const VectorXd& sol, bool bOutputLog)
+double QPObjective::OutputObjectiveFuncValues(const Eigen::VectorXd& sol, bool bOutputLog)
 {
     if (mChildObjectives.empty())
     {
-        VectorXd valuePart1 = mQuadraticTerm * sol;
+        Eigen::VectorXd valuePart1 = mQuadraticTerm * sol;
         double value = sol.dot(valuePart1) + 2 * mLinearTerm.dot(sol) + mConstantTerm;
 
         if (bOutputLog)
