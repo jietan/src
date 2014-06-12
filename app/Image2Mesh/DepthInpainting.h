@@ -12,6 +12,8 @@ using namespace std;
 #include "utility/utility.h"
 #include "sehoon/ANNHelper.h"
 
+class DepthCamera;
+
 class DepthImageInpainting
 {
 public:
@@ -23,24 +25,27 @@ public:
 	void SaveResultImage(const string& filename);
 	int GetPixelFeatureDim() const;
 	int GetPatchFeatureDim() const;
+	void SetVisualizationCamera(DepthCamera* cam);
+	const MultilayerDepthImage& GetResultImage() const;
 private:
 	void gatherFeatures();
 	void gatherHolesForLayer(int layer);
 	void reconstructHoleDepth(int layer);
 	void select();
 	void vote();
-	void DepthImageInpainting::visualizeInpaintedFeatures(int ithLayer);
-	void DepthImageInpainting::visualizeInpaintedMLDI();
+	void DepthImageInpainting::visualizeInpaintedFeatures(int ithLayer, int ithIteration);
+	void DepthImageInpainting::visualizeInpaintedMLDI(int ithIteration);
 	Eigen::Vector3i findNearestPatch(const Eigen::Vector3i& coord);
 	Eigen::VectorXf computeFeatureForPatch(const Eigen::Vector3i& coord, bool includeUnknownRegion);
 	Eigen::VectorXf computeFeatureForPixel(const Eigen::Vector3i& coord, bool includeUnknownRegion);
 	void computeFeatureImage();
 	bool checkPatchValidity(const Eigen::Vector3i & coord, bool includeUnknownRegion);
 	bool checkPixelValidity(const Eigen::Vector3i & coord, bool includeUnknownRegion);
-	Eigen::SparseMatrix<float> constructPoissonLhs(int layer);
-	Eigen::VectorXf constructPoissonRhs(int layer);
+	Eigen::SparseMatrix<double> constructPoissonLhs(int layer);
+	Eigen::VectorXd constructPoissonRhs(int layer);
 	void computeFilledPixelNormals();
 	void recomputeHoleFeatureImage(int layer);
+
 	MultilayerDepthImage* mDepthImage;
 	vector<vector<vector<int> > >* mMaskImage;
 	vector<vector<vector<Eigen::VectorXf> > > mFeatureImage;
@@ -57,6 +62,7 @@ private:
 	vector<Eigen::VectorXf> mHolePatchFeatures;
 	vector<float> mHoleFilledDepth;
 	sehoon::ann::KDTree mKDTree;
+	DepthCamera* mVisualizationCam;
 
 
 };

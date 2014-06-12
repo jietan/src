@@ -264,6 +264,7 @@
     <ClCompile Include="ImageSegmentation.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MeshIO.cpp" />
     <ClCompile Include="MultilayerDepthImage.cpp" />
     <ClCompile Include="Segment.cpp" />
   </ItemGroup>
@@ -291,6 +292,7 @@
     <ClInclude Include="extendedDepthPixel.h" />
     <ClInclude Include="ImageSegmentation.h" />
     <ClInclude Include="KDTree.h" />
+    <ClInclude Include="MeshIO.h" />
     <ClInclude Include="MultilayerDepthImage.h" />
     <ClInclude Include="Segment.h" />
   </ItemGroup>
