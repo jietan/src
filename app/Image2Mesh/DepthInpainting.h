@@ -29,12 +29,14 @@ private:
 	void reconstructHoleDepth(int layer);
 	void select();
 	void vote();
+	void DepthImageInpainting::visualizeInpaintedFeatures(int ithLayer);
+	void DepthImageInpainting::visualizeInpaintedMLDI();
 	Eigen::Vector3i findNearestPatch(const Eigen::Vector3i& coord);
-	Eigen::VectorXf computeFeatureForPatch(const Eigen::Vector3i& coord);
-	Eigen::VectorXf computeFeatureForPixel(const Eigen::Vector3i& coord);
+	Eigen::VectorXf computeFeatureForPatch(const Eigen::Vector3i& coord, bool includeUnknownRegion);
+	Eigen::VectorXf computeFeatureForPixel(const Eigen::Vector3i& coord, bool includeUnknownRegion);
 	void computeFeatureImage();
-	bool checkPatchValidity(const Eigen::Vector3i & coord);
-	bool checkPixelValidity(const Eigen::Vector3i & coord);
+	bool checkPatchValidity(const Eigen::Vector3i & coord, bool includeUnknownRegion);
+	bool checkPixelValidity(const Eigen::Vector3i & coord, bool includeUnknownRegion);
 	Eigen::SparseMatrix<float> constructPoissonLhs(int layer);
 	Eigen::VectorXf constructPoissonRhs(int layer);
 	void computeFilledPixelNormals();
@@ -50,7 +52,7 @@ private:
 	vector<Eigen::VectorXf> mFeatures;
 	vector<Eigen::Vector3i> mFeatureCoordinates;
 	vector<Eigen::Vector3i> mHolePixelCoordinates;
-	Eigen::MatrixXi mHolePixelIdx;
+	vector<vector<int> > mHolePixelIdx;
 	vector<Eigen::Vector3i> mHolePatchCoordinates;
 	vector<Eigen::VectorXf> mHolePatchFeatures;
 	vector<float> mHoleFilledDepth;

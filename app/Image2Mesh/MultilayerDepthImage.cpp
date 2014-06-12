@@ -122,7 +122,7 @@ void MultilayerDepthImage::SaveDepthImage(const string& filename)
 	cv::imwrite(filename, imageToWrite);
 }
 
-void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, int numThresholds, const vector<vector<vector<int> > >* mask)
+void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, int numThresholds, const vector<vector<vector<int> > >* mask, float* min, float* max)
 {
 	float stepSize = (mMaxDepth - mMinDepth) / numThresholds;
 	cv::Mat1f thresholdImage;
@@ -159,23 +159,23 @@ void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, in
 		}
 		char newFileName[512];
 		sprintf(newFileName, "%s%03d.png", filename.c_str(), ithImage);
-		saveDepthImageVisualization(newFileName, &thresholdImage, mask?&maskImage:NULL);
+		saveDepthImageVisualization(newFileName, &thresholdImage, mask?&maskImage:NULL, min, max);
 	}
 }
 
-void MultilayerDepthImage::SaveDepthOnionImage(const string& filename, const vector<vector<vector<int> > >* mask)
+void MultilayerDepthImage::SaveDepthOnionImage(const string& filename, const vector<vector<vector<int> > >* mask, float* min, float* max)
 {
 
 	//int count = 1;
 	int count = 0;
 	cv::Mat1f onionImage;
 	onionImage.create(mHeight, mWidth);
-	cv::Mat1i maskImage;
-	maskImage.create(mHeight, mWidth);
+
 
 	while (true)
 	{
 		int numValidPx = 0;
+		cv::Mat1i maskImage = cv::Mat::zeros(mHeight, mWidth, CV_32S);
 		for (int i = 0; i < mHeight; ++i)
 		{
 			for (int j = 0; j < mWidth; ++j)
@@ -214,7 +214,7 @@ void MultilayerDepthImage::SaveDepthOnionImage(const string& filename, const vec
 		if (!numValidPx) break;
 		char newFileName[512];
 		sprintf(newFileName, "%sOnion%03d.png", filename.c_str(), count);
-		saveDepthImageVisualization(newFileName, &onionImage, mask?&maskImage:NULL);
+		saveDepthImageVisualization(newFileName, &onionImage, mask?&maskImage:NULL, min, max);
 		count++;
 	}
 }
@@ -266,14 +266,20 @@ void MultilayerDepthImage::Simplify()
 
 
 
-void MultilayerDepthImage::saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask)
+void MultilayerDepthImage::saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask, float* min, float* max)
 {
 	cv::Mat visualizationImage(mHeight, mWidth, CV_8UC3);
+	float minValue = mMinDepth;
+	float maxValue = mMaxDepth;
+	if (min)
+		minValue = *min;
+	if (max)
+		maxValue = *max;
 	for (int i = 0; i < mHeight; ++i)
 	{
 		for (int j = 0; j < mWidth; ++j)
 		{
-			float normalizedDepth = 255 * ((image->at<float>(i, j) - mMinDepth) / (1.3f * (mMaxDepth - mMinDepth)) + 0.2f);
+			float normalizedDepth = 255 * ((image->at<float>(i, j) - minValue) / (1.3f * (maxValue - minValue)) + 0.2f);
 			uchar col = static_cast<uchar>(Clamp<float>(normalizedDepth, 0, 255));
 			visualizationImage.at<cv::Vec3b>(i, j) = cv::Vec3b(col, col, col);
 			if (mask && mask->at<int>(i, j) == 1)

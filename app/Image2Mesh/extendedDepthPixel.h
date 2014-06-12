@@ -11,6 +11,10 @@ public:
 	{
 
 	}
+	ExtendedDepthPixel(float depth) : d(depth), n(Eigen::Vector3f::Ones())
+	{
+
+	}
 	ExtendedDepthPixel(float depth, const Eigen::Vector3f& normal) : d(depth), n(normal)
 	{
 

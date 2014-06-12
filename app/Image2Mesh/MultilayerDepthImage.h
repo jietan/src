@@ -15,8 +15,8 @@ public:
 	void Create(int nRows, int nCol);
 	void Read(const string& filename);
 	void Save(const string& filename);
-	void SaveDepthThresholdingImage(const string& filename, int numThresholds, const vector<vector<vector<int> > >* mask = NULL);
-	void SaveDepthOnionImage(const string& filename, const vector<vector<vector<int> > >* mask = NULL);
+	void SaveDepthThresholdingImage(const string& filename, int numThresholds, const vector<vector<vector<int> > >* mask = NULL, float* min = NULL, float* max = NULL);
+	void SaveDepthOnionImage(const string& filename, const vector<vector<vector<int> > >* mask = NULL, float* min = NULL, float* max = NULL);
 	void Simplify();
 	void Process();
 	void SaveDepthImage(const string& filename);
@@ -27,7 +27,7 @@ public:
 	vector<vector<ExtendedDepthPixel> >& operator[] (int i);
 	const vector<vector<ExtendedDepthPixel> >& operator[] (int i) const;
 private:
-	void saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask);
+	void saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask, float* min = NULL, float* max = NULL);
 	void findMinMaxDepth();
 	void findNumLayers();
 	vector<vector<vector<ExtendedDepthPixel> > > mData;

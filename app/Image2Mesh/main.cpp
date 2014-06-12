@@ -556,6 +556,57 @@ void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string,
 
 }
 
+void SaveMask(const string& filename, const vector<vector<vector<int> > >& mask)
+{
+	int width = 0, height = 0;
+	height = static_cast<int>(mask.size());
+	if (height)
+		width = static_cast<int>(mask[0].size());
+	ofstream outFile(filename.c_str(), ios::out | ios::binary);
+	outFile.write((char*)&width, sizeof(width));
+	outFile.write((char*)&height, sizeof(height));
+
+	for (int i = 0; i < height; ++i)
+	{
+		for (int j = 0; j < width; ++j)
+		{
+			int len = static_cast<int>(mask[i][j].size());
+			outFile.write((char*)&len, sizeof(len));
+			for (int k = 0; k < len; ++k)
+			{
+				outFile.write((char*)&(mask[i][j][k]), sizeof(int));
+
+			}
+		}
+	}
+}
+
+void ReadMask(const string& filename, vector<vector<vector<int> > >& mask)
+{
+	int width, height, maskValue;
+	ifstream inFile(filename.c_str(), ios::in | ios::binary);
+	inFile.read((char*)&width, sizeof(width));
+	inFile.read((char*)&height, sizeof(height));
+	mask.resize(height);
+	for (int i = 0; i < height; ++i)
+	{
+		mask[i].resize(width);
+		for (int j = 0; j < width; ++j)
+		{
+			int len = 0;
+			inFile.read((char*)&len, sizeof(int));
+			if (len)
+			{			
+				for (int k = 0; k < len; ++k)
+				{		
+					inFile.read((char*)&maskValue, sizeof(int));					
+					mask[i][j].push_back(maskValue);
+				}
+			}
+		}
+	}
+}
+
 void BuildMultiLayerDepthImage(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, const Eigen::Matrix4f& cameraPose)
 {
 	DepthCamera dCamera;
@@ -753,6 +804,9 @@ int main(int argc, char** argv)
 		dCameraCombined.ProcessMultiLayerDepthImage();
 		dCameraCombined.GetPointCloud(points, normals);
 		SavePointCloud("results/combinedPointMeshDepthImage.ply", points, colors, normals);
+
+		mergedDepthMap.Save("results/combinedPointMeshDepthImage.data");
+		SaveMask("results/combinedPointMeshDepthImageMask.mask", depthMask);
 		mergedDepthMap.SaveDepthThresholdingImage("results/combinedPointMeshDepthImage.png", 20, &depthMask);
 		mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png", &depthMask);
 	}
@@ -772,5 +826,20 @@ int main(int argc, char** argv)
 		outFileName = "results/simplifiedDepthFromMultiview.png";
 		MLDI.SaveDepthOnionImage(outFileName);
 
+	}
+	else if (task == 7)
+	{
+		MultilayerDepthImage mergedDepthMap;
+		mergedDepthMap.Read("results/combinedPointMeshDepthImage.data");
+		mergedDepthMap.Process();
+
+		vector<vector<vector<int> > > depthMask;
+		ReadMask("results/combinedPointMeshDepthImageMask.mask", depthMask);
+
+		//mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png", &depthMask);
+		DepthImageInpainting inpainter;
+		inpainter.SetDepthImage(&mergedDepthMap);
+		inpainter.SetMaskImage(&depthMask);
+		inpainter.Inpaint(5);
 	}
 }
