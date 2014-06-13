@@ -1,10 +1,14 @@
 #include "DepthInpainting.h"
 #include "DepthCamera.h"
 #include "MeshIO.h"
+#include <queue>
+using namespace std;
 
 const int MASK_UNKNOWN = 1;
-
-
+const int MASK_KNOWN = 0;
+const int NEUMANN_HOLE = 0;
+const int DIRICHELT_HOLE = 1;
+const int NOT_HOLE = 2;
 
 DepthImageInpainting::DepthImageInpainting()
 {
@@ -90,7 +94,7 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 
 	//gatherHolesForLayer(1);
 	computeFeatureImage();
-
+	
 	//int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
 	//mHolePatchFeatures.resize(numHolePixels);
 	//for (int i = 0; i < numHolePixels; ++i)
@@ -101,7 +105,7 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 	//reconstructHoleDepth(1);
 	//visualizeInpaintedMLDI();
 	//return;
-
+	
 	gatherFeatures();
 	for (int ithLayer = 1; ithLayer < 2; ++ithLayer)
 	{
@@ -168,12 +172,81 @@ void DepthImageInpainting::gatherFeatures()
 	}
 	mKDTree.initANN();
 }
+
+void DepthImageInpainting::expand(int ithRow, int jthCol, int type, Eigen::MatrixXi& holeType)
+{
+	Eigen::MatrixXi inQ = Eigen::MatrixXi::Zero(mHeight, mWidth);
+	queue<Eigen::Vector2i> toVisit;
+	toVisit.push(Eigen::Vector2i(ithRow, jthCol));
+	inQ(ithRow, jthCol) = 1;
+	
+
+	while (!toVisit.empty())
+	{
+		Eigen::Vector2i visiting = toVisit.front();
+		//LOG(INFO) << visiting[0] << " " << visiting[1];
+
+		toVisit.pop();
+		holeType(visiting[0], visiting[1]) = DIRICHELT_HOLE;
+		if (visiting[0] - 1 >= 0 && holeType(visiting[0] - 1, visiting[1]) == NEUMANN_HOLE && !inQ(visiting[0] - 1, visiting[1]))
+		{
+			inQ(visiting[0] - 1, visiting[1]) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0] - 1, visiting[1]));
+		}
+		if (visiting[0] + 1 < mHeight && holeType(visiting[0] + 1, visiting[1]) == NEUMANN_HOLE && !inQ(visiting[0] + 1, visiting[1]))
+		{
+			inQ(visiting[0] + 1, visiting[1]) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0] + 1, visiting[1]));
+		}
+		if (visiting[1] - 1 >= 0 && holeType(visiting[0], visiting[1] - 1) == NEUMANN_HOLE && !inQ(visiting[0], visiting[1] - 1))
+		{
+			inQ(visiting[0], visiting[1] - 1) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0], visiting[1] - 1));
+		}
+		if (visiting[1] + 1 < mWidth && holeType(visiting[0], visiting[1] + 1) == NEUMANN_HOLE && !inQ(visiting[0], visiting[1] + 1))
+		{
+			inQ(visiting[0], visiting[1] + 1) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0], visiting[1] + 1));
+		}
+	}
+	
+}
 void DepthImageInpainting::gatherHolesForLayer(int layer)
 {
 	LOG(INFO) << __FUNCTION__;
 
 	// build vector<Vector3i> mHolePixelCoordinates and MatrixXi mHolePixelIdx.
 	CHECK(mMaskImage) << "No mask specified in DepthImageInpainting::gatherHolesForLayer();";
+
+	int testNum = 0;
+	Eigen::MatrixXi holeType = Eigen::MatrixXi::Constant(mHeight, mWidth, NOT_HOLE);
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			if ((*mMaskImage)[i][j].size() > layer && (*mMaskImage)[i][j][layer] == MASK_UNKNOWN)
+			{
+				holeType(i, j) = NEUMANN_HOLE;
+				testNum++;
+			}
+		}
+	}
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			if ((*mMaskImage)[i][j].size() > layer && (*mMaskImage)[i][j][layer] == MASK_UNKNOWN)
+			{
+				if (i > 0 && (*mMaskImage)[i - 1][j].size() > layer && (*mMaskImage)[i - 1][j][layer] == MASK_KNOWN
+				||  j > 0 && (*mMaskImage)[i][j - 1].size() > layer && (*mMaskImage)[i][j - 1][layer] == MASK_KNOWN
+				|| i < mHeight - 1 && (*mMaskImage)[i + 1][j].size() > layer && (*mMaskImage)[i + 1][j][layer] == MASK_KNOWN
+				|| j < mWidth - 1 && (*mMaskImage)[i][j + 1].size() > layer && (*mMaskImage)[i][j + 1][layer] == MASK_KNOWN)
+				{
+					expand(i, j, DIRICHELT_HOLE, holeType);
+				}
+			}
+		}
+	}
 	mHolePixelCoordinates.clear();
 	mHolePixelIdx.resize(mHeight);
 	for (int i = 0; i < mHeight; ++i)
@@ -181,15 +254,30 @@ void DepthImageInpainting::gatherHolesForLayer(int layer)
 		mHolePixelIdx[i].resize(mWidth, -1);
 		for (int j = 0; j < mWidth; ++j)
 		{
-			if ((*mMaskImage)[i][j].size() <= layer)
-				continue;
-			if ((*mMaskImage)[i][j][layer] && i < 400)
+			if (holeType(i, j) == DIRICHELT_HOLE)
 			{
 				mHolePixelIdx[i][j] = static_cast<int>(mHolePixelCoordinates.size());
 				mHolePixelCoordinates.push_back(Eigen::Vector3i(i, j, layer));
 			}
 		}
 	}
+
+	//mHolePixelCoordinates.clear();
+	//mHolePixelIdx.resize(mHeight);
+	//for (int i = 0; i < mHeight; ++i)
+	//{
+	//	mHolePixelIdx[i].resize(mWidth, -1);
+	//	for (int j = 0; j < mWidth; ++j)
+	//	{
+	//		if ((*mMaskImage)[i][j].size() <= layer)
+	//			continue;
+	//		if ((*mMaskImage)[i][j][layer] && i < 400)
+	//		{
+	//			mHolePixelIdx[i][j] = static_cast<int>(mHolePixelCoordinates.size());
+	//			mHolePixelCoordinates.push_back(Eigen::Vector3i(i, j, layer));
+	//		}
+	//	}
+	//}
 }
 
 Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer)

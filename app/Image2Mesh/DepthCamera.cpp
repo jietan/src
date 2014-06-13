@@ -310,6 +310,8 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 		for (int j = 0; j < mWidth; ++j)
 		{
 			//check whether the depth samples from mesh are presented as points
+			if (i == 225 && j == 480)
+				printf("hello");
 			if (mDepthMap[i][j].empty()) continue;
 
 			int selfSize = static_cast<int>(mDepthMap[i][j].size());
@@ -318,9 +320,30 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 			vector<ExtendedDepthPixel> processingDepthSampleFromPoints;
 
 			//VectorXi nearestSurfaceId = VectorXi::Constant(selfSize, - 1);
-			//VectorXi numPointsAgreeWithSurface = VectorXi::Zero(rhsSize);
+			Eigen::VectorXi numPointsAgreeWithSurface = Eigen::VectorXi::Zero(rhsSize);
+			for (int ithDepthSample = 0; ithDepthSample < selfSize; ++ithDepthSample)
+			{
+				int id = findNearestPoint(rhs.mDepthMap[i][j], mDepthMap[i][j][ithDepthSample], pointMeshMergingThreshold, dist);
+				if (id >= 0)
+				{
+					numPointsAgreeWithSurface[id] += 1;
+				}
+			}
+			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
+			{			
+				int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
+				if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
+				{
+					continue;
+				}
+				if (mergedDepthMap[i][j].empty() || numPointsAgreeWithSurface[ithDepthSample])
+					mask[i][j].push_back(MASK_KNOWN);
+				else
+					mask[i][j].push_back(MASK_UNKNOWN);
+				mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 
-			//if (rhsSize == 0)
+			}
+				//if (rhsSize == 0)
 			//{
 			//	processingDepthSampleFromPoints = mDepthMap[i][j];
 			//}
@@ -377,38 +400,42 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 			//		processingDepthSampleFromPoints.push_back(mDepthMap[i][j][startId + countToMerge / 2]);
 			//}
 
-			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
-			{
-				int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
-				if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
-				{
-					continue;
-				}
-				else if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) < pointMeshMergingThreshold)
-				{
-					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
-					mask[i][j].push_back(MASK_KNOWN);
-					continue;
-				}
-				else if (insertPos == selfSize && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
-				{
-					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
-					mask[i][j].push_back(MASK_KNOWN);
-					continue;
-				}
-				else if (abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos].d) < pointMeshMergingThreshold || abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
-				{
-					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
-					mask[i][j].push_back(MASK_KNOWN);
-					continue;
-				}
-				else
-				{
-					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
-					mask[i][j].push_back(MASK_UNKNOWN);
-					//processingDepthMapFromMesh.push_back(rhs.mDepthMap[i][j][ithDepthSample]);
-				}
-			}
+			//for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
+			//{
+			//	int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
+			//	if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
+			//	{
+			//		continue;
+			//	}
+			//	else if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) < pointMeshMergingThreshold)
+			//	{
+			//		mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			//		mask[i][j].push_back(MASK_KNOWN);
+			//		continue;
+			//	}
+			//	else if (insertPos == selfSize && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
+			//	{
+			//		mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			//		mask[i][j].push_back(MASK_KNOWN);
+			//		continue;
+			//	}
+			//	else if (abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos].d) < pointMeshMergingThreshold || abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][insertPos - 1].d) < pointMeshMergingThreshold)
+			//	{
+			//		mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			//		mask[i][j].push_back(MASK_KNOWN);
+			//		continue;
+			//	}
+			//	else
+			//	{
+			//		mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			//		mask[i][j].push_back(MASK_UNKNOWN);
+			//		//processingDepthMapFromMesh.push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+			//	}
+			//}
+
+
+
+
 			//processingDepthSampleFromPoints = mDepthMap[i][j];
 			////
 

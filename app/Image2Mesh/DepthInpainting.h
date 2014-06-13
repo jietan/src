@@ -45,7 +45,7 @@ private:
 	Eigen::VectorXd constructPoissonRhs(int layer);
 	void computeFilledPixelNormals();
 	void recomputeHoleFeatureImage(int layer);
-
+	void expand(int ithRow, int jthCol, int type, Eigen::MatrixXi& holeType);
 	MultilayerDepthImage* mDepthImage;
 	vector<vector<vector<int> > >* mMaskImage;
 	vector<vector<vector<Eigen::VectorXf> > > mFeatureImage;
