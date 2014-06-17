@@ -60,6 +60,10 @@ void DepthCamera::GetOrthoProjBoundingBox()
 	//mOrthoHeight *= 2;
 }
 
+float DepthCamera::GetOrthoWidth() const
+{
+	return mOrthoWidth;
+}
 void DepthCamera::SetOrthoWidth(float width)
 {
 	mOrthoWidth = width;
@@ -161,7 +165,7 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<
 
 		for (int j = 0; j < mWidth; ++j)
 		{
-			//if (i != 150 || j != 300) continue;
+			//if (!(i == 267 && abs(j - 337) <= 0)) continue;
 			//__debugbreak();
 			Eigen::Vector3f rayOrigin = constructRayOrigin(i, j);
 			Eigen::Vector3f rayDir = constructRayDirection(i, j);

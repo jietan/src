@@ -50,6 +50,7 @@ private:
 	void recomputeHoleFeatureImage(int layer);
 	void expand(int ithRow, int jthCol, int type, Eigen::MatrixXi& holeType);
 	void saveInpaintFeatures();
+	void readInpaintedFeatures();
 	MultilayerDepthImage* mDepthImage;
 	MultilayerMaskImage * mMaskImage;
 

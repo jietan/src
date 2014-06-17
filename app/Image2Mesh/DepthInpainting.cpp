@@ -148,9 +148,8 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 		for (int ithLayer = 1; ithLayer < 2; ++ithLayer)
 		{
 			gatherHolesForLayer(ithPyramid, ithLayer);
-			//visualizeInpaintedFeatures(ithPyramid, ithLayer, -2);
+
 			upsample(ithPyramid, ithLayer);
-			//visualizeInpaintedFeatures(ithPyramid, ithLayer, -1);
 			for (int ithIteration = 0; ithIteration < maxNumIterations; ++ithIteration)
 			{
 				LOG(INFO) << "Inpainting " << ithPyramid << "th pyramid, " << ithLayer << "th layer and " << ithIteration << "th iteration.";
@@ -166,9 +165,26 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 		maxNumIterations -= 3;
 	}
 	saveInpaintFeatures();
+	//readInpaintedFeatures();
 	reconstructHoleDepth(1);
+	recomputeHoleFeatureImage(1);
 	computeFilledPixelNormals(1);
 	visualizeInpaintedMLDI(0);
+}
+
+void DepthImageInpainting::readInpaintedFeatures()
+{
+	FILE* fp = fopen("results/inpaintedFeatures.txt", "r");
+	int numHolePixels;
+	fscanf(fp, "%d\n", &numHolePixels);
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		Eigen::Vector3i coord;
+		float gx, gy;
+		fscanf(fp, "(%d,%d,%d): %f,%f\n", &coord[0], &coord[1], &coord[2], &gx, &gy);
+		mFeatureImage[coord[0]][coord[1]][coord[2]][0] = gx;
+		mFeatureImage[coord[0]][coord[1]][coord[2]][1] = gy;
+	}
 }
 
 void DepthImageInpainting::saveInpaintFeatures()
@@ -659,14 +675,14 @@ void DepthImageInpainting::computeFilledPixelNormals(int ithLayer)
 {
 	int height = mCurrentDepthImage.Height();
 	int width = mCurrentDepthImage.Width();
-
+	float stepSize = mCamera->GetOrthoWidth() / width;
 	for (int v = 0; v < height; ++v)
 	{
 		for (int u = 0; u < width; ++u)
 		{
 			if (mCurrentMaskImage[v][u].size() <= ithLayer || mCurrentMaskImage[v][u][ithLayer] == MASK_KNOWN) continue;
-			Eigen::Vector3f tangentialAxis1(0, 1, mFeatureImage[v][u][ithLayer][0]);
-			Eigen::Vector3f tangentialAxis2(1, 0, mFeatureImage[v][u][ithLayer][1]);
+			Eigen::Vector3f tangentialAxis1(0, stepSize, mFeatureImage[v][u][ithLayer][0]);
+			Eigen::Vector3f tangentialAxis2(stepSize, 0, mFeatureImage[v][u][ithLayer][1]);
 			Eigen::Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
 			normal = -normal.normalized();
 			CHECK(mCamera) << "Camera is not set in DepthImageInpainting::computeFilledPixelNormals().";

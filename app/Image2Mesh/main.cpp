@@ -719,6 +719,8 @@ int main(int argc, char** argv)
 		filename = "results/depthFromMultiviewMesh_Ortho.data";
 		dCameraMesh.ReadMultilayerDepthImage(filename);
 		dCameraMesh.ProcessMultiLayerDepthImage();
+		dCameraMesh.GetPointCloud(points, normals);
+		SavePointCloud("results/depthFromMultiviewMesh_Ortho.ply", points, colors, normals);
 
 		MultilayerDepthImage mergedDepthMap;
 		MultilayerMaskImage depthMask;

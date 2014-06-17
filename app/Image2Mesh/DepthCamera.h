@@ -25,6 +25,7 @@ public:
 	void SetIntrinsicParameters(int numPxWidth, int numPxHeight, float focalLenth);
 	void SetExtrinsicParameters(const Eigen::Matrix4f& pose);
 	void SetOrthoWidth(float width);
+	float GetOrthoWidth() const;
 	float GetFocalLength() const;
 	const Eigen::Matrix4f& GetCameraPose() const;
 	void Capture(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals);

@@ -11,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <glog/logging.h>
+#include "utility/mathlib.h"
+#include <Eigen/Dense>
 using namespace google;
 
 // split a line segment a1a2 across an axis-aligned plane
@@ -92,13 +94,116 @@ int lttests = 0;
 
 // determine whether a line segment intersects a triangle
 // and return an alpha between 0 and 1 to indicate the point of intersection
+bool lineTriangleIntersect1(aiVector3D &a1Orig, aiVector3D &a2Orig,
+	aiVector3D &vertex1, aiVector3D &vertex2, aiVector3D &vertex3,
+	float &alpha) {
+
+	lttests++;
+	const double eps = 0;
+	// create two edges of triangle
+	Eigen::Vector3d v1(vertex1.x, vertex1.y, vertex1.z);
+	Eigen::Vector3d v2(vertex2.x, vertex2.y, vertex2.z);
+	Eigen::Vector3d v3(vertex3.x, vertex3.y, vertex3.z);
+	Eigen::Vector3d a1(a1Orig.x, a1Orig.y, a1Orig.z);
+	Eigen::Vector3d a2(a2Orig.x, a2Orig.y, a2Orig.z);
+
+	Eigen::Vector3d edge1 = v2 - v1;
+	Eigen::Vector3d edge2 = v3 - v2;
+
+	// compute plane of triangle
+	Eigen::Vector3d normal = edge1.cross(edge2);
+	if (normal.norm() == 0)
+		return false;
+	normal.normalize();
+	double offset = normal.dot(v2);
+	// compute intersection of ray with plane
+	double proj1 = a1.dot(normal) - offset;
+	double proj2 = a2.dot(normal) - offset;
+	if (proj1 == proj2) {
+		// parallel to triangle, we'll consider it not an intersection even if line is embedded in triangle
+		return false;
+	}
+	// create a basis for the plane
+	Eigen::Vector3d b1 = edge1.normalized();
+	Eigen::Vector3d b2;
+	edge2 = normal.cross(edge1);
+	edge2.normalize();
+
+	if (proj1 * proj2 <= 0.0) {
+		// definite intersection with plane
+		alpha = -proj1 / (proj2 - proj1);
+		// get intersect
+		Eigen::Vector3d intersect = a1 + alpha * (a2 - a1);
+		// convert points to 2D
+
+		Eigen::Matrix3d xform;
+		xform.row(0) = edge1;
+		xform.row(1) = edge2;
+		xform.row(2) = normal;
+
+		Eigen::Vector3d i2D = xform*intersect;
+		Eigen::Vector3d v12D = xform*v1;
+		Eigen::Vector3d v22D = xform*v2;
+		Eigen::Vector3d v32D = xform*v3;
+
+		// find edges
+		Eigen::Vector3d e12D = v22D - v12D;
+		Eigen::Vector3d e22D = v32D - v22D;
+		Eigen::Vector3d e32D = v12D - v32D;
+		double e1Len = e12D.norm();
+		double e2Len = e22D.norm();
+		double e3Len = e32D.norm();
+		double a1 = -i2D[0] * e12D[1] + i2D[1] * e12D[0] - (-v12D[0] * e12D[1] + v12D[1] * e12D[0]);
+		double a2 = -i2D[0] * e22D[1] + i2D[1] * e22D[0] - (-v22D[0] * e22D[1] + v22D[1] * e22D[0]);
+		double a3 = -i2D[0] * e32D[1] + i2D[1] * e32D[0] - (-v32D[0] * e32D[1] + v32D[1] * e32D[0]);
+		//double offset1 = -v12D.x*e12D.y + v12D.y*e12D.x;
+		//double offset2 = -v22D.x*e22D.y + v22D.y*e22D.x;
+		//double offset3 = -v32D.x*e32D.y + v32D.y*e32D.x;
+		if (e12D[0] * e22D[1] > e12D[1] * e22D[0]) {
+			// ccw winding order
+			//return ((-i2D.x*e12D.y + i2D.y*e12D.x) > offset1 - (eps / e1Len) &&
+			//	(-i2D.x*e22D.y + i2D.y*e22D.x) > offset2 - (eps / e2Len) &&
+			//	(-i2D.x*e32D.y + i2D.y*e32D.x) > offset3 - (eps / e3Len));
+			return a1 >= -eps / e1Len && a2 >= -eps / e2Len && a3 >= -eps / e3Len;
+		}
+		else {
+			// cw winding order
+			//return ((-i2D.x*e12D.y + i2D.y*e12D.x) < offset1 + (eps / e1Len) &&
+			//	(-i2D.x*e22D.y + i2D.y*e22D.x) < offset2 + (eps / e2Len) &&
+			//	(-i2D.x*e32D.y + i2D.y*e32D.x) < offset3 + (eps / e3Len));
+			return a1 <= eps / e1Len && a2 <= eps / e2Len && a3 <= eps / e3Len;
+		}
+	}
+	return false; // no intersection
+}
+
+// determine whether a line segment intersects a triangle
+// and return an alpha between 0 and 1 to indicate the point of intersection
 bool lineTriangleIntersect(aiVector3D &a1, aiVector3D &a2,
 						   aiVector3D &v1, aiVector3D &v2, aiVector3D &v3,
 						   float &alpha) {
+	//vector3 a(v1.x, v1.y, v1.z);
+	//vector3 b(v2.x, v2.y, v2.z);
+	//vector3 c(v3.x, v3.y, v3.z);
+	//vector3 origin(a1.x, a1.y, a1.z);
+	//aiVector3D d = a2 - a1;
+	//aiVector3D dNormalized = d;// .Normalize();
+	//vector3 dir(dNormalized.x, dNormalized.y, dNormalized.z);
+	//vector3 intersection;
+	//double time;
+	//BOOL ret = TriangleRayIntersection(a, b, c, origin, dir, &intersection, &time);
+	//alpha = static_cast<float>(time);
+	//return ret;
+	
 	lttests++;
+	const double eps = 1e-12;
 	// create two edges of triangle
 	aiVector3D edge1 = v2-v1;
 	aiVector3D edge2 = v3-v2;
+
+	Eigen::Vector3d e1(edge1.x, edge1.y, edge1.z);
+	Eigen::Vector3d e2(edge2.x, edge2.y, edge2.z);
+
 	// compute plane of triangle
 	aiVector3D normal;
 	if (!findPlane(edge1, edge2, normal)) 
@@ -124,27 +229,53 @@ bool lineTriangleIntersect(aiVector3D &a1, aiVector3D &a2,
 		// get intersect
 		aiVector3D intersect = a1 + alpha * (a2-a1);
 		// convert points to 2D
+
+		Eigen::Vector3d n = e1.cross(e2);
+		n.normalize();
+		e2 = n.cross(e1);
+		Eigen::Matrix3d xformEigen;
+		xformEigen.row(0) = e1;
+		xformEigen.row(1) = e2;
+		xformEigen.row(2) = n;
+
+		Eigen::Vector3d v1Eigen(v1.x, v1.y, v1.z);
+		Eigen::Vector3d v2Eigen(v2.x, v2.y, v2.z);
+		Eigen::Vector3d v3Eigen(v3.x, v3.y, v3.z);
+		Eigen::Vector3d iEigen(intersect.x, intersect.y, intersect.z);
+		v1Eigen = xformEigen * v1Eigen;
+		v2Eigen = xformEigen * v2Eigen;
+		v3Eigen = xformEigen * v3Eigen;
+		iEigen = xformEigen * iEigen;
+
 		aiVector3D i2D = xform*intersect;
 		aiVector3D v12D = xform*v1;
 		aiVector3D v22D = xform*v2;
 		aiVector3D v32D = xform*v3;
+
+		i2D.x = iEigen[0]; i2D.y = iEigen[1];
+		v12D.x = v1Eigen[0]; v12D.y = v1Eigen[1];
+		v22D.x = v2Eigen[0]; v22D.y = v2Eigen[1];
+		v32D.x = v3Eigen[0]; v32D.y = v3Eigen[1];
 		// find edges
 		aiVector3D e12D = v22D - v12D;
 		aiVector3D e22D = v32D - v22D;
 		aiVector3D e32D = v12D - v32D;
-		float offset1 = -v12D.x*e12D.y + v12D.y*e12D.x; 
-		float offset2 = -v22D.x*e22D.y + v22D.y*e22D.x; 
-		float offset3 = -v32D.x*e32D.y + v32D.y*e32D.x; 
+		double e1Len = e12D.Length();
+		double e2Len = e22D.Length();
+		double e3Len = e32D.Length();
+		double offset1 = -v12D.x*e12D.y + v12D.y*e12D.x;
+		double offset2 = -v22D.x*e22D.y + v22D.y*e22D.x;
+		double offset3 = -v32D.x*e32D.y + v32D.y*e32D.x;
 		if (e12D.x*e22D.y > e12D.y*e22D.x) {
 			// ccw winding order
-			return ((-i2D.x*e12D.y + i2D.y*e12D.x) > offset1 &&
-					(-i2D.x*e22D.y + i2D.y*e22D.x) > offset2 &&
-					(-i2D.x*e32D.y + i2D.y*e32D.x) > offset3);
+			return ((-i2D.x*e12D.y + i2D.y*e12D.x) > offset1 - (eps / e1Len) &&
+				(-i2D.x*e22D.y + i2D.y*e22D.x) > offset2 - (eps / e2Len) &&
+				(-i2D.x*e32D.y + i2D.y*e32D.x) > offset3 - (eps / e3Len));
 		} else {
 			// cw winding order
-			return ((-i2D.x*e12D.y + i2D.y*e12D.x) < offset1 &&
-					(-i2D.x*e22D.y + i2D.y*e22D.x) < offset2 &&
-					(-i2D.x*e32D.y + i2D.y*e32D.x) < offset3);
+			return ((-i2D.x*e12D.y + i2D.y*e12D.x) < offset1 + (eps / e1Len) &&
+				(-i2D.x*e22D.y + i2D.y*e22D.x) < offset2 + (eps / e2Len) &&
+				(-i2D.x*e32D.y + i2D.y*e32D.x) < offset3 + (eps / e3Len));
 		}
 	}
 	return false; // no intersection
@@ -546,7 +677,9 @@ bool KDTreeNode::intersectSelf(aiVector3D &x1, aiVector3D &x2, aiVector3D &resul
 		 ++i) {
 		float alpha;
 		KDTreeTriangle *triPtr = &(this->tree->triangles[i->triangle]);
-		if (lineTriangleIntersect(x1, x2, triPtr->vertexes[0], triPtr->vertexes[1], triPtr->vertexes[2], alpha)) {
+		if (i->triangle == 5311 || i->triangle == 5590)
+			printf("hello");
+		if (lineTriangleIntersect1(x1, x2, triPtr->vertexes[0], triPtr->vertexes[1], triPtr->vertexes[2], alpha)) {
 			if (alpha < bestAlpha) {
 				bestAlpha = alpha;
 				bestTriangle = i->triangle;
