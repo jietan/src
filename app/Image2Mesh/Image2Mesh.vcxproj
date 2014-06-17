@@ -266,6 +266,8 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshIO.cpp" />
     <ClCompile Include="MultilayerDepthImage.cpp" />
+    <ClCompile Include="MultilayerImage.cpp" />
+    <ClCompile Include="MultilayerMaskImage.cpp" />
     <ClCompile Include="Segment.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -294,6 +296,8 @@
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="MeshIO.h" />
     <ClInclude Include="MultilayerDepthImage.h" />
+    <ClInclude Include="MultilayerImage.h" />
+    <ClInclude Include="MultilayerMaskImage.h" />
     <ClInclude Include="Segment.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

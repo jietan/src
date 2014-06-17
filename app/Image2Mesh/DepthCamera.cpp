@@ -9,18 +9,74 @@ using namespace google;
 #include "KDTree.h"
 #include <intrin.h>
 
+
 float dist(const ExtendedDepthPixel& lhs, const ExtendedDepthPixel& rhs)
 {
 	return (abs(lhs.d - rhs.d));
 }
 
-DepthCamera::DepthCamera()
+DepthCamera::DepthCamera() : mOrthoReference(NULL), mProjType(PERSP_PROJ)
 {
 
 }
 DepthCamera::~DepthCamera()
 {
 
+}
+
+void DepthCamera::SetOrthoReference(MultilayerDepthImage* fromPerspectiveProj)
+{
+	mOrthoReference = fromPerspectiveProj;
+}
+
+void DepthCamera::GetOrthoProjBoundingBox()
+{
+	CHECK(mOrthoReference) << "Reference multilayer depth image is needed for orthographic projection.";
+	vector<Eigen::Vector3f> points;
+	vector<Eigen::Vector3f> normals;
+	getPointCloud(*mOrthoReference, points, normals);
+	int numPoints = static_cast<int>(points.size());
+	Eigen::Matrix4f poseInv = mPose.inverse();
+	mOrthoWidth = 0;
+	mOrthoHeight = 0;
+
+	for (int i = 0; i < numPoints; ++i)
+	{
+		Eigen::Vector4f pointsInCameraSpace = poseInv * Eigen::Vector4f(points[i][0], points[i][1], points[i][2], 1);
+		if (abs(pointsInCameraSpace[0]) > mOrthoWidth)
+			mOrthoWidth = abs(pointsInCameraSpace[0]);
+		if (abs(pointsInCameraSpace[1]) > mOrthoHeight)
+			mOrthoHeight = abs(pointsInCameraSpace[1]);
+	}
+	if (static_cast<float>(mOrthoWidth) / mWidth > static_cast<float>(mOrthoHeight) / mHeight)
+	{
+		mOrthoHeight = static_cast<float>(mOrthoWidth) / mWidth * mHeight;
+	}
+	else
+	{
+		mOrthoWidth = static_cast<float>(mOrthoHeight) / mHeight * mWidth;
+	}
+	//mOrthoWidth *= 2;
+	//mOrthoHeight *= 2;
+}
+
+void DepthCamera::SetOrthoWidth(float width)
+{
+	mOrthoWidth = width;
+	mOrthoHeight = mHeight * mOrthoWidth / mWidth;
+}
+void DepthCamera::SetProjectionType(int projectionType)
+{
+	mProjType = projectionType;
+}
+float DepthCamera::GetFocalLength() const
+{
+	return mFocalLength;
+}
+
+const Eigen::Matrix4f& DepthCamera::GetCameraPose() const
+{
+	return mPose;
 }
 void DepthCamera::SetIntrinsicParameters(int numPxWidth, int numPxHeight, float focalLenth)
 {
@@ -57,7 +113,7 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<
 	const int maxNumDepthLayers = 20;
 	const float maxDepth = 50;
 	//Vector3f rayOrigin = mPose.col(3).head(3);
-	Eigen::Vector3f rayOrigin = Eigen::Vector3f::Zero();
+	//Eigen::Vector3f rayOrigin = Eigen::Vector3f::Zero();
 
 	int numVertices = static_cast<int>(vertices.size());
 	int numFaces = static_cast<int>(indices.size());
@@ -82,7 +138,7 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<
 	mesh.mVertices = new aiVector3D[mesh.mNumVertices];
 	for (int i = 0; i < numVertices; ++i)
 	{
-		Eigen::Vector4f verticesInCameraSpace = poseInv * Eigen::Vector4f(vertices[i][0], vertices[i][1], vertices[i][2], 1);
+		Eigen::Vector4f verticesInCameraSpace = /*poseInv * */Eigen::Vector4f(vertices[i][0], vertices[i][1], vertices[i][2], 1);
 		mesh.mVertices[i] = aiVector3D(verticesInCameraSpace[0], verticesInCameraSpace[1], verticesInCameraSpace[2]);
 	}
 	mesh.mFaces = new aiFace[mesh.mNumFaces];
@@ -97,16 +153,17 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<
 
 	mKDTree.addMesh(&mesh, identity, NULL, 1);
 	mKDTree.process();
-
+	Eigen::Vector3f lookAtDir = mPose.block(0, 0, 3, 3) * Eigen::Vector3f(0, 0, 1);
 	mDepthMap.Create(mHeight, mWidth);
-	for (int i = 0; i < mHeight; ++i)
+	for (int i = 0; i < mHeight; i += 1)
 	{	
-		//if (i > 250) continue;
 		LOG(INFO) << "DepthCamera::Capture() is processing " << i << "th row.";
 
 		for (int j = 0; j < mWidth; ++j)
 		{
-			
+			//if (i != 150 || j != 300) continue;
+			//__debugbreak();
+			Eigen::Vector3f rayOrigin = constructRayOrigin(i, j);
 			Eigen::Vector3f rayDir = constructRayDirection(i, j);
 
 			aiVector3D rayDirection(rayDir[0], rayDir[1], rayDir[2]);
@@ -120,19 +177,30 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<
 				if (!bHit) break;
 				Eigen::Vector3f intersection(intersectionPt[0], intersectionPt[1], intersectionPt[2]);
 				float distance = (intersection - rayOrigin).norm();
-				float depth = intersectionPt[2];
-				mDepthMap[i][j].push_back(ExtendedDepthPixel(depth * 1000, faceNormals[triangleId]));
-				rayStart = rayEnd - (maxDepth - distance - 0.005) * rayDirection;
+				float depth = (intersection - rayOrigin).dot(lookAtDir); //intersectionPt[2];
+				if (depth > 0)
+					mDepthMap[i][j].push_back(ExtendedDepthPixel(depth * 1000, faceNormals[triangleId]));
+				rayStart = rayEnd - (maxDepth - distance - 0.005f) * rayDirection;
 			}
 		}
 	}
 	ProcessMultiLayerDepthImage();
 	
+	char depthImageFileName[512];
+	char* projType;
+	if (mProjType == ORTHO_PROJ)
+	{
+		projType = "Ortho";
+	}
+	else
+	{
+		projType = "Persp";
+	}
+	sprintf(depthImageFileName, "results/depthFromMultiviewMesh_%s.png", projType);
 
-	string depthImageFileName = "results/depthFromMultiviewFromMesh.png";
 	mDepthMap.SaveDepthImage(depthImageFileName);
-	string mutlilayerDepthImageFilename = "results/depthFromMultiviewFromMesh.data";
-	SaveMultilayerDepthImage(mutlilayerDepthImageFilename);
+	sprintf(depthImageFileName, "results/depthFromMultiviewMesh_%s.data", projType);
+	SaveMultilayerDepthImage(depthImageFileName);
 	
 }
 
@@ -173,22 +241,56 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& points, const vector<Ei
 	float fy = mFocalLength;
 	float cx = (mWidth - 1) / 2.f;
 	float cy = (mHeight - 1) / 2.f;
-	for (int i = 0; i < numPoints; ++i)
+	if (mProjType == PERSP_PROJ)
 	{
-		if (i % numPointsOnePercent == 0)
-			LOG(INFO) << "DepthCamera::Capture() finished " << i / numPointsOnePercent << " percent.";
-		pointsInCameraSpace[i] = (poseInv * Eigen::Vector4f(points[i][0], points[i][1], points[i][2], 1)).head(3);
-		double x = pointsInCameraSpace[i][0];
-		double y = pointsInCameraSpace[i][1];
-		double z = pointsInCameraSpace[i][2];
-		double u = x * fx / z + cx;
-		double v = y * fy / z + cy;
-		int uIdx = static_cast<int>(u + 0.5);
-		int vIdx = static_cast<int>(v + 0.5);
-		if (uIdx < 0 || uIdx >= mWidth - 1 || vIdx < 0 || vIdx >= mHeight - 1)
-			continue;
-		mDepthMap[vIdx][uIdx].push_back(ExtendedDepthPixel(static_cast<float>(1000 * z), normals[i]));
+		for (int i = 0; i < numPoints; ++i)
+		{
+			if (i % numPointsOnePercent == 0)
+				LOG(INFO) << "DepthCamera::Capture() finished " << i / numPointsOnePercent << " percent.";
+			pointsInCameraSpace[i] = (poseInv * Eigen::Vector4f(points[i][0], points[i][1], points[i][2], 1)).head(3);
+			double x = pointsInCameraSpace[i][0];
+			double y = pointsInCameraSpace[i][1];
+			double z = pointsInCameraSpace[i][2];
+			double u = x * fx / z + cx;
+			double v = y * fy / z + cy;
+			int uIdx = static_cast<int>(u + 0.5);
+			int vIdx = static_cast<int>(v + 0.5);
+			//if (abs(uIdx - static_cast<int>(cx)) < 5 && abs(vIdx - static_cast<int>(cy)) < 5)
+			//{
+			//	LOG(INFO) << x << "," << y << ": " << i << ": " << uIdx << "," << vIdx;
+			//}
+			if (uIdx < 0 || uIdx >= mWidth - 1 || vIdx < 0 || vIdx >= mHeight - 1)
+				continue;
+			mDepthMap[vIdx][uIdx].push_back(ExtendedDepthPixel(static_cast<float>(1000 * z), normals[i]));
+		}
 	}
+	else
+	{
+		//GetOrthoProjBoundingBox();
+
+		for (int i = 0; i < numPoints; ++i)
+		{
+			if (i % numPointsOnePercent == 0)
+				LOG(INFO) << "DepthCamera::Capture() finished " << i / numPointsOnePercent << " percent.";
+			pointsInCameraSpace[i] = (poseInv * Eigen::Vector4f(points[i][0], points[i][1], points[i][2], 1)).head(3);
+			double x = pointsInCameraSpace[i][0];
+			double y = pointsInCameraSpace[i][1];
+			double z = pointsInCameraSpace[i][2];
+			double stepSize = mWidth / mOrthoWidth;
+			double u = x * stepSize + cx;
+			double v = y * stepSize + cy;
+			int uIdx = static_cast<int>(u + 0.5);
+			int vIdx = static_cast<int>(v + 0.5);
+			//if (abs(uIdx - static_cast<int>(cx)) < 5 && abs(vIdx - static_cast<int>(cy)) < 5)
+			//{
+			//	LOG(INFO) << x << "," << y << ": " << i << ": " << uIdx << "," << vIdx;
+			//}
+			if (uIdx < 0 || uIdx >= mWidth - 1 || vIdx < 0 || vIdx >= mHeight - 1)
+				continue;
+			mDepthMap[vIdx][uIdx].push_back(ExtendedDepthPixel(static_cast<float>(1000 * z), normals[i]));
+		}
+	}
+
 	for (int i = 0; i < mHeight; ++i)
 	{
 		for (int j = 0; j < mWidth; ++j)
@@ -201,16 +303,26 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& points, const vector<Ei
 	}
 	ProcessMultiLayerDepthImage();
 	//fromMultiLayerToSinglelLayerDepthImage();
-	
-	string depthImageFileName = "results/depthFromMultiview.png";
-	string mutlilayerDepthImageFilename = "results/depthFromMultiview.data";
-	
-	mDepthMap.Save(mutlilayerDepthImageFilename);
+	char depthImageFileName[512];
+	char* projType;
+	if (mProjType == ORTHO_PROJ)
+	{
+		projType = "Ortho";
+	}
+	else
+	{
+		projType = "Persp";
+	}
+	sprintf(depthImageFileName, "results/depthFromMultiview_%s.png", projType);
 	mDepthMap.SaveDepthImage(depthImageFileName);
+
+
+	sprintf(depthImageFileName, "results/depthFromMultiview_%s.data", projType);
+	mDepthMap.Save(depthImageFileName);
+
 }
 
-
-void DepthCamera::GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
+void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
 {
 	points.clear();
 	normals.clear();
@@ -220,28 +332,62 @@ void DepthCamera::GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::V
 	float cx = (mWidth - 1) / 2.f;
 	float cy = (mHeight - 1) / 2.f;
 
-	for (int v = 0; v < mHeight; ++v)
+	if (mProjType == ORTHO_PROJ)
 	{
-		for (int u = 0; u < mWidth; ++u)
+		for (int v = 0; v < mHeight; ++v)
 		{
-			int len = static_cast<int>(mDepthMap[v][u].size());
-
-			for (int k = 0; k < len; ++k)
+			for (int u = 0; u < mWidth; ++u)
 			{
-				float d = mDepthMap[v][u][k].d;
-				float z = d / 1000.f;
+				int len = static_cast<int>(image[v][u].size());
 
-				float x = (u - cx) * z / fx;
-				float y = (v - cy) * z / fy;
+				for (int k = 0; k < len; ++k)
+				{
+					float d = image[v][u][k].d;
+					float z = d / 1000.f;
 
-				Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
+					float stepSize = mWidth / mOrthoWidth;
+					float x = (u - cx) / stepSize;
+					float y = (v - cy) / stepSize;
 
-				points.push_back(w.head(3));
-				normals.push_back(mDepthMap[v][u][k].n);
+					Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
+
+					points.push_back(w.head(3));
+					normals.push_back(image[v][u][k].n);
+				}
+
 			}
-			
 		}
 	}
+	else
+	{
+		for (int v = 0; v < mHeight; ++v)
+		{
+			for (int u = 0; u < mWidth; ++u)
+			{
+				int len = static_cast<int>(image[v][u].size());
+
+				for (int k = 0; k < len; ++k)
+				{
+					float d = image[v][u][k].d;
+					float z = d / 1000.f;
+
+					float x = (u - cx) * z / fx;
+					float y = (v - cy) * z / fy;
+
+					Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
+
+					points.push_back(w.head(3));
+					normals.push_back(image[v][u][k].n);
+				}
+
+			}
+		}
+	}
+
+}
+void DepthCamera::GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
+{
+	getPointCloud(mDepthMap, points, normals);
 }
 
 void DepthCamera::SetData(const MultilayerDepthImage& depthMap)
@@ -249,12 +395,31 @@ void DepthCamera::SetData(const MultilayerDepthImage& depthMap)
 	mDepthMap = depthMap;
 }
 
-void DepthCamera::SetMask(const vector<vector<vector<int> > >& mask)
+void DepthCamera::SetMask(const MultilayerMaskImage& mask)
 {
 	mMask = mask;
 }
 
-
+Eigen::Vector3f DepthCamera::constructRayOrigin(int i, int j)
+{
+	Eigen::Vector4f ret;
+	if (mProjType == ORTHO_PROJ)
+	{
+		float cx = (mWidth - 1) / 2.f;
+		float cy = (mHeight - 1) / 2.f;
+		float stepSize = mWidth / mOrthoWidth;
+		float x = (j - cx) / stepSize;
+		float y = (i - cy) / stepSize;
+		//LOG(INFO) << "Ray origin : (" << x << ", " << y << ").";
+		ret = Eigen::Vector4f(x, y, 0, 1);
+	}
+	else
+	{
+		ret = Eigen::Vector4f(0, 0, 0, 1);
+	}
+	return (mPose * ret).head(3);
+	//return ret.head(3);
+}
 
 Eigen::Vector3f DepthCamera::constructRayDirection(int i, int j)
 {
@@ -265,12 +430,19 @@ Eigen::Vector3f DepthCamera::constructRayDirection(int i, int j)
 	float cx = (mWidth - 1) / 2.f;
 	float cy = (mHeight - 1) / 2.f;
 
-	ret[0] = (j - cx) / fx;
-	ret[1] = (i - cy) / fy;
-	ret[2] = 1;
+	if (mProjType == PERSP_PROJ)
+	{
+		ret[0] = (j - cx) / fx;
+		ret[1] = (i - cy) / fy;
+		ret[2] = 1;
+	}
+	else
+	{
+		ret = Eigen::Vector3f(0, 0, 1);
+	}
 	ret.normalize();
 
-	//ret = mPose.block(0, 0, 3, 3) * ret;
+	ret = mPose.block(0, 0, 3, 3) * ret;
 	return ret;
 }
 
@@ -291,27 +463,19 @@ void DepthCamera::constructDepthMap(const Eigen::Vector3f& rayOrigin, const Eige
 
 
 // assuming self is a noisy depth camera view but represent the truth, rhs is from the view of Poisson constructed mesh.
-void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDepthMap, vector<vector<vector<int> > >& mask)
+void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask)
 {
 	const int MASK_UNKNOWN = 1;
 	const int MASK_KNOWN = 0;
 	const float pointMeshMergingThreshold = 50;
 
 	mergedDepthMap.Create(mHeight, mWidth);
-
-	mask.clear();
-	mask.resize(mHeight);
+	mask.Create(mHeight, mWidth);
 	for (int i = 0; i < mHeight; ++i)
 	{
-		
-		mask[i].resize(mWidth);
-		
-
 		for (int j = 0; j < mWidth; ++j)
 		{
 			//check whether the depth samples from mesh are presented as points
-			if (i == 225 && j == 480)
-				printf("hello");
 			if (mDepthMap[i][j].empty()) continue;
 
 			int selfSize = static_cast<int>(mDepthMap[i][j].size());

@@ -59,6 +59,8 @@ double gDepthThreshold = 2.5;
 const int gDepthImageWidth = 640;
 const int gDepthImageHeight = 480;
 const float gFocalLenth = 525.0f;
+int gCameraProjectionType = 0;
+float gCameraWidth = 2.0;
 
 int echoStdout=0;
 typedef float Real;
@@ -135,7 +137,7 @@ Density( "density" ) ,
 Verbose( "verbose" );
 
 cmdLineInt
-Depth( "depth" , 7 ) ,
+Depth( "depth" , 8 ) ,
 SolverDivide( "solverDivide" , 8 ) ,
 IsoDivide( "isoDivide" , 8 ) ,
 KernelDepth( "kernelDepth" ) ,
@@ -524,8 +526,12 @@ void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string,
 void BuildMultiLayerDepthImage(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, const Eigen::Matrix4f& cameraPose)
 {
 	DepthCamera dCamera;
+
 	dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 	dCamera.SetExtrinsicParameters(cameraPose);
+	
+	dCamera.SetProjectionType(gCameraProjectionType);
+	dCamera.SetOrthoWidth(gCameraWidth);
 	dCamera.Capture(points, normals);
 }
 
@@ -595,7 +601,8 @@ int main(int argc, char** argv)
 	//ImageSegmentation segmenter;
 	//segmenter.Segment(depthImgAfterPreprocessing, 30, 85);
 	//segmenter.SaveSegmentedImage("TestSegmentation.png");
-
+	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "CameraProjection", gCameraProjectionType);
+	DecoConfig::GetSingleton()->GetFloat("Image2Mesh", "CameraWidth", gCameraWidth);
 	vector<Eigen::Vector3f> points;
 	vector<Eigen::Vector3f> normals;
 	vector<Eigen::Vector3i> colors;
@@ -636,20 +643,22 @@ int main(int argc, char** argv)
 		DepthCamera dCamera;
 		dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 		dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
-		string filename = "results/DepthFromMultiview.data";
+		dCamera.SetProjectionType(gCameraProjectionType);
+		dCamera.SetOrthoWidth(gCameraWidth);
+		string filename = "results/DepthFromMultiview_Ortho.data";
 		dCamera.ReadMultilayerDepthImage(filename);
 		dCamera.ProcessMultiLayerDepthImage();
 		dCamera.SimplifyMultiLayerDepthImage();
-		dCamera.SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview.data");
+		dCamera.SaveMultilayerDepthImage("results/simplifiedDepthFromMultiview_Ortho.data");
 		dCamera.GetPointCloud(points, normals);
-		SavePointCloud("results/simplifiedDepthFromMultiview.ply", points, colors, normals);
+		SavePointCloud("results/simplifiedDepthFromMultiview_Ortho.ply", points, colors, normals);
 	}
 	else if (task == 3)
 	{
 		/* read the point cloud and perform Poisson surface reconstruction */
 		char filenamePrefix[MAX_FILENAME_LEN];
 		memset(filenamePrefix, 0, MAX_FILENAME_LEN * sizeof(char));
-		sprintf(filenamePrefix, "%s%s/points.plysimplified.clean", gDataFolder.c_str(), gDataName.c_str());
+		sprintf(filenamePrefix, "%s%s/points.plysimplified", gDataFolder.c_str(), gDataName.c_str());
 		string fileToRead = filenamePrefix;
 		fileToRead += ".ply";
 		ReadPointCloud(fileToRead, points, normals);
@@ -665,7 +674,8 @@ int main(int argc, char** argv)
 		DepthCamera dCamera;
 		dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 		dCamera.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
-
+		dCamera.SetProjectionType(gCameraProjectionType);
+		dCamera.SetOrthoWidth(gCameraWidth);
 		string filename = "results/originalDataMesh.ply";
 		vector< PlyVertex< float > > vertices;
 		vector< std::vector< int > > polygons;
@@ -694,35 +704,40 @@ int main(int argc, char** argv)
 		DepthCamera dCameraPoints;
 		dCameraPoints.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 		dCameraPoints.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
-
-		string filename = "results/simplifiedDepthFromMultiview.data";
+		dCameraPoints.SetProjectionType(gCameraProjectionType);
+		dCameraPoints.SetOrthoWidth(gCameraWidth);
+		string filename = "results/simplifiedDepthFromMultiview_Ortho.data";
 		dCameraPoints.ReadMultilayerDepthImage(filename);
 		dCameraPoints.ProcessMultiLayerDepthImage();
 
 		DepthCamera dCameraMesh;
 		dCameraMesh.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 		dCameraMesh.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+		dCameraMesh.SetProjectionType(gCameraProjectionType);
+		dCameraMesh.SetOrthoWidth(gCameraWidth);
 		//filename = "results/depthFromMultiviewFromMesh.data";
-		filename = "results/depthFromMultiviewFromMesh.data";
+		filename = "results/depthFromMultiviewMesh_Ortho.data";
 		dCameraMesh.ReadMultilayerDepthImage(filename);
 		dCameraMesh.ProcessMultiLayerDepthImage();
 
 		MultilayerDepthImage mergedDepthMap;
-		vector<vector<vector<int> > > depthMask;
+		MultilayerMaskImage depthMask;
 		dCameraPoints.Compare(dCameraMesh, mergedDepthMap, depthMask);
 		DepthCamera dCameraCombined;
 		dCameraCombined.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 		dCameraCombined.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
+		dCameraCombined.SetProjectionType(gCameraProjectionType);
+		dCameraCombined.SetOrthoWidth(gCameraWidth);
 		dCameraCombined.SetData(mergedDepthMap);
 		dCameraCombined.SetMask(depthMask);
 		dCameraCombined.ProcessMultiLayerDepthImage();
 		dCameraCombined.GetPointCloud(points, normals);
-		SavePointCloud("results/combinedPointMeshDepthImage.ply", points, colors, normals);
+		SavePointCloud("results/combinedPointMeshDepthImage_Ortho.ply", points, colors, normals);
 
-		mergedDepthMap.Save("results/combinedPointMeshDepthImage.data");
-		SaveMask("results/combinedPointMeshDepthImageMask.mask", depthMask);
-		mergedDepthMap.SaveDepthThresholdingImage("results/combinedPointMeshDepthImage.png", 20, &depthMask);
-		mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png", &depthMask);
+		mergedDepthMap.Save("results/combinedPointMeshDepthImage_Ortho.data");
+		depthMask.Save("results/combinedPointMeshDepthImageMask_Ortho.mask");
+		mergedDepthMap.SaveDepthThresholdingImage("results/combinedPointMeshDepthImage_Ortho.png", 20, &depthMask);
+		mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage_Ortho.png", &depthMask);
 	}
 	else if (task == 6)
 	{
@@ -744,21 +759,22 @@ int main(int argc, char** argv)
 	else if (task == 7)
 	{
 		MultilayerDepthImage mergedDepthMap;
-		mergedDepthMap.Read("results/combinedPointMeshDepthImage.data");
+		mergedDepthMap.Read("results/combinedPointMeshDepthImage_Ortho.data");
 		mergedDepthMap.Process();
 
-		vector<vector<vector<int> > > depthMask;
-		ReadMask("results/combinedPointMeshDepthImageMask.mask", depthMask);
+		MultilayerMaskImage depthMask;
+		depthMask.Read("results/combinedPointMeshDepthImageMask_Ortho.mask");
 
 		//mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png", &depthMask);
 		DepthCamera dCameraInpainted;
 		dCameraInpainted.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
 		dCameraInpainted.SetExtrinsicParameters(cameraPoses[ithDepthToProcess]);
-
+		dCameraInpainted.SetProjectionType(gCameraProjectionType);
+		dCameraInpainted.SetOrthoWidth(gCameraWidth);
 		DepthImageInpainting inpainter;
 		inpainter.SetDepthImage(&mergedDepthMap);
 		inpainter.SetMaskImage(&depthMask);
-		inpainter.SetVisualizationCamera(&dCameraInpainted);
+		inpainter.SetCamera(&dCameraInpainted);
 		inpainter.Inpaint(5);
 		//const MultilayerDepthImage& inpaintResult = inpainter.GetResultImage();
 		//dCameraInpainted.SetData(inpaintResult);

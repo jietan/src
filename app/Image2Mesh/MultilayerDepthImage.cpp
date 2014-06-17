@@ -5,10 +5,7 @@
 #include "utility/mathlib.h"
 
 
-MultilayerDepthImage::MultilayerDepthImage() : mWidth(0),
-mHeight(0),
-mLayers(0),
-mMinDepth(0),
+MultilayerDepthImage::MultilayerDepthImage() : mMinDepth(0),
 mMaxDepth(0)
 {
 
@@ -18,15 +15,6 @@ MultilayerDepthImage::~MultilayerDepthImage()
 
 }
 
-vector<vector<ExtendedDepthPixel> >& MultilayerDepthImage::operator[] (int i)
-{
-	return mData[i];
-}
-
-const vector<vector<ExtendedDepthPixel> >& MultilayerDepthImage::operator[] (int i) const
-{
-	return mData[i];
-}
 
 void MultilayerDepthImage::Process()
 {
@@ -34,16 +22,7 @@ void MultilayerDepthImage::Process()
 	findNumLayers();
 }
 
-void MultilayerDepthImage::Create(int nRows, int nCol)
-{
-	mHeight = nRows;
-	mWidth = nCol;
-	mData.resize(mHeight);
-	for (int i = 0; i < mHeight; ++i)
-	{
-		mData[i].resize(mWidth);
-	}
-}
+
 void MultilayerDepthImage::Read(const string& filename)
 {
 	LOG(INFO) << "Start DepthCamera::ReadMultilayerDepthImage()";
@@ -103,6 +82,7 @@ void MultilayerDepthImage::Save(const string& filename)
 	LOG(INFO) << "End DepthCamera::SaveMultilayerDepthImage()";
 }
 
+
 void MultilayerDepthImage::SaveDepthImage(const string& filename)
 {
 	int numRows = mHeight;
@@ -122,7 +102,7 @@ void MultilayerDepthImage::SaveDepthImage(const string& filename)
 	cv::imwrite(filename, imageToWrite);
 }
 
-void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, int numThresholds, const vector<vector<vector<int> > >* mask, float* min, float* max)
+void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, int numThresholds, const MultilayerMaskImage* mask, float* min, float* max)
 {
 	float stepSize = (mMaxDepth - mMinDepth) / numThresholds;
 	cv::Mat1f thresholdImage;
@@ -163,7 +143,7 @@ void MultilayerDepthImage::SaveDepthThresholdingImage(const string& filename, in
 	}
 }
 
-void MultilayerDepthImage::SaveDepthOnionImage(const string& filename, const vector<vector<vector<int> > >* mask, float* min, float* max)
+void MultilayerDepthImage::SaveDepthOnionImage(const string& filename, const MultilayerMaskImage* mask, float* min, float* max)
 {
 
 	//int count = 1;
@@ -288,20 +268,7 @@ void MultilayerDepthImage::saveDepthImageVisualization(const string& filename, c
 	}
 	imwrite(filename, visualizationImage);
 }
-void MultilayerDepthImage::findNumLayers()
-{
-	mLayers = 0;
-	if (mData.empty())
-		return;
-	for (int i = 0; i < mHeight; ++i)
-	{
-		for (int j = 0; j < mWidth; ++j)
-		{
-			if (mLayers < mData[i][j].size())
-				mLayers = static_cast<int>(mData[i][j].size());
-		}
-	}
-}
+
 void MultilayerDepthImage::findMinMaxDepth()
 {
 	mMinDepth = FLT_MAX;
@@ -319,17 +286,4 @@ void MultilayerDepthImage::findMinMaxDepth()
 			}
 		}
 	}
-}
-
-int MultilayerDepthImage::Width() const
-{
-	return mWidth;
-}
-int MultilayerDepthImage::Height() const
-{
-	return mHeight;
-}
-int MultilayerDepthImage::NumLayers() const
-{
-	return mLayers;
 }

@@ -25,6 +25,12 @@ namespace sehoon {
             virtual ~KDTree() {
                 delete kdTree;
             }
+			void clean()
+			{
+				if (kdTree) delete kdTree;
+				kdTree = NULL;
+				prePts.clear();
+			}
 			void setDim(int _dim) { dim = _dim; }
             int getDIM() const { return dim; }
     
