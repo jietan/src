@@ -1,4 +1,6 @@
 #include "MultilayerMaskImage.h"
+#include <glog/logging.h>
+using namespace google;
 #include <fstream>
 using namespace std;
 
@@ -51,4 +53,54 @@ void MultilayerMaskImage::Read(const string& filename)
 			}
 		}
 	}
+}
+
+void MultilayerMaskImage::Filter()
+{
+	Process();
+	vector<vector<int> > filteredResult;
+	filteredResult.resize(mHeight);
+	for (int i = 0; i < mHeight; ++i)
+	{
+		filteredResult[i].resize(mWidth);
+	}
+	for (int ithLayer = 0; ithLayer < mLayers; ++ithLayer)
+	{
+		for (int i = 0; i < mHeight; ++i)
+		{
+			for (int j = 0; j < mWidth; ++j)
+			{
+				if (mData[i][j].size() <= ithLayer)
+					continue;
+				int count = 0;
+				int vote = 0;
+				for (int offsetI = -1; offsetI <= 1; ++offsetI)
+				{
+					for (int offsetJ = -1; offsetJ <= 1; ++offsetJ)
+					{
+						if (i + offsetI < 0 || i + offsetI >= mHeight || j + offsetJ < 0 || j + offsetJ >= mWidth)
+							continue;
+						if (mData[i + offsetI][j + offsetJ].size() > ithLayer)
+						{
+							vote += mData[i + offsetI][j + offsetJ][ithLayer];
+							count++;
+						}
+					}
+				}
+				CHECK(count > 0) << "Count should always > 0.";
+				filteredResult[i][j] = static_cast<int>(static_cast<float>(vote) / count + 0.5);
+			}
+		}
+
+		for (int i = 0; i < mHeight; ++i)
+		{
+			for (int j = 0; j < mWidth; ++j)
+			{
+				if (mData[i][j].size() > ithLayer)
+					mData[i][j][ithLayer] = filteredResult[i][j];
+			}
+		}
+
+	}
+
 }

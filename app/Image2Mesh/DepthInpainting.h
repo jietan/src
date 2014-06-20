@@ -26,6 +26,7 @@ public:
 	int GetPixelFeatureDim() const;
 	int GetPatchFeatureDim() const;
 	void SetCamera(DepthCamera* cam);
+	void SetMesh(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& indices);
 	const MultilayerDepthImage& GetResultImage() const;
 	
 private:
@@ -51,6 +52,8 @@ private:
 	void expand(int ithRow, int jthCol, int type, Eigen::MatrixXi& holeType);
 	void saveInpaintFeatures();
 	void readInpaintedFeatures();
+	void dumpInpaintedPoints();
+	void deformMesh();
 	MultilayerDepthImage* mDepthImage;
 	MultilayerMaskImage * mMaskImage;
 
@@ -62,6 +65,7 @@ private:
 
 	int mLayers;
 	int mPatchWidth;
+	int mMaxNumPyramids;
 	vector<Eigen::VectorXf> mFeatures;
 	vector<Eigen::Vector3i> mFeatureCoordinates;
 	vector<Eigen::Vector3i> mHolePixelCoordinates;
@@ -73,8 +77,10 @@ private:
 	DepthCamera* mCamera;
 	vector<MultilayerDepthImage> mDepthPyramid;
 	vector<MultilayerMaskImage> mMaskPyramid;
+	vector<vector<int> > mBoundaryType;
 
-
+	vector<Eigen::Vector3f> mMeshVertices;
+	vector<Eigen::Vector3i> mMeshIndices;
 };
 
 #endif

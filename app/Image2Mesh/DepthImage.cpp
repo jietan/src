@@ -3,9 +3,9 @@
 
 float DepthImage::msDepthFarThreshold = 2.5f;
 float DepthImage::msDepthNearThreshold = 0.2f;
-float DepthImage::msAngleThreshold = 0.15;
+float DepthImage::msAngleThreshold = 0.15f;
 
-DepthImage::DepthImage()
+DepthImage::DepthImage() : mIsCameraSet(false), mHeight(0), mWidth(0)
 {
 
 }
@@ -33,6 +33,8 @@ void DepthImage::ReadFromFile(const string& filename)
 
 	int numRows = mOriginalData.rows;
 	int numCols = mOriginalData.cols;
+	mHeight = numRows;
+	mWidth = numCols;
 	mData.create(numRows, numCols);
 	for (int i = 0; i < numRows; ++i)
 	{
@@ -63,6 +65,25 @@ float DepthImage::MaxDepth() const
 float DepthImage::MinDepth() const
 {
 	return mMinDepth;
+}
+
+bool DepthImage::IsPointBehind(const Eigen::Vector3f& point, float& depthDelta) const
+{
+	int ithRow, jthCol;
+	float depth = pointToDepth(point, ithRow, jthCol);
+	if (ithRow < 0 || ithRow >= mHeight || jthCol < 0 || jthCol >= mWidth)
+		return false;
+	float cameraDepth = mData.at<float>(ithRow, jthCol);
+	depthDelta = depth - cameraDepth;
+	return depth > cameraDepth;
+	
+}
+
+void DepthImage::SetCameraPose(const Eigen::MatrixXf& pose)
+{
+	mIsCameraSet = true;
+	mCameraPose = pose;
+	mInvCameraPose = mCameraPose.inverse();
 }
 
 void DepthImage::SaveToFile(const string& filename) const
@@ -151,10 +172,9 @@ void DepthImage::SetData(const cv::Mat1f& depthData)
 	mData = depthData;
 }
 
-void DepthImage::Process(const Eigen::Matrix4f& cameraPose)
+void DepthImage::Process()
 {
-	mCameraPose = cameraPose;
-
+	CHECK(mIsCameraSet) << "Camera pose should be set before calling DepthImage::Process().";
 	depthToPoints();
 	depthToNormals();
 	selectAndCopy();
@@ -183,6 +203,24 @@ void DepthImage::selectAndCopy()
 			mNormals.push_back(gn);
 		}
 	}
+}
+
+float DepthImage::pointToDepth(const Eigen::Vector3f& pt, int& ithRow, int& jthCol) const
+{
+	const float fx = 525.f; const float fy = 525.f; // default focal length
+	const float cx = 319.5f; const float cy = 239.5f; // default optical center
+
+	CHECK(mIsCameraSet) << "Camera pose should be set before calling DepthImage::pointToDepth().";
+	Eigen::Vector3f pointsInCameraSpace = (mInvCameraPose * Eigen::Vector4f(pt[0], pt[1], pt[2], 1)).head(3);
+	double x = pointsInCameraSpace[0];
+	double y = pointsInCameraSpace[1];
+	double z = pointsInCameraSpace[2];
+	double u = x * fx / z + cx;
+	double v = y * fy / z + cy;
+	jthCol = static_cast<int>(u + 0.5);
+	ithRow = static_cast<int>(v + 0.5);
+
+	return static_cast<float>(1000 * z);
 }
 void DepthImage::depthToPoints()
 {
@@ -305,4 +343,10 @@ void DepthImage::copyFrom(const DepthImage& rhs)
 	mPointImage = rhs.mPointImage.clone();
 
 	mCameraPose = rhs.mCameraPose;
+	mInvCameraPose = rhs.mInvCameraPose;
+
+	mIsCameraSet = rhs.mIsCameraSet;
+
+	mHeight = rhs.mHeight;
+	mWidth = rhs.mWidth;
 }

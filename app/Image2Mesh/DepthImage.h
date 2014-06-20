@@ -21,10 +21,10 @@ public:
 
 	void ReadFromFile(const string& filename);
 	void SaveToFile(const string& filename) const;
-
+	void SetCameraPose(const Eigen::MatrixXf& pose);
 	void SetData(const cv::Mat1f& depthData);
-
-	void Process(const Eigen::Matrix4f& cameraPose);
+	bool IsPointBehind(const Eigen::Vector3f& point, float& depthDelta) const;
+	void Process();
 
 	int NumRows() const;
 	int NumCols() const;
@@ -58,6 +58,7 @@ public:
 
 private:
 	void copyFrom(const DepthImage& rhs);
+	float pointToDepth(const Eigen::Vector3f& pt, int& ithRow, int& jthCol) const;
 	void depthToPoints();
 	void depthToNormals();
 	void selectAndCopy();
@@ -76,6 +77,12 @@ private:
 	float mMaxDepth;
 
 	Eigen::Matrix4f mCameraPose;
+	Eigen::Matrix4f mInvCameraPose;
+
+	bool mIsCameraSet;
+
+	int mHeight;
+	int mWidth;
 };
 
 #endif

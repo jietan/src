@@ -9,6 +9,7 @@ public:
 	virtual ~MultilayerMaskImage();
 	virtual void Read(const string& filename);
 	virtual void Save(const string& filename);
+	void Filter();
 };
 
 #endif

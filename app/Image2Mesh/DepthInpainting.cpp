@@ -5,13 +5,16 @@
 #include <queue>
 using namespace std;
 
-const int MASK_UNKNOWN = 1;
-const int MASK_KNOWN = 0;
-const int NEUMANN_HOLE = 0;
-const int DIRICHELT_HOLE = 1;
+
+const int NEUMANN_HOLE = 0; // a hole with all neumann boundaries
+const int DIRICHELT_HOLE = 1; // a hole with at least dirichelt boundary
 const int NOT_HOLE = 2;
 
-DepthImageInpainting::DepthImageInpainting()
+const int NEUMANN_BOUNDARY = 0;
+const int DIRICHELT_BOUNDARY = 1;
+const int NOT_BOUNDARY = 2;
+
+DepthImageInpainting::DepthImageInpainting() : mMaxNumPyramids(0)
 {
 
 }
@@ -82,18 +85,62 @@ void DepthImageInpainting::visualizeInpaintedMLDI(int ithIteration)
 		vector<Eigen::Vector3f> normals;
 		vector<Eigen::Vector3i> colors;
 		mCamera->SetData(mCurrentDepthImage);
-		mCamera->GetPointCloud(points, normals);
+		mCamera->GetPointCloud(points, normals, PORTION_ALL);
 		sprintf(filename, "results/inpaintedMLDI%d.ply", ithIteration);
 		SavePointCloud(filename, points, colors, normals);
 	}
 }
 
+void DepthImageInpainting::dumpInpaintedPoints()
+{
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+
+	vector<Eigen::Vector3f> points;
+	vector<Eigen::Vector3f> normals;
+	vector<Eigen::Vector3i> colors;
+
+	points.resize(numHolePixels);
+	normals.resize(numHolePixels);
+
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		Eigen::Vector3i coord = mHolePixelCoordinates[i];
+		float depth = mCurrentDepthImage[coord[0]][coord[1]][coord[2]].d;
+		Eigen::Vector3f pt = mCamera->GetPoint(coord[0], coord[1], depth);
+		points[i] = pt;
+		normals[i] = mCurrentDepthImage[coord[0]][coord[1]][coord[2]].n;
+	}
+	SavePointCloud("results/inpaintedPoints.ply", points, colors, normals);
+}
+
+void DepthImageInpainting::deformMesh()
+{
+	int numVertices = static_cast<int>(mMeshVertices.size());
+	int ithRow, jthCol;
+	for (int i = 0; i < numVertices; ++i)
+	{
+		float depth = mCamera->GetDepth(mMeshVertices[i], &ithRow, &jthCol);
+		if (ithRow < 0 || ithRow >= mDepthImage->Height() || jthCol < 0 || jthCol >= mDepthImage->Width())
+			continue;
+		int numLayers = static_cast<int>((*mDepthImage)[ithRow][jthCol].size());
+		for (int kthLayer = 0; kthLayer < numLayers; ++kthLayer)
+		{
+			if (abs((*mDepthImage)[ithRow][jthCol][kthLayer].d - depth) < 1)
+			{
+				float newDepth = mCurrentDepthImage[ithRow][jthCol][kthLayer].d;
+				Eigen::Vector3f newVertices = mCamera->GetPoint(ithRow, jthCol, newDepth);
+				mMeshVertices[i] = newVertices;
+			}
+		}
+	}
+	SaveMesh("results/deformedMesh.ply", mMeshVertices, mMeshIndices);
+}
 
 void DepthImageInpainting::Inpaint(int patchWidth)
 {
 	mPatchWidth = patchWidth;
 	int maxNumIterations = 10;
-	const int maxNumPyramids = 4;
+	mMaxNumPyramids = 1;
 	//for (int i = 0; i < mHeight; ++i)
 	//{
 	//	for (int j = 0; j < mWidth; ++j)
@@ -107,36 +154,43 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 	//}
 	//(*mMaskImage)[267][337][1] = MASK_UNKNOWN;
 	//(*mMaskImage)[281][327][1] = MASK_UNKNOWN;
-	//gatherHolesForLayer(1);
 
+	mCurrentDepthImage = *mDepthImage;
+	mCurrentMaskImage = *mMaskImage;
+	computeFeatureImage(0);
+	gatherHolesForLayer(0, 1);
 
-	//int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
-	//mHolePatchCoordinates.resize(numHolePixels);
-	//mHolePatchFeatures.resize(numHolePixels);
-	//for (int i = 0; i < numHolePixels; ++i)
-	//{
-	//	Eigen::Vector3i coord;
-	//	coord[0] = static_cast<int>(RandDouble(160, 240));
-	//	coord[1] = static_cast<int>(RandDouble(160, 360));
-	//	coord[2] = 0;
-	//	mHolePatchCoordinates[i] = coord;
-	//	mHolePatchFeatures[i] = mFeatureImage[coord[0]][coord[1]][coord[2]];
-	//}
-	//for (int ithPx = 0; ithPx < numHolePixels; ++ithPx)
-	//{
-	//	Eigen::Vector3i coord = mHolePixelCoordinates[ithPx];
-	//	mFeatureImage[coord[0]][coord[1]][coord[2]] = mHolePatchFeatures[ithPx];
-	//}
-	//visualizeInpaintedFeatures(1, 0);
-	//reconstructHoleDepth(1);
-	//recomputeHoleFeatureImage(1);
-	//computeFilledPixelNormals(1);
-	//visualizeInpaintedMLDI(0);
-	//
-	//return;
-	generatePyramids(maxNumPyramids);
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	mHolePatchCoordinates.resize(numHolePixels);
+	mHolePatchFeatures.resize(numHolePixels);
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		Eigen::Vector3i coord;
+		coord[0] = static_cast<int>(RandDouble(150, 250));
+		coord[1] = static_cast<int>(RandDouble(200, 450));
+		coord[2] = 0;
+		mHolePatchCoordinates[i] = coord;
+		mHolePatchFeatures[i] =  mFeatureImage[coord[0]][coord[1]][coord[2]];
+	}
+	for (int ithPx = 0; ithPx < numHolePixels; ++ithPx)
+	{
+		Eigen::Vector3i coord = mHolePixelCoordinates[ithPx];
+		mFeatureImage[coord[0]][coord[1]][coord[2]] = mHolePatchFeatures[ithPx];
+		mFeatureImage[coord[0] - 1][coord[1]][coord[2]] = mHolePatchFeatures[ithPx];
+		mFeatureImage[coord[0]][coord[1] - 1][coord[2]] = mHolePatchFeatures[ithPx];
+	}
+	visualizeInpaintedFeatures(0, 1, 0);
+	reconstructHoleDepth(1);
+	recomputeHoleFeatureImage(1);
+	computeFilledPixelNormals(1);
+	visualizeInpaintedMLDI(0);
+	deformMesh();
+	dumpInpaintedPoints();
+	return;
 
-	for (int ithPyramid = 0; ithPyramid < maxNumPyramids; ++ithPyramid)
+	generatePyramids(mMaxNumPyramids);
+
+	for (int ithPyramid = 0; ithPyramid < mMaxNumPyramids; ++ithPyramid)
 	{
 		mCurrentDepthImage = mDepthPyramid[ithPyramid];
 		mCurrentMaskImage = mMaskPyramid[ithPyramid];
@@ -306,16 +360,21 @@ void DepthImageInpainting::gatherHolesForLayer(int ithPyramid, int layer)
 {
 	LOG(INFO) << __FUNCTION__;
 
+	const float diricheletBoundaryDepthDifferenceThreshold = 10;
 	// build vector<Vector3i> mHolePixelCoordinates and MatrixXi mHolePixelIdx.
 	CHECK(mMaskImage) << "No mask specified in DepthImageInpainting::gatherHolesForLayer();";
 	int height = mCurrentDepthImage.Height();
 	int width = mCurrentDepthImage.Width();
 	int testNum = 0;
 	Eigen::MatrixXi holeType = Eigen::MatrixXi::Constant(height, width, NOT_HOLE);
+	mBoundaryType.clear();
 	for (int i = 0; i < height; ++i)
 	{
+		mBoundaryType.resize(height);
 		for (int j = 0; j < width; ++j)
 		{
+			mBoundaryType[i].resize(width, NOT_BOUNDARY);
+
 			if (mCurrentMaskImage[i][j].size() > layer && mCurrentMaskImage[i][j][layer] == MASK_UNKNOWN)
 			{
 				holeType(i, j) = NEUMANN_HOLE;
@@ -329,10 +388,44 @@ void DepthImageInpainting::gatherHolesForLayer(int ithPyramid, int layer)
 		{
 			if (mCurrentMaskImage[i][j].size() > layer && mCurrentMaskImage[i][j][layer] == MASK_UNKNOWN)
 			{
-				if (i > 0 && mCurrentMaskImage[i - 1][j].size() > layer && mCurrentMaskImage[i - 1][j][layer] == MASK_KNOWN
-					|| j > 0 && mCurrentMaskImage[i][j - 1].size() > layer && mCurrentMaskImage[i][j - 1][layer] == MASK_KNOWN
-					|| i < height - 1 && mCurrentMaskImage[i + 1][j].size() > layer && mCurrentMaskImage[i + 1][j][layer] == MASK_KNOWN
-					|| j < width - 1 && mCurrentMaskImage[i][j + 1].size() > layer && mCurrentMaskImage[i][j + 1][layer] == MASK_KNOWN)
+				for (int offsetI = -1; offsetI <= 1; ++offsetI)
+				{
+					for (int offsetJ = -1; offsetJ <= 1; ++offsetJ)
+					{
+						if (abs(offsetI) == abs(offsetJ))
+							continue;
+						if (i + offsetI < 0 || i + offsetI >= height || j + offsetJ < 0 || j + offsetJ >= width)
+							continue;
+						if (mCurrentMaskImage[i + offsetI][j + offsetJ].size() <= layer)
+						{
+							mBoundaryType[i + offsetI][j + offsetJ] = NEUMANN_BOUNDARY;
+						}
+						else if (mCurrentMaskImage[i + offsetI][j + offsetJ][layer] == MASK_KNOWN)
+						{
+							mBoundaryType[i + offsetI][j + offsetJ] = DIRICHELT_BOUNDARY;
+
+							if (i + offsetI > 190 && i + offsetI < 225 && j + offsetJ > 300 && j + offsetJ < 330 || j + offsetJ > 480)
+								mBoundaryType[i + offsetI][j + offsetJ] = NEUMANN_BOUNDARY;
+							
+							//if (ithPyramid == mMaxNumPyramids - 1 && abs(mCurrentDepthImage[i][j][layer].d - mCurrentDepthImage[i + offsetI][j + offsetJ][layer].d) >= diricheletBoundaryDepthDifferenceThreshold)
+							//{
+							//	mBoundaryType[i + offsetI][j + offsetJ] = NEUMANN_BOUNDARY;
+							//} 
+
+						}
+						else
+							mBoundaryType[i + offsetI][j + offsetJ] = NOT_BOUNDARY;
+					}
+				}
+
+				//if (i > 0 && mCurrentMaskImage[i - 1][j].size() > layer && mCurrentMaskImage[i - 1][j][layer] == MASK_KNOWN
+				//	|| j > 0 && mCurrentMaskImage[i][j - 1].size() > layer && mCurrentMaskImage[i][j - 1][layer] == MASK_KNOWN
+				//	|| i < height - 1 && mCurrentMaskImage[i + 1][j].size() > layer && mCurrentMaskImage[i + 1][j][layer] == MASK_KNOWN
+				//	|| j < width - 1 && mCurrentMaskImage[i][j + 1].size() > layer && mCurrentMaskImage[i][j + 1][layer] == MASK_KNOWN)
+				if (i > 0 && mBoundaryType[i - 1][j] == DIRICHELT_BOUNDARY
+					|| j > 0 && mBoundaryType[i][j - 1] == DIRICHELT_BOUNDARY
+					|| i < height - 1 && mBoundaryType[i - 1][j] == DIRICHELT_BOUNDARY
+					|| j < width - 1 && mBoundaryType[i][j - 1] == DIRICHELT_BOUNDARY)
 				{
 					expand(i, j, DIRICHELT_HOLE, holeType);
 				}
@@ -395,14 +488,18 @@ Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer)
 				int neighborI = coord[0] + neighborOffsetI;
 				int neighborJ = coord[1] + neighborOffsetJ;
 				if (abs(neighborOffsetI) == abs(neighborOffsetJ)) continue;
-				if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mCurrentMaskImage[neighborI][neighborJ].size() <= layer)
+				//if (neighborI == 35 && neighborJ == 322)
+				//	__debugbreak();
+				//if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mCurrentMaskImage[neighborI][neighborJ].size() <= layer)
+				if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mBoundaryType[neighborI][neighborJ] == NEUMANN_BOUNDARY)
 				{
 					numNormalBoundary--;
 					//neumann boundary condition
 				}
-				else if (mHolePixelIdx[neighborI][neighborJ] != - 1)//((*mMaskImage)[neighborI][neighborJ][layer] == MASK_UNKNOWN)
+				else if (mHolePixelIdx[neighborI][neighborJ] != -1)//((*mMaskImage)[neighborI][neighborJ][layer] == MASK_UNKNOWN)
 				{
 					//normal situation
+					CHECK(mBoundaryType[neighborI][neighborJ] == NOT_BOUNDARY) << "Boundaries do not agree.";
 					int j = mHolePixelIdx[neighborI][neighborJ];
 					CHECK(j >= 0) << "Hole pixel is not in mHolePixelIdx.";
 					triplet.push_back(Eigen::Triplet<double>(i, j, -1));
@@ -411,7 +508,9 @@ Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer)
 				else
 				{
 					//dirichlet boundary condition
-					
+					if (neighborJ < 480)
+						LOG(INFO) << "Dirichlet boundary conditions: " << neighborI << ", " << neighborJ << ":" << mCurrentDepthImage[neighborI][neighborJ][layer].d;
+					CHECK(mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY) << "Boundaries do not agree.";
 				}
 
 			}
@@ -450,20 +549,25 @@ Eigen::VectorXd DepthImageInpainting::constructPoissonRhs(int layer)
 				int gradientIIdx = coord[0] + (neighborOffsetI - 1) / 2;
 				int gradientJIdx = coord[1] + (neighborOffsetJ - 1) / 2;
 
-				if (neighborI <= 0 || neighborI >= height || neighborJ <= 0 || neighborJ >= width || mCurrentMaskImage[neighborI][neighborJ].size() <= layer)
+				//if (neighborI <= 0 || neighborI >= height || neighborJ <= 0 || neighborJ >= width || mCurrentMaskImage[neighborI][neighborJ].size() <= layer)
+				if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mBoundaryType[neighborI][neighborJ] == NEUMANN_BOUNDARY)
 				{
 					//neumann boundary condition
 				}
 				else if (mHolePixelIdx[neighborI][neighborJ] != -1)//((*mMaskImage)[neighborI][neighborJ][layer] == MASK_UNKNOWN)
 				{
 					//normal situation
+					CHECK(mBoundaryType[neighborI][neighborJ] == NOT_BOUNDARY) << "Boundaries do not agree.";
+
 					ret[i] += -(neighborOffsetI * mFeatureImage[gradientIIdx][gradientJIdx][layer][0] + neighborOffsetJ * mFeatureImage[gradientIIdx][gradientJIdx][layer][1]);
 				}
 				else
 				{
 					//dirichlet boundary condition
+					CHECK(mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY) << "Boundaries do not agree.";
 
 					ret[i] += (abs(neighborOffsetI) * mCurrentDepthImage[neighborI][neighborJ][layer].d + abs(neighborOffsetJ) * mCurrentDepthImage[neighborI][neighborJ][layer].d);
+					//ret[i] += (abs(neighborOffsetI) * 2040 + abs(neighborOffsetJ) * 2040);
 					ret[i] += -(neighborOffsetI * mFeatureImage[gradientIIdx][gradientJIdx][layer][0] + neighborOffsetJ * mFeatureImage[gradientIIdx][gradientJIdx][layer][1]);
 				}
 
@@ -681,11 +785,17 @@ void DepthImageInpainting::computeFilledPixelNormals(int ithLayer)
 		for (int u = 0; u < width; ++u)
 		{
 			if (mCurrentMaskImage[v][u].size() <= ithLayer || mCurrentMaskImage[v][u][ithLayer] == MASK_KNOWN) continue;
-			Eigen::Vector3f tangentialAxis1(0, stepSize, mFeatureImage[v][u][ithLayer][0]);
-			Eigen::Vector3f tangentialAxis2(stepSize, 0, mFeatureImage[v][u][ithLayer][1]);
+
+			Eigen::Vector3f gp = mCamera->GetPoint(v, u, mCurrentDepthImage[v][u][ithLayer].d);
+			//if ((gp - Eigen::Vector3f(1.05669, 1.34141, 1.33236)).norm() < 1e-5)
+			//	printf("hello");
+
+			Eigen::Vector3f tangentialAxis1(0, stepSize, mFeatureImage[v][u][ithLayer][0] / 1000.f);
+			Eigen::Vector3f tangentialAxis2(stepSize, 0, mFeatureImage[v][u][ithLayer][1] / 1000.f);
 			Eigen::Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
 			normal = -normal.normalized();
 			CHECK(mCamera) << "Camera is not set in DepthImageInpainting::computeFilledPixelNormals().";
+
 
 			Eigen::Vector3f gn = mCamera->GetCameraPose().block(0, 0, 3, 3) * normal;
 			mCurrentDepthImage[v][u][ithLayer].n = gn;
@@ -751,4 +861,10 @@ void DepthImageInpainting::generatePyramids(int numPyramids)
 		mMaskPyramid[i] = mMaskPyramid[i + 1];
 		mMaskPyramid[i].DownSample();
 	}
+}
+
+void DepthImageInpainting::SetMesh(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& indices)
+{
+	mMeshVertices = vertices;
+	mMeshIndices = indices;
 }

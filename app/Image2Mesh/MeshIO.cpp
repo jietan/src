@@ -1,9 +1,57 @@
 #include "MeshIO.h"
-#include "PoissonSurface/Ply.h"
 #include "PoissonSurface/PointStream.h"
+#include <glog/logging.h>
+using namespace google;
 
 typedef float Real;
 
+void ReadMesh(const string& filename, vector<Eigen::Vector3f>* points, vector<Eigen::Vector3i>* faces)
+{
+	vector< PlyVertex< float > > vertices;
+	vector< std::vector< int > > polygons;
+	int ft;
+	PlyReadPolygons(const_cast<char*>(filename.c_str()), vertices, polygons, PlyVertex< float >::Properties, PlyVertex< float >::Components, ft);
+
+	int numVertices = static_cast<int>(vertices.size());
+	points->resize(numVertices);
+	for (int i = 0; i < numVertices; ++i)
+	{
+		points->at(i) = Eigen::Vector3f(vertices[i].point[0], vertices[i].point[1], vertices[i].point[2]);
+	}
+	int numFaces = static_cast<int>(polygons.size());
+	faces->resize(numFaces);
+	for (int i = 0; i < numFaces; ++i)
+	{
+		CHECK(polygons[i].size() == 3) << "Non-triangular polygon detected in main().";
+		faces->at(i) = Eigen::Vector3i(polygons[i][0], polygons[i][1], polygons[i][2]);
+	}
+}
+
+void SaveMesh(const string& filename, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3i>& faces)
+{
+	CoredVectorMeshData<PlyVertex< Real > > mesh;
+	int numPoints = static_cast<int>(points.size());
+	for (int i = 0; i < numPoints; ++i)
+	{
+		PlyVertex<Real> p;
+		p.point = Point3D<Real>(points[i][0], points[i][1], points[i][2]);
+		mesh.addOutOfCorePoint(p);
+	}
+
+	int numFaces = static_cast<int>(faces.size());
+	for (int i = 0; i < numFaces; ++i)
+	{
+		vector<CoredVertexIndex> vertexIndices;
+		vertexIndices.resize(3);
+		for (int j = 0; j < 3; ++j)
+		{
+			vertexIndices[j].idx = faces[i][j];
+		}
+		mesh.addPolygon(vertexIndices);
+	}
+
+	SaveMesh(filename, &mesh);
+}
 
 void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
 {

@@ -10,12 +10,13 @@ using namespace google;
 #include <intrin.h>
 
 
+
 float dist(const ExtendedDepthPixel& lhs, const ExtendedDepthPixel& rhs)
 {
 	return (abs(lhs.d - rhs.d));
 }
 
-DepthCamera::DepthCamera() : mOrthoReference(NULL), mProjType(PERSP_PROJ)
+DepthCamera::DepthCamera() : mProjType(PERSP_PROJ)
 {
 
 }
@@ -24,40 +25,18 @@ DepthCamera::~DepthCamera()
 
 }
 
-void DepthCamera::SetOrthoReference(MultilayerDepthImage* fromPerspectiveProj)
+void DepthCamera::SetSimplifiedPointCloud(const vector<Eigen::Vector3f>& points)
 {
-	mOrthoReference = fromPerspectiveProj;
-}
-
-void DepthCamera::GetOrthoProjBoundingBox()
-{
-	CHECK(mOrthoReference) << "Reference multilayer depth image is needed for orthographic projection.";
-	vector<Eigen::Vector3f> points;
-	vector<Eigen::Vector3f> normals;
-	getPointCloud(*mOrthoReference, points, normals);
+	mSimplifiedPointCloud = points;
 	int numPoints = static_cast<int>(points.size());
-	Eigen::Matrix4f poseInv = mPose.inverse();
-	mOrthoWidth = 0;
-	mOrthoHeight = 0;
-
+	mKDTreePointCloud.setDim(3);
 	for (int i = 0; i < numPoints; ++i)
 	{
-		Eigen::Vector4f pointsInCameraSpace = poseInv * Eigen::Vector4f(points[i][0], points[i][1], points[i][2], 1);
-		if (abs(pointsInCameraSpace[0]) > mOrthoWidth)
-			mOrthoWidth = abs(pointsInCameraSpace[0]);
-		if (abs(pointsInCameraSpace[1]) > mOrthoHeight)
-			mOrthoHeight = abs(pointsInCameraSpace[1]);
+		if (i % 10000 == 0)
+			LOG(INFO) << "Finish adding " << i << "th points out of " << numPoints;
+		mKDTreePointCloud.add(points[i]);
 	}
-	if (static_cast<float>(mOrthoWidth) / mWidth > static_cast<float>(mOrthoHeight) / mHeight)
-	{
-		mOrthoHeight = static_cast<float>(mOrthoWidth) / mWidth * mHeight;
-	}
-	else
-	{
-		mOrthoWidth = static_cast<float>(mOrthoHeight) / mHeight * mWidth;
-	}
-	//mOrthoWidth *= 2;
-	//mOrthoHeight *= 2;
+	mKDTreePointCloud.initANN();
 }
 
 float DepthCamera::GetOrthoWidth() const
@@ -91,6 +70,7 @@ void DepthCamera::SetIntrinsicParameters(int numPxWidth, int numPxHeight, float 
 void DepthCamera::SetExtrinsicParameters(const Eigen::Matrix4f& pose)
 {
 	mPose = pose;
+	mInvPose = mPose.inverse();
 }
 
 void DepthCamera::SaveMultilayerDepthImage(const string& filename)
@@ -326,7 +306,55 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& points, const vector<Ei
 
 }
 
-void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
+float DepthCamera::GetDepth(const Eigen::Vector3f& pt, int* ithRow, int* jthCol) const
+{
+	Eigen::Vector3f ptInCameraSpace = (mInvPose * Eigen::Vector4f(pt[0], pt[1], pt[2], 1)).head(3);
+
+	float cx = (mWidth - 1) / 2.f;
+	float cy = (mHeight - 1) / 2.f;
+	double stepSize = mWidth / mOrthoWidth;
+	double u = ptInCameraSpace[0] * stepSize + cx;
+	double v = ptInCameraSpace[1] * stepSize + cy;
+	if (ithRow)
+	{
+		*ithRow = static_cast<int>(v + 0.5);
+	}
+	if (jthCol)
+	{
+		*jthCol = static_cast<int>(u + 0.5);
+	}
+	return ptInCameraSpace[2] * 1000;
+}
+
+Eigen::Vector3f DepthCamera::GetPoint(int ithRow, int jthCol, float depth) const
+{
+	float fx = mFocalLength;
+	float fy = mFocalLength;
+	float cx = (mWidth - 1) / 2.f;
+	float cy = (mHeight - 1) / 2.f;
+	Eigen::Vector4f w;
+	float z = depth / 1000.f;
+
+	if (mProjType == ORTHO_PROJ)
+	{
+		float stepSize = mWidth / mOrthoWidth;
+		float x = (jthCol - cx) / stepSize;
+		float y = (ithRow - cy) / stepSize;
+
+		w = mPose * Eigen::Vector4f(x, y, z, 1);
+	}
+	else
+	{
+
+		float x = (jthCol - cx) * z / fx;
+		float y = (ithRow - cy) * z / fy;
+
+		w = mPose * Eigen::Vector4f(x, y, z, 1);
+	}
+	return w.head(3);
+}
+
+void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, int portion)
 {
 	points.clear();
 	normals.clear();
@@ -335,7 +363,8 @@ void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen:
 	float fy = mFocalLength;
 	float cx = (mWidth - 1) / 2.f;
 	float cy = (mHeight - 1) / 2.f;
-
+	if (mMask.Height() != mHeight)
+		portion = PORTION_ALL;
 	if (mProjType == ORTHO_PROJ)
 	{
 		for (int v = 0; v < mHeight; ++v)
@@ -346,17 +375,20 @@ void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen:
 
 				for (int k = 0; k < len; ++k)
 				{
-					float d = image[v][u][k].d;
-					float z = d / 1000.f;
+					if (portion == PORTION_ALL || mMask[v][u][k] == portion)
+					{
+						float d = image[v][u][k].d;
+						float z = d / 1000.f;
 
-					float stepSize = mWidth / mOrthoWidth;
-					float x = (u - cx) / stepSize;
-					float y = (v - cy) / stepSize;
+						float stepSize = mWidth / mOrthoWidth;
+						float x = (u - cx) / stepSize;
+						float y = (v - cy) / stepSize;
 
-					Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
+						Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
 
-					points.push_back(w.head(3));
-					normals.push_back(image[v][u][k].n);
+						points.push_back(w.head(3));
+						normals.push_back(image[v][u][k].n);
+					}
 				}
 
 			}
@@ -372,16 +404,19 @@ void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen:
 
 				for (int k = 0; k < len; ++k)
 				{
-					float d = image[v][u][k].d;
-					float z = d / 1000.f;
+					if (portion == PORTION_ALL || mMask[v][u][k] == portion)
+					{
+						float d = image[v][u][k].d;
+						float z = d / 1000.f;
 
-					float x = (u - cx) * z / fx;
-					float y = (v - cy) * z / fy;
+						float x = (u - cx) * z / fx;
+						float y = (v - cy) * z / fy;
 
-					Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
+						Eigen::Vector4f w = mPose * Eigen::Vector4f(x, y, z, 1);
 
-					points.push_back(w.head(3));
-					normals.push_back(image[v][u][k].n);
+						points.push_back(w.head(3));
+						normals.push_back(image[v][u][k].n);
+					}
 				}
 
 			}
@@ -389,9 +424,9 @@ void DepthCamera::getPointCloud(const MultilayerDepthImage& image, vector<Eigen:
 	}
 
 }
-void DepthCamera::GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
+void DepthCamera::GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, int portion)
 {
-	getPointCloud(mDepthMap, points, normals);
+	getPointCloud(mDepthMap, points, normals, portion);
 }
 
 void DepthCamera::SetData(const MultilayerDepthImage& depthMap)
@@ -404,6 +439,10 @@ void DepthCamera::SetMask(const MultilayerMaskImage& mask)
 	mMask = mask;
 }
 
+void DepthCamera::SetReferenceDepthImages(const vector<DepthImage*> refImages)
+{
+	mRefDepthImages = refImages;
+}
 Eigen::Vector3f DepthCamera::constructRayOrigin(int i, int j)
 {
 	Eigen::Vector4f ret;
@@ -469,9 +508,7 @@ void DepthCamera::constructDepthMap(const Eigen::Vector3f& rayOrigin, const Eige
 // assuming self is a noisy depth camera view but represent the truth, rhs is from the view of Poisson constructed mesh.
 void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask)
 {
-	const int MASK_UNKNOWN = 1;
-	const int MASK_KNOWN = 0;
-	const float pointMeshMergingThreshold = 50;
+	const float pointMeshMergingThreshold = 15;
 
 	mergedDepthMap.Create(mHeight, mWidth);
 	mask.Create(mHeight, mWidth);
@@ -498,17 +535,25 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 				}
 			}
 			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
-			{			
+			{
+				//if (i == 245 && j == 156)
+				//	printf("hello");
 				int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
 				if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
 				{
 					continue;
 				}
-				if (mergedDepthMap[i][j].empty() || numPointsAgreeWithSurface[ithDepthSample])
+				if (/*mergedDepthMap[i][j].empty() || */numPointsAgreeWithSurface[ithDepthSample])
+				{
 					mask[i][j].push_back(MASK_KNOWN);
-				else
+					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+				}
+				else if (!mergedDepthMap[i][j].empty())
+				{
 					mask[i][j].push_back(MASK_UNKNOWN);
-				mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+					mergedDepthMap[i][j].push_back(ExtendedDepthPixel(rhs.mDepthMap[i][j][ithDepthSample].d, Eigen::Vector3f::Zero()));
+				}
+				
 
 			}
 				//if (rhsSize == 0)
@@ -645,5 +690,216 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 			//}
 		}
 	}
+	//mask.Filter();
+	boundariesFromNearestNeighbor(mergedDepthMap, mask);
+	//boundariesFromMultiview(mergedDepthMap, mask);
 	mergedDepthMap.Process();
+
+}
+
+void DepthCamera::boundariesFromNearestNeighbor(MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask)
+{
+	vector<Eigen::Vector3i> newBoundaryConditionIdx;
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			int numLayers = static_cast<int>(mask[i][j].size());
+			for (int k = 0; k < numLayers; ++k)
+			{
+				float depth = mergedDepthMap[i][j][k].d;
+				Eigen::Vector3f pt = GetPoint(i, j, depth);
+				//if ((pt - Eigen::Vector3f(0.82916, 1.52718, 1.10822)).norm() < 1e-4)
+				//	printf("hello");
+				if (i == 36 && j == 317 && k == 1)
+					printf("hello");
+				if (mask[i][j][k] == MASK_UNKNOWN && isHoleBoundary(i, j, k, mask))
+				{
+					vector<int> nearestPtIdx = mKDTreePointCloud.kSearch(pt, 1);
+					Eigen::Vector3f nearestPt = mSimplifiedPointCloud[nearestPtIdx[0]];
+					if ((pt - nearestPt).norm() < 10)
+					{
+						newBoundaryConditionIdx.push_back(Eigen::Vector3i(i, j, k));
+						int v, u;
+						float nearestDepth = GetDepth(nearestPt, &v, &u);
+						mergedDepthMap[i][j][k] = nearestDepth;
+					}
+					//else
+					//{
+					//	mergedDepthMap[i][j].erase(mergedDepthMap[i][j].begin() + k);
+					//	mask[i][j].erase(mask[i][j].begin() + k);
+					//	numLayers = static_cast<int>(mask[i][j].size());
+					//}
+				}
+			}
+		}
+	}
+	int numNewBoundaryPixels = static_cast<int>(newBoundaryConditionIdx.size());
+	LOG(INFO) << "Number of new dirichelet boundary conditions: " << numNewBoundaryPixels;
+	for (int i = 0; i < numNewBoundaryPixels; ++i)
+	{
+		const Eigen::Vector3i& idx = newBoundaryConditionIdx[i];
+		LOG(INFO) << "(" << idx[0] << "," << idx[1] << "," << idx[2] << "): " << mergedDepthMap[idx[0]][idx[1]][idx[2]].d;
+		mask[idx[0]][idx[1]][idx[2]] = MASK_KNOWN;
+	}
+}
+
+bool DepthCamera::isDepthValid(int ithRow, int jthCol, float depth, float& depthDelta)
+{
+	Eigen::Vector3f pt = GetPoint(ithRow, jthCol, depth);
+	int numReferences = static_cast<int>(mRefDepthImages.size());
+	float minDepthDelta = 10000;
+	for (int ithReference = 0; ithReference < numReferences; ++ithReference)
+	{
+		float delta;
+		if (mRefDepthImages[ithReference]->IsPointBehind(pt, delta))
+		{
+			if (delta < minDepthDelta)
+				minDepthDelta = delta;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	depthDelta = minDepthDelta;
+	return true;
+}
+
+bool DepthCamera::moveDepthUntilValid(int ithRow, int jthCol, int kthLayer, MultilayerDepthImage& mergedDepthMap) // return whether the pixel can be considered as a dirichelet boundary condition
+{
+	float depthCandidate = mergedDepthMap[ithRow][jthCol][kthLayer].d;
+	Eigen::Vector3f pt = GetPoint(ithRow, jthCol, depthCandidate);
+
+	const int maxNumMovements = 13;
+	float depthDelta;
+
+	if (!isDepthValid(ithRow, jthCol, depthCandidate, depthDelta))
+	{
+		float lowerBound = 0.f;
+		float upperBound = 10000.f;
+		bool bMoveNearer = true;
+
+		if (kthLayer > 0)
+			lowerBound = mergedDepthMap[ithRow][jthCol][kthLayer - 1].d;
+		else
+			LOG(FATAL) << "This should never happen.";
+		if (kthLayer + 1 < mergedDepthMap[ithRow][jthCol].size())
+		{
+			upperBound = mergedDepthMap[ithRow][jthCol][kthLayer + 1].d;
+		}
+
+
+		if (isDepthValid(ithRow, jthCol, upperBound - 5, depthDelta))
+		{
+			lowerBound = depthCandidate;
+			bMoveNearer = false;
+		}
+		if (isDepthValid(ithRow, jthCol, lowerBound + 5, depthDelta))
+		{
+			upperBound = depthCandidate;
+			bMoveNearer = true;
+		}
+		else
+		{
+			if (abs(depthCandidate - lowerBound) > abs(depthCandidate - upperBound))
+			{
+				lowerBound = depthCandidate;
+				bMoveNearer = false;
+			}
+			else
+			{
+				upperBound = depthCandidate;
+				bMoveNearer = true;
+			}
+			//LOG(WARNING) << "No idea which direction to move in DepthCamera::moveDepthUntilValid().";
+			//return false;
+		}
+		bool hasEverBeenValid = false;
+		float minDepthDelta = 10000.f;
+		for (int ithSearch = 0; ithSearch < maxNumMovements; ++ithSearch)
+		{
+			depthCandidate = (lowerBound + upperBound) / 2.f;
+			if (isDepthValid(ithRow, jthCol, depthCandidate, depthDelta))
+			{
+				hasEverBeenValid = true;
+				CHECK(depthDelta > 0);
+				if (depthDelta < minDepthDelta)
+					minDepthDelta = depthDelta;
+				if (bMoveNearer)
+					lowerBound = depthCandidate;
+				else
+					upperBound = depthCandidate;
+			}
+			else
+			{
+				if (bMoveNearer)
+					upperBound = depthCandidate;
+				else
+					lowerBound = depthCandidate;
+			}
+		}
+		if (hasEverBeenValid && minDepthDelta < 20)
+		{
+			mergedDepthMap[ithRow][jthCol][kthLayer].d = depthCandidate;
+			return true;
+		}
+		return false;
+	}
+	return false;
+}
+
+bool DepthCamera::isHoleBoundary(int ithRow, int jthCol, int kthLayer, const MultilayerMaskImage& mask) //outer most hole pixel
+{
+	if (mask[ithRow][jthCol][kthLayer] == MASK_KNOWN) return false;
+	if (ithRow > 0 && (mask[ithRow - 1][jthCol].size() <= kthLayer || mask[ithRow - 1][jthCol][kthLayer] == MASK_KNOWN))
+		return true;
+	if (ithRow + 1 < mHeight && (mask[ithRow + 1][jthCol].size() <= kthLayer || mask[ithRow + 1][jthCol][kthLayer] == MASK_KNOWN))
+		return true;
+	if (jthCol > 0 && (mask[ithRow][jthCol - 1].size() <= kthLayer || mask[ithRow][jthCol - 1][kthLayer] == MASK_KNOWN))
+		return true;
+	if (jthCol + 1 < mHeight && (mask[ithRow][jthCol + 1].size() <= kthLayer || mask[ithRow][jthCol + 1][kthLayer] == MASK_KNOWN))
+		return true;
+	return false;
+}
+
+void DepthCamera::boundariesFromMultiview(MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask)
+{
+	vector<Eigen::Vector3i> newBoundaryConditionIdx;
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			int numLayers = static_cast<int>(mask[i][j].size());
+			for (int k = 0; k < numLayers; ++k)
+			{
+				
+				//if ((pt - Eigen::Vector3f(0.82916, 1.52718, 1.10822)).norm() < 1e-4)
+				//	printf("hello");
+				if (i == 36 && j == 317 && k == 1)
+					printf("hello");
+				if (mask[i][j][k] == MASK_UNKNOWN && isHoleBoundary(i, j, k, mask))
+				{
+					if (moveDepthUntilValid(i, j, k, mergedDepthMap))
+					{
+						newBoundaryConditionIdx.push_back(Eigen::Vector3i(i, j, k));
+					}
+					//else
+					//{
+					//	mergedDepthMap[i][j].erase(mergedDepthMap[i][j].begin() + k);
+					//	mask[i][j].erase(mask[i][j].begin() + k);
+					//	numLayers = static_cast<int>(mask[i][j].size());
+					//}
+				}
+			}
+		}
+	}
+	int numNewBoundaryPixels = static_cast<int>(newBoundaryConditionIdx.size());
+	LOG(INFO) << "Number of new dirichelet boundary conditions: " << numNewBoundaryPixels;
+ 	for (int i = 0; i < numNewBoundaryPixels; ++i)
+	{
+		const Eigen::Vector3i& idx = newBoundaryConditionIdx[i];
+		LOG(INFO) << "(" << idx[0] << "," << idx[1] << "," << idx[2] << "): " << mergedDepthMap[idx[0]][idx[1]][idx[2]].d;
+		mask[idx[0]][idx[1]][idx[2]] = MASK_KNOWN;
+	}
 }
