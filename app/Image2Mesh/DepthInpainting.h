@@ -45,15 +45,21 @@ private:
 	void computeFeatureImage(int ithPyramid);
 	bool checkPatchValidity(const Eigen::Vector3i & coord, bool includeUnknownRegion);
 	bool checkPixelValidity(const Eigen::Vector3i & coord, bool includeUnknownRegion);
-	Eigen::SparseMatrix<double> constructPoissonLhs(int layer);
-	Eigen::VectorXd constructPoissonRhs(int layer);
+	Eigen::SparseMatrix<double> constructPoissonLhs(int layer, int ithHole, bool bAllNeumann);
+	Eigen::VectorXd constructPoissonRhs(int layer, int ithHole, bool bAllNeumann);
 	void computeFilledPixelNormals(int ithLayer);
 	void recomputeHoleFeatureImage(int layer);
-	void expand(int ithRow, int jthCol, int type, Eigen::MatrixXi& holeType);
+	void expand(int ithRow, int jthCol, int kthLayer, int type, int ithHole, Eigen::MatrixXi& holeType);
 	void saveInpaintFeatures();
 	void readInpaintedFeatures();
 	void dumpInpaintedPoints();
+	void searchOptimalBoundaryCondition(int ithHole, const Eigen::VectorXd& baseDepth);
 	void deformMesh();
+
+	void identifyBoundaryPixels(const vector<Eigen::Vector3i>& holePixels, vector<int>* boundaryPixels) const;
+	void computeBaseDiscrepancy(const vector<Eigen::Vector3i>& holePixels, const vector<int>& boundaryPixels, const Eigen::VectorXd& baseDepth, vector<float>* boundaryDiscrepancy) const;
+	float evaluateBoundaryDiscrepancy(const vector<float>& boundaryDiscrepancy, float depth) const;
+	void updateBoundaryType(const vector<Eigen::Vector3i>& holePixels, const vector<int>& boundaryPixels, const Eigen::VectorXd& baseDepth, float optimalDepthBoundary);
 	MultilayerDepthImage* mDepthImage;
 	MultilayerMaskImage * mMaskImage;
 
@@ -68,6 +74,8 @@ private:
 	int mMaxNumPyramids;
 	vector<Eigen::VectorXf> mFeatures;
 	vector<Eigen::Vector3i> mFeatureCoordinates;
+	vector<vector<Eigen::Vector3i> > mConnectedHolePixelCoordinates;
+	vector<int> mConnectedHolePixelStartId;
 	vector<Eigen::Vector3i> mHolePixelCoordinates;
 	vector<vector<int> > mHolePixelIdx;
 	vector<Eigen::Vector3i> mHolePatchCoordinates;
