@@ -608,18 +608,29 @@ int main(int argc, char** argv)
 	vector<Eigen::Vector3i> colors;
 	Eigen::MatrixXf cameraPose = cameraPoses[ithDepthToProcess];
 
-	Eigen::Vector3f cameraFront = Eigen::Vector3f(-0.0654295, 0.911619, 0.405796);
-	Eigen::Vector3f cameraRight = Eigen::Vector3f(0.939416, -0.118723, 0.321563);
-	Eigen::Vector3f cameraUp = cameraRight.cross(cameraFront);
+	//Eigen::Vector3f cameraFront = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
+	//Eigen::Vector3f cameraRight = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f);
+	//Eigen::Vector3f cameraUp = cameraRight.cross(cameraFront);
+	//cameraUp.normalize();
+	//cameraFront = cameraUp.cross(cameraRight);
+	//cameraFront.normalize();
+	//Eigen::Vector3f cameraPos = Eigen::Vector3f(1.06286, 1.28835, 1.30427) - cameraFront + 0.2 * cameraRight - 0.2 * cameraUp;
+
+	Eigen::Vector3f cameraFront = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f); 
+	cameraFront.normalize();
+	Eigen::Vector3f cameraUp = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
 	cameraUp.normalize();
+	
+	Eigen::Vector3f cameraRight = cameraFront.cross(cameraUp);
+	cameraRight.normalize();
 	cameraFront = cameraUp.cross(cameraRight);
 	cameraFront.normalize();
+
+	Eigen::Vector3f cameraPos = Eigen::Vector3f(0.585555f, 2.11679f, 1.20261f) - cameraFront + 0.6f * Eigen::Vector3f(0.160215f, -0.926381f, -0.340808f);
 
 	cameraPose.col(0) = Eigen::Vector4f(cameraRight[0], cameraRight[1], cameraRight[2], 0);
 	cameraPose.col(1) = Eigen::Vector4f(cameraUp[0], cameraUp[1], cameraUp[2], 0);
 	cameraPose.col(2) = Eigen::Vector4f(cameraFront[0], cameraFront[1], cameraFront[2], 0);
-
-	Eigen::Vector3f cameraPos = Eigen::Vector3f(1.06286, 1.28835, 1.30427) - cameraFront + 0.2 * cameraRight - 0.2 * cameraUp;
 	cameraPose.col(3) = Eigen::Vector4f(cameraPos[0], cameraPos[1], cameraPos[2], 1);
 
 	int task = 0;
@@ -649,6 +660,7 @@ int main(int argc, char** argv)
 		char filename[MAX_FILENAME_LEN];
 		memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
 		sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
+//		sprintf(filename, "%s%s/points.plysimplified.ply", gDataFolder.c_str(), gDataName.c_str()); // for speedy test purpose
 		ReadPointCloud(filename, points, normals);
 		BuildMultiLayerDepthImage(points, normals, cameraPose);
 	}
@@ -737,6 +749,7 @@ int main(int argc, char** argv)
 		MultilayerMaskImage depthMask;
 		//dCameraPoints.SetReferenceDepthImages(refDepthImages);
 		ReadPointCloud("results/originalData.ply", points, normals);
+		dCameraPoints.SetComparisonROI(120, 490, 150, 425, 1000, 2200);
 		dCameraPoints.SetSimplifiedPointCloud(points);
 		dCameraPoints.Compare(dCameraMesh, mergedDepthMap, depthMask);
 
@@ -837,5 +850,63 @@ int main(int argc, char** argv)
 		string fileToWrite = filenamePrefix;
 		fileToWrite += "InpaintedMesh.ply";
 		SaveMesh("results/simplifiedAndInpaintedMesh.ply", &mesh);
+	}
+	else if (task == 9)
+	{
+		MultilayerDepthImage topViewDepthMap;
+		topViewDepthMap.Read("results/combinedPointMeshDepthImage_Ortho_Top.data");
+		topViewDepthMap.Process();
+		MultilayerMaskImage topViewDepthMask;
+		topViewDepthMask.Read("results/combinedPointMeshDepthImageMask_Ortho_Top.mask");
+		MultilayerDepthImage topViewDepthMapInpainted;
+		topViewDepthMapInpainted.Read("results/InpaintedDepthImage_Ortho_Top.data");
+
+		Eigen::Vector3f cameraFront = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
+		Eigen::Vector3f cameraRight = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f);
+		Eigen::Vector3f cameraUp = cameraRight.cross(cameraFront);
+		cameraUp.normalize();
+		cameraFront = cameraUp.cross(cameraRight);
+		cameraFront.normalize();
+		Eigen::Vector3f cameraPos = Eigen::Vector3f(1.06286f, 1.28835f, 1.30427f) - cameraFront + 0.2f * cameraRight - 0.2f * cameraUp;
+		Eigen::Matrix4f cameraPoseTop;
+		cameraPoseTop.col(0) = Eigen::Vector4f(cameraRight[0], cameraRight[1], cameraRight[2], 0);
+		cameraPoseTop.col(1) = Eigen::Vector4f(cameraUp[0], cameraUp[1], cameraUp[2], 0);
+		cameraPoseTop.col(2) = Eigen::Vector4f(cameraFront[0], cameraFront[1], cameraFront[2], 0);
+		cameraPoseTop.col(3) = Eigen::Vector4f(cameraPos[0], cameraPos[1], cameraPos[2], 1);
+
+		DepthCamera dCameraTopView;
+		dCameraTopView.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+		dCameraTopView.SetExtrinsicParameters(cameraPoseTop);
+		dCameraTopView.SetProjectionType(gCameraProjectionType);
+		dCameraTopView.SetOrthoWidth(gCameraWidth);
+		dCameraTopView.SetData(topViewDepthMap);
+		dCameraTopView.SetMask(topViewDepthMask);
+
+		DepthCamera dCameraTopViewInpainted;
+		dCameraTopViewInpainted.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+		dCameraTopViewInpainted.SetExtrinsicParameters(cameraPoseTop);
+		dCameraTopViewInpainted.SetProjectionType(gCameraProjectionType);
+		dCameraTopViewInpainted.SetOrthoWidth(gCameraWidth);
+		dCameraTopViewInpainted.SetData(topViewDepthMapInpainted);
+		dCameraTopViewInpainted.SetMask(topViewDepthMask);
+
+		MultilayerDepthImage frontViewDepthMap;
+		frontViewDepthMap.Read("results/combinedPointMeshDepthImage_Ortho.data");
+		frontViewDepthMap.Process();
+		MultilayerMaskImage frontViewDepthMask;
+		frontViewDepthMask.Read("results/combinedPointMeshDepthImageMask_Ortho.mask");
+
+		DepthCamera dCameraFrontView;
+		dCameraFrontView.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+		dCameraFrontView.SetExtrinsicParameters(cameraPose);
+		dCameraFrontView.SetProjectionType(gCameraProjectionType);
+		dCameraFrontView.SetOrthoWidth(gCameraWidth);
+		dCameraFrontView.SetData(frontViewDepthMap);
+		dCameraFrontView.SetMask(frontViewDepthMask);
+
+		MultilayerDepthImage newDepthImage;
+		MultilayerMaskImage newMaskImage;
+		dCameraFrontView.CrossViewMaskUpdate(dCameraTopView, dCameraTopViewInpainted, &newDepthImage, &newMaskImage);
+
 	}
 }

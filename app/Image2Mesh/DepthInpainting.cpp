@@ -183,8 +183,10 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 	reconstructHoleDepth(1);
 	recomputeHoleFeatureImage(1);
 	computeFilledPixelNormals(1);
+	mCurrentDepthImage.Process();
+	mCurrentDepthImage.Save("results/InpaintedDepthImage_Ortho.data");
 	visualizeInpaintedMLDI(0);
-	deformMesh();
+	//deformMesh();
 	dumpInpaintedPoints();
 	return;
 

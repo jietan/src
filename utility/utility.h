@@ -321,6 +321,8 @@ template <class T>
 int linearSearchInsertPos(const vector<T>& sortedArray, const T& elem)
 {
 	int len = static_cast<int>(sortedArray.size());
+	if (!len)
+		return 0;
 	if (elem <= sortedArray[0])
 		return 0;
 	else if (elem > sortedArray[len - 1])

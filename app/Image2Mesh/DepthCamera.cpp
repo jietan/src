@@ -39,6 +39,11 @@ void DepthCamera::SetSimplifiedPointCloud(const vector<Eigen::Vector3f>& points)
 	mKDTreePointCloud.initANN();
 }
 
+void DepthCamera::SetComparisonROI(int left, int right, int high, int low, float near, float far)
+{
+	mComparisonROI = ROI(left, right, high, low, near, far);
+}
+
 float DepthCamera::GetOrthoWidth() const
 {
 	return mOrthoWidth;
@@ -504,7 +509,10 @@ void DepthCamera::constructDepthMap(const Eigen::Vector3f& rayOrigin, const Eige
 	}
 }
 
+void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage)
+{
 
+}
 // assuming self is a noisy depth camera view but represent the truth, rhs is from the view of Poisson constructed mesh.
 void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask)
 {
@@ -517,7 +525,7 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 		for (int j = 0; j < mWidth; ++j)
 		{
 			//check whether the depth samples from mesh are presented as points
-			if (mDepthMap[i][j].empty()) continue;
+			//if (mDepthMap[i][j].empty()) continue;
 
 			int selfSize = static_cast<int>(mDepthMap[i][j].size());
 			int rhsSize = static_cast<int>(rhs.mDepthMap[i][j].size());
@@ -536,19 +544,19 @@ void DepthCamera::Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDe
 			}
 			for (int ithDepthSample = 0; ithDepthSample < rhsSize; ++ithDepthSample)
 			{
-				//if (i == 245 && j == 156)
-				//	printf("hello");
+				//if (i == 231 && j == 292)
+				//	__debugbreak();
 				int insertPos = linearSearchInsertPos(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample]);
-				if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
-				{
-					continue;
-				}
+				//if (insertPos == 0 && abs(rhs.mDepthMap[i][j][ithDepthSample].d - mDepthMap[i][j][0].d) >= pointMeshMergingThreshold)
+				//{
+				//	continue;
+				//}
 				if (/*mergedDepthMap[i][j].empty() || */numPointsAgreeWithSurface[ithDepthSample])
 				{
 					mask[i][j].push_back(MASK_KNOWN);
 					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 				}
-				else if (!mergedDepthMap[i][j].empty())
+				else if (mComparisonROI.IsWithin(i, j, rhs.mDepthMap[i][j][ithDepthSample].d))//if (!mergedDepthMap[i][j].empty())
 				{
 					mask[i][j].push_back(MASK_UNKNOWN);
 					mergedDepthMap[i][j].push_back(ExtendedDepthPixel(rhs.mDepthMap[i][j][ithDepthSample].d, Eigen::Vector3f::Zero()));
@@ -711,13 +719,14 @@ void DepthCamera::boundariesFromNearestNeighbor(MultilayerDepthImage& mergedDept
 				Eigen::Vector3f pt = GetPoint(i, j, depth);
 				//if ((pt - Eigen::Vector3f(0.82916, 1.52718, 1.10822)).norm() < 1e-4)
 				//	printf("hello");
-				if (i == 36 && j == 317 && k == 1)
-					printf("hello");
+				//if (i == 275 && j == 200 && k == 0)
+				//	//printf("hello");
+				//	__debugbreak();
 				if (mask[i][j][k] == MASK_UNKNOWN && isHoleBoundary(i, j, k, mask))
 				{
 					vector<int> nearestPtIdx = mKDTreePointCloud.kSearch(pt, 1);
 					Eigen::Vector3f nearestPt = mSimplifiedPointCloud[nearestPtIdx[0]];
-					if ((pt - nearestPt).norm() < 10)
+					if ((pt - nearestPt).norm() < 0.05)
 					{
 						newBoundaryConditionIdx.push_back(Eigen::Vector3i(i, j, k));
 						int v, u;
@@ -876,8 +885,8 @@ void DepthCamera::boundariesFromMultiview(MultilayerDepthImage& mergedDepthMap, 
 				
 				//if ((pt - Eigen::Vector3f(0.82916, 1.52718, 1.10822)).norm() < 1e-4)
 				//	printf("hello");
-				if (i == 36 && j == 317 && k == 1)
-					printf("hello");
+				//if (i == 36 && j == 317 && k == 1)
+				//	printf("hello");
 				if (mask[i][j][k] == MASK_UNKNOWN && isHoleBoundary(i, j, k, mask))
 				{
 					if (moveDepthUntilValid(i, j, k, mergedDepthMap))
