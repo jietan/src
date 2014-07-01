@@ -36,4 +36,11 @@ private:
 	
 };
 
+class MultilayerDepthImageWithMask : public MultilayerImage < ExtendedDepthPixelWithMask >
+{
+public:
+	virtual ~MultilayerDepthImageWithMask();
+	void Simplify();
+};
+
 #endif

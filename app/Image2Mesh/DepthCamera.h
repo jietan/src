@@ -16,9 +16,12 @@ using namespace std;
 #define ORTHO_PROJ 0
 #define PERSP_PROJ 1
 
+#define MOVE_UP 0
+#define MOVE_DOWN 1
+#define MOVE_LEFT 2
+#define MOVE_RIGHT 3
 
-#define MASK_UNKNOWN 1
-#define MASK_KNOWN 0
+
 #define PORTION_UNKNOWN 1
 #define PORTION_KNOWN 0
 #define PORTION_ALL 2
@@ -67,6 +70,8 @@ public:
 	float GetFocalLength() const;
 	Eigen::Vector3f GetPoint(int ithRow, int jthCol, float depth) const;
 	float GetDepth(const Eigen::Vector3f& pt, int* ithRow, int* jthCol) const;
+	const MultilayerDepthImage& GetDepthImage() const;
+	const MultilayerMaskImage& GetMaskImage() const;
 	const Eigen::Matrix4f& GetCameraPose() const;
 	void Capture(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals);
 	void Capture(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& indices);
@@ -77,10 +82,10 @@ public:
 	void ProcessMultiLayerDepthImage();
 	void SimplifyMultiLayerDepthImage();
 	void GetPointCloud(vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, int portion);
-	void Compare(const DepthCamera& rhs, MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask);
+	void Compare(const DepthCamera& rhs, bool isBoundaryFromNearestNeighbor, MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask);
 	void SetReferenceDepthImages(const vector<DepthImage*> refImages);
 	void SetComparisonROI(int left, int right, int high, int low, float near, float far);
-	void CrossViewMaskUpdate(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage);
+	void CrossViewMaskUpdate(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage);
 private:
 	Eigen::Vector3f constructRayDirection(int i, int j);
 	Eigen::Vector3f constructRayOrigin(int i, int j);
@@ -91,6 +96,8 @@ private:
 	void getPointCloud(const MultilayerDepthImage& image, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, int portion);
 	void boundariesFromMultiview(MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask);
 	void boundariesFromNearestNeighbor(MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask);
+	bool needLeaveTrace(int ithRow, int jthCol, int kthLayer, int moveDir);
+	void leaveTrace(int ithRowOld, int jthColOld, float depthOld, int ithRowNew, int jthColNew, float depthNew, int kthLayer, int moveDir, MultilayerDepthImageWithMask* image);
 	Eigen::Matrix4f mPose;
 	Eigen::Matrix4f mInvPose;
 	int mWidth;

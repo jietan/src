@@ -751,7 +751,7 @@ int main(int argc, char** argv)
 		ReadPointCloud("results/originalData.ply", points, normals);
 		dCameraPoints.SetComparisonROI(120, 490, 150, 425, 1000, 2200);
 		dCameraPoints.SetSimplifiedPointCloud(points);
-		dCameraPoints.Compare(dCameraMesh, mergedDepthMap, depthMask);
+		dCameraPoints.Compare(dCameraMesh, false, mergedDepthMap, depthMask);
 
 		DepthCamera dCameraCombined;
 		dCameraCombined.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
@@ -903,10 +903,31 @@ int main(int argc, char** argv)
 		dCameraFrontView.SetOrthoWidth(gCameraWidth);
 		dCameraFrontView.SetData(frontViewDepthMap);
 		dCameraFrontView.SetMask(frontViewDepthMask);
-
+		vector<DepthImage*> refDepthImages;
+		for (int i = 0; i < numFrames; i += 50)
+		{
+			char filename[MAX_FILENAME_LEN];
+			memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+			sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
+			DepthImage* depthImg = new DepthImage(filename);
+			depthImg->SetCameraPose(cameraPoses[i]);
+			refDepthImages.push_back(depthImg);
+		}
+		dCameraFrontView.SetReferenceDepthImages(refDepthImages);
+		ReadPointCloud("results/originalData.ply", points, normals);
+		dCameraFrontView.SetSimplifiedPointCloud(points);
 		MultilayerDepthImage newDepthImage;
 		MultilayerMaskImage newMaskImage;
-		dCameraFrontView.CrossViewMaskUpdate(dCameraTopView, dCameraTopViewInpainted, &newDepthImage, &newMaskImage);
 
+		MultilayerDepthImage topViewDepthMapPointCloud;
+		topViewDepthMapPointCloud.Read("results/simplifiedDepthFromMultiview_Ortho_Top.data");
+		topViewDepthMapPointCloud.Process();
+
+		dCameraFrontView.CrossViewMaskUpdate(dCameraTopView, dCameraTopViewInpainted, topViewDepthMapPointCloud, MOVE_UP, &newDepthImage, &newMaskImage);
+		newDepthImage.Process();
+		newDepthImage.SaveDepthOnionImage("results/crossViewDepthImage_Ortho_Top_Front.png", &newMaskImage);
+		dCameraFrontView.SetData(newDepthImage);
+		dCameraFrontView.GetPointCloud(points, normals, PORTION_ALL);
+		SavePointCloud("results/crossViewDepthImage_Ortho_Top_Front.ply", points, colors, normals);
 	}
 }
