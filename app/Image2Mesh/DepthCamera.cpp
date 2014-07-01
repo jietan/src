@@ -622,7 +622,8 @@ void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const Dep
 						Eigen::Vector3f newPt = otherViewNew.GetPoint(ithRowOtherView, ithColOtherView, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].d);
 
 						float newDepth = GetDepth(newPt, &ithRowNewPt, &ithColNewPt);
-						intermediateResult[ithRowNewPt][ithColNewPt].push_back(ExtendedDepthPixelWithMask(newDepth, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n, MASK_UNKNOWN));
+						if (abs(depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n.dot(GetCameraFront())) > 0.1)
+							intermediateResult[ithRowNewPt][ithColNewPt].push_back(ExtendedDepthPixelWithMask(newDepth, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n, MASK_UNKNOWN));
 						bool bNeedLeaveTrace = false;
 						int nextDepthPointId = linearSearchInsertPos<ExtendedDepthPixel>(depthImagePointCloudOtherView[ithRowOtherView][ithColOtherView], otherViewDepth);
 						if (nextDepthPointId < depthImagePointCloudOtherView[ithRowOtherView][ithColOtherView].size() && abs(depthImagePointCloudOtherView[ithRowOtherView][ithColOtherView][nextDepthPointId].d - otherViewDepth) < 100)
@@ -1066,4 +1067,17 @@ void DepthCamera::boundariesFromMultiview(MultilayerDepthImage& mergedDepthMap, 
 		LOG(INFO) << "(" << idx[0] << "," << idx[1] << "," << idx[2] << "): " << mergedDepthMap[idx[0]][idx[1]][idx[2]].d;
 		mask[idx[0]][idx[1]][idx[2]] = MASK_KNOWN;
 	}
+}
+
+Eigen::Vector3f DepthCamera::GetCameraFront() const
+{
+	return mPose.col(2).head(3);
+}
+Eigen::Vector3f DepthCamera::GetCameraPosition() const
+{
+	return mPose.col(3).head(3);
+}
+Eigen::Vector3f DepthCamera::GetCameraUp() const
+{
+	return mPose.col(1).head(3);
 }

@@ -798,11 +798,13 @@ int main(int argc, char** argv)
 	else if (task == 7)
 	{
 		MultilayerDepthImage mergedDepthMap;
-		mergedDepthMap.Read("results/combinedPointMeshDepthImage_Ortho.data");
+		//mergedDepthMap.Read("results/combinedPointMeshDepthImage_Ortho.data");
+		mergedDepthMap.Read("results/crossViewDepthImage_Ortho_Top_Front.data");
 		mergedDepthMap.Process();
 
 		MultilayerMaskImage depthMask;
-		depthMask.Read("results/combinedPointMeshDepthImageMask_Ortho.mask");
+		//depthMask.Read("results/combinedPointMeshDepthImageMask_Ortho.mask");
+		depthMask.Read("results/crossViewDepthImage_Ortho_Top_Front.mask");
 
 		//mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage.png", &depthMask);
 		DepthCamera dCameraInpainted;
@@ -839,7 +841,9 @@ int main(int argc, char** argv)
 
 		vector<Eigen::Vector3f> inpaintedPoints;
 		vector<Eigen::Vector3f> inpaintedNormals;
-		ReadPointCloud("results/inpaintedPoints.ply", inpaintedPoints, inpaintedNormals);
+		ReadPointCloud("results/inpaintedPoints_Top.ply", inpaintedPoints, inpaintedNormals);
+		ReadPointCloud("results/inpaintedPoints_FrontLayer0.ply", inpaintedPoints, inpaintedNormals, true);
+		ReadPointCloud("results/inpaintedPoints_FrontLayer1.ply", inpaintedPoints, inpaintedNormals, true);
 
 		points.insert(points.end(), inpaintedPoints.begin(), inpaintedPoints.end());
 		normals.insert(normals.end(), inpaintedNormals.begin(), inpaintedNormals.end());
@@ -925,7 +929,9 @@ int main(int argc, char** argv)
 
 		dCameraFrontView.CrossViewMaskUpdate(dCameraTopView, dCameraTopViewInpainted, topViewDepthMapPointCloud, MOVE_UP, &newDepthImage, &newMaskImage);
 		newDepthImage.Process();
+		newDepthImage.Save("results/crossViewDepthImage_Ortho_Top_Front.data");
 		newDepthImage.SaveDepthOnionImage("results/crossViewDepthImage_Ortho_Top_Front.png", &newMaskImage);
+		newMaskImage.Save("results/crossViewDepthImage_Ortho_Top_Front.mask");
 		dCameraFrontView.SetData(newDepthImage);
 		dCameraFrontView.GetPointCloud(points, normals, PORTION_ALL);
 		SavePointCloud("results/crossViewDepthImage_Ortho_Top_Front.ply", points, colors, normals);

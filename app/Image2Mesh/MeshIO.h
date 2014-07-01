@@ -20,7 +20,7 @@ void SaveMesh(const string& filename, CoredMeshData< Vertex >* mesh)
 }
 
 void ReadMesh(const string& filename, vector<Eigen::Vector3f>* vertices, vector<Eigen::Vector3i>* faces);
-void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals);
+void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, bool bAppend = false);
 void SavePointCloud(const string& filename, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3i>& colors, const vector<Eigen::Vector3f>& normals);
 
 #endif

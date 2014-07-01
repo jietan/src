@@ -68,6 +68,9 @@ public:
 	void SetSimplifiedPointCloud(const vector<Eigen::Vector3f>& points);
 	float GetOrthoWidth() const;
 	float GetFocalLength() const;
+	Eigen::Vector3f GetCameraFront() const;
+	Eigen::Vector3f GetCameraPosition() const;
+	Eigen::Vector3f GetCameraUp() const;
 	Eigen::Vector3f GetPoint(int ithRow, int jthCol, float depth) const;
 	float GetDepth(const Eigen::Vector3f& pt, int* ithRow, int* jthCol) const;
 	const MultilayerDepthImage& GetDepthImage() const;

@@ -154,11 +154,11 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 	//}
 	//(*mMaskImage)[267][337][1] = MASK_UNKNOWN;
 	//(*mMaskImage)[281][327][1] = MASK_UNKNOWN;
-
+	int layerToInpaint = 0;
 	mCurrentDepthImage = *mDepthImage;
 	mCurrentMaskImage = *mMaskImage;
 	computeFeatureImage(0);
-	gatherHolesForLayer(0, 1);
+	gatherHolesForLayer(0, layerToInpaint);
 
 	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
 	mHolePatchCoordinates.resize(numHolePixels);
@@ -166,29 +166,31 @@ void DepthImageInpainting::Inpaint(int patchWidth)
 	for (int i = 0; i < numHolePixels; ++i)
 	{
 		Eigen::Vector3i coord;
-		coord[0] = static_cast<int>(RandDouble(150, 250));
-		coord[1] = static_cast<int>(RandDouble(200, 450));
+		coord[0] = 400;// static_cast<int>(RandDouble(320, 400));
+		coord[1] = mHolePixelCoordinates[i][1];  //static_cast<int>(RandDouble(200, 450));
 		coord[2] = 0;
 		mHolePatchCoordinates[i] = coord;
-		mHolePatchFeatures[i] =  mFeatureImage[coord[0]][coord[1]][coord[2]];
+		mHolePatchFeatures[i] = mFeatureImage[coord[0]][coord[1]][coord[2]];
+		mHolePatchFeatures[i][0] = 0;
 	}
 	for (int ithPx = 0; ithPx < numHolePixels; ++ithPx)
 	{
 		Eigen::Vector3i coord = mHolePixelCoordinates[ithPx];
 		mFeatureImage[coord[0]][coord[1]][coord[2]] = mHolePatchFeatures[ithPx];
-		mFeatureImage[coord[0] - 1][coord[1]][coord[2]] = mHolePatchFeatures[ithPx];
-		mFeatureImage[coord[0]][coord[1] - 1][coord[2]] = mHolePatchFeatures[ithPx];
+		if (coord[0] - 1 >= 0 && coord[2] < mFeatureImage[coord[0] - 1][coord[1]].size())
+			mFeatureImage[coord[0] - 1][coord[1]][coord[2]] = mHolePatchFeatures[ithPx];
+		if (coord[1] - 1 >= 0 && coord[2] < mFeatureImage[coord[0]][coord[1] - 1].size())
+			mFeatureImage[coord[0]][coord[1] - 1][coord[2]] = mHolePatchFeatures[ithPx];
 	}
-	visualizeInpaintedFeatures(0, 1, 0);
-	reconstructHoleDepth(1);
-	recomputeHoleFeatureImage(1);
-	computeFilledPixelNormals(1);
-	mCurrentDepthImage.Process();
-	mCurrentDepthImage.Save("results/InpaintedDepthImage_Ortho.data");
+	visualizeInpaintedFeatures(0, layerToInpaint, 0);
+	reconstructHoleDepth(layerToInpaint);
+	recomputeHoleFeatureImage(layerToInpaint);
+	computeFilledPixelNormals(layerToInpaint);
 	visualizeInpaintedMLDI(0);
 	//deformMesh();
 	dumpInpaintedPoints();
 	return;
+
 
 	generatePyramids(mMaxNumPyramids);
 
@@ -317,8 +319,9 @@ void DepthImageInpainting::gatherFeatures()
 	mKDTree.initANN();
 }
 
-void DepthImageInpainting::expand(int ithRow, int jthCol, int type, Eigen::MatrixXi& holeType)
+void DepthImageInpainting::expand(int ithRow, int jthCol, int kthLayer, int type, int ithHole, Eigen::MatrixXi& holeType)
 {
+	if (holeType(ithRow, jthCol) == type) return;
 	int height = mCurrentDepthImage.Height();
 	int width = mCurrentDepthImage.Width();
 
@@ -327,7 +330,7 @@ void DepthImageInpainting::expand(int ithRow, int jthCol, int type, Eigen::Matri
 	toVisit.push(Eigen::Vector2i(ithRow, jthCol));
 	inQ(ithRow, jthCol) = 1;
 	
-
+	mConnectedHolePixelCoordinates.resize(mConnectedHolePixelCoordinates.size() + 1);
 	while (!toVisit.empty())
 	{
 		Eigen::Vector2i visiting = toVisit.front();
@@ -335,6 +338,7 @@ void DepthImageInpainting::expand(int ithRow, int jthCol, int type, Eigen::Matri
 
 		toVisit.pop();
 		holeType(visiting[0], visiting[1]) = DIRICHELT_HOLE;
+		mConnectedHolePixelCoordinates[ithHole].push_back(Eigen::Vector3i(visiting[0], visiting[1], kthLayer));
 		if (visiting[0] - 1 >= 0 && holeType(visiting[0] - 1, visiting[1]) == NEUMANN_HOLE && !inQ(visiting[0] - 1, visiting[1]))
 		{
 			inQ(visiting[0] - 1, visiting[1]) = 1;
@@ -370,6 +374,8 @@ void DepthImageInpainting::gatherHolesForLayer(int ithPyramid, int layer)
 	int testNum = 0;
 	Eigen::MatrixXi holeType = Eigen::MatrixXi::Constant(height, width, NOT_HOLE);
 	mBoundaryType.clear();
+	mConnectedHolePixelCoordinates.clear();
+	int ithHole = 0;
 	for (int i = 0; i < height; ++i)
 	{
 		mBoundaryType.resize(height);
@@ -406,8 +412,8 @@ void DepthImageInpainting::gatherHolesForLayer(int ithPyramid, int layer)
 						{
 							mBoundaryType[i + offsetI][j + offsetJ] = DIRICHELT_BOUNDARY;
 
-							if (i + offsetI > 190 && i + offsetI < 225 && j + offsetJ > 300 && j + offsetJ < 330 || j + offsetJ > 480)
-								mBoundaryType[i + offsetI][j + offsetJ] = NEUMANN_BOUNDARY;
+							//if (i + offsetI > 190 && i + offsetI < 225 && j + offsetJ > 300 && j + offsetJ < 330 || j + offsetJ > 480)
+							//	mBoundaryType[i + offsetI][j + offsetJ] = NEUMANN_BOUNDARY;
 							
 							//if (ithPyramid == mMaxNumPyramids - 1 && abs(mCurrentDepthImage[i][j][layer].d - mCurrentDepthImage[i + offsetI][j + offsetJ][layer].d) >= diricheletBoundaryDepthDifferenceThreshold)
 							//{
@@ -429,26 +435,55 @@ void DepthImageInpainting::gatherHolesForLayer(int ithPyramid, int layer)
 					|| i < height - 1 && mBoundaryType[i - 1][j] == DIRICHELT_BOUNDARY
 					|| j < width - 1 && mBoundaryType[i][j - 1] == DIRICHELT_BOUNDARY)
 				{
-					expand(i, j, DIRICHELT_HOLE, holeType);
+					expand(i, j, layer, DIRICHELT_HOLE, static_cast<int>(mConnectedHolePixelCoordinates.size()), holeType);
 				}
+
 			}
 		}
 	}
+	vector<vector<Eigen::Vector3i> > tmpContainer;
+	for (vector<vector<Eigen::Vector3i> >::iterator it = mConnectedHolePixelCoordinates.begin(); it != mConnectedHolePixelCoordinates.end(); ++it)
+	{
+		if (it->size() > 200)
+		{
+			tmpContainer.push_back(*it);
+		}
+	}
+	mConnectedHolePixelCoordinates = tmpContainer;
 	mHolePixelCoordinates.clear();
 	mHolePixelIdx.clear();
+	mConnectedHolePixelStartId.clear();
 	mHolePixelIdx.resize(height);
 	for (int i = 0; i < height; ++i)
 	{
 		mHolePixelIdx[i].resize(width, -1);
-		for (int j = 0; j < width; ++j)
+	}
+	int numHoles = static_cast<int>(mConnectedHolePixelCoordinates.size());
+	for (int ithHole = 0; ithHole < numHoles; ++ithHole)
+	{
+		mConnectedHolePixelStartId.push_back(mHolePixelCoordinates.size());
+		int numPxPerHole = static_cast<int>(mConnectedHolePixelCoordinates[ithHole].size());
+		for (int ithPxPerHole = 0; ithPxPerHole < numPxPerHole; ++ithPxPerHole)
 		{
-			if (holeType(i, j) == DIRICHELT_HOLE)
-			{
-				mHolePixelIdx[i][j] = static_cast<int>(mHolePixelCoordinates.size());
-				mHolePixelCoordinates.push_back(Eigen::Vector3i(i, j, layer));
-			}
+			int ithRow = mConnectedHolePixelCoordinates[ithHole][ithPxPerHole][0];
+			int jthCol = mConnectedHolePixelCoordinates[ithHole][ithPxPerHole][1];
+			mHolePixelIdx[ithRow][jthCol] = static_cast<int>(mHolePixelCoordinates.size());
+			mHolePixelCoordinates.push_back(Eigen::Vector3i(ithRow, jthCol, layer));
 		}
 	}
+	//for (int i = 0; i < height; ++i)
+	//{
+	//	mHolePixelIdx[i].resize(width, -1);
+	//	}
+	//	for (int j = 0; j < width; ++j)
+	//	{
+	//		if (holeType(i, j) == DIRICHELT_HOLE)
+	//		{
+	//			mHolePixelIdx[i][j] = static_cast<int>(mHolePixelCoordinates.size());
+	//			mHolePixelCoordinates.push_back(Eigen::Vector3i(i, j, layer));
+	//		}
+	//	}
+	//}
 
 	//mHolePixelCoordinates.clear();
 	//mHolePixelIdx.resize(mHeight);
@@ -468,18 +503,19 @@ void DepthImageInpainting::gatherHolesForLayer(int ithPyramid, int layer)
 	//}
 }
 
-Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer)
+Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer, int ithHole, bool bAllNeumann)
 {
 	LOG(INFO) << __FUNCTION__;
 
-	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	int numHolePixels = static_cast<int>(mConnectedHolePixelCoordinates[ithHole].size());
 	vector<Eigen::Triplet<double> > triplet;
 	Eigen::SparseMatrix<double> ret(numHolePixels, numHolePixels);
 	int height = mCurrentDepthImage.Height();
 	int width = mCurrentDepthImage.Width();
+	bool bFirst = true;
 	for (int i = 0; i < numHolePixels; ++i)
 	{
-		Eigen::Vector3i coord = mHolePixelCoordinates[i];
+		Eigen::Vector3i coord = mConnectedHolePixelCoordinates[ithHole][i];
 		CHECK(layer == coord[2]) << "Layers do not agree in DepthImageInpainting::constructPoissonRhs().";
 		int numNormalBoundary = 4;
 		
@@ -503,16 +539,28 @@ Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer)
 					//normal situation
 					CHECK(mBoundaryType[neighborI][neighborJ] == NOT_BOUNDARY) << "Boundaries do not agree.";
 					int j = mHolePixelIdx[neighborI][neighborJ];
+					j -= mConnectedHolePixelStartId[ithHole];
 					CHECK(j >= 0) << "Hole pixel is not in mHolePixelIdx.";
 					triplet.push_back(Eigen::Triplet<double>(i, j, -1));
 					//LOG(WARNING) << i << ":" << j << ":" << -1;
 				}
 				else
 				{
-					//dirichlet boundary condition
-					if (neighborJ < 480)
-						LOG(INFO) << "Dirichlet boundary conditions: " << neighborI << ", " << neighborJ << ":" << mCurrentDepthImage[neighborI][neighborJ][layer].d;
-					CHECK(mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY) << "Boundaries do not agree.";
+					if (!bAllNeumann)
+					{
+						//dirichlet boundary condition
+						if (neighborJ < 480)
+							LOG(INFO) << "Dirichlet boundary conditions: " << neighborI << ", " << neighborJ << ":" << mCurrentDepthImage[neighborI][neighborJ][layer].d;
+						CHECK(mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY) << "Boundaries do not agree.";
+					}
+					else if (bFirst)
+					{
+						bFirst = false;
+					}
+					else
+					{
+						numNormalBoundary--;
+					}
 				}
 
 			}
@@ -528,17 +576,17 @@ Eigen::SparseMatrix<double> DepthImageInpainting::constructPoissonLhs(int layer)
 	ret.setFromTriplets(triplet.begin(), triplet.end());
 	return ret;
 }
-Eigen::VectorXd DepthImageInpainting::constructPoissonRhs(int layer)
+Eigen::VectorXd DepthImageInpainting::constructPoissonRhs(int layer, int ithHole, bool bAllNeumann)
 {
 
 	LOG(INFO) << __FUNCTION__;
-	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	int numHolePixels = static_cast<int>(mConnectedHolePixelCoordinates[ithHole].size());
 	Eigen::VectorXd ret = Eigen::VectorXd::Zero(numHolePixels);
 	int height = mCurrentDepthImage.Height();
 	int width = mCurrentDepthImage.Width();
 	for (int i = 0; i < numHolePixels; ++i)
 	{
-		Eigen::Vector3i coord = mHolePixelCoordinates[i];
+		Eigen::Vector3i coord = mConnectedHolePixelCoordinates[ithHole][i];
 		CHECK(layer == coord[2]) << "Layers do not agree in DepthImageInpainting::constructPoissonRhs().";
 		for (int neighborOffsetI = -1; neighborOffsetI <= 1; ++neighborOffsetI)
 		{
@@ -563,7 +611,7 @@ Eigen::VectorXd DepthImageInpainting::constructPoissonRhs(int layer)
 
 					ret[i] += -(neighborOffsetI * mFeatureImage[gradientIIdx][gradientJIdx][layer][0] + neighborOffsetJ * mFeatureImage[gradientIIdx][gradientJIdx][layer][1]);
 				}
-				else
+				else if (!bAllNeumann)
 				{
 					//dirichlet boundary condition
 					CHECK(mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY) << "Boundaries do not agree.";
@@ -580,40 +628,222 @@ Eigen::VectorXd DepthImageInpainting::constructPoissonRhs(int layer)
 	return ret;
 }
 
+
 void DepthImageInpainting::reconstructHoleDepth(int layer)
 {
 	LOG(INFO) << __FUNCTION__;
 
 	// build vector<float> mHoleFilledDepth from vector<Eigen::VectorXf> mHolePatchFeatures.
-	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
+	mHoleFilledDepth.resize(mHolePixelCoordinates.size());
 
-	Eigen::SparseMatrix<double> Lhs = constructPoissonLhs(layer);
-	Eigen::VectorXd rhs = constructPoissonRhs(layer);
-	Eigen::SimplicialCholesky<Eigen::SparseMatrix<double> > chol(Lhs);  // performs a Cholesky factorization of A
-	Eigen::VectorXd x = chol.solve(rhs);
-	Eigen::VectorXd recoveredRhs = Lhs * x;
-	
-	for (int i = 0; i < numHolePixels; ++i)
+	int numHoles = static_cast<int>(mConnectedHolePixelCoordinates.size());
+	for (int ithHole = 0; ithHole < numHoles; ++ithHole)
 	{
-		if (x[i] != x[i])
-			printf("solver does not work.");
-		if (recoveredRhs[i] != recoveredRhs[i])
-			printf("solver does not work.");
-		if (abs(recoveredRhs[i] - rhs[i]) > 1e-6)
-			printf("solver does not work.");
-	}
-	mHoleFilledDepth.resize(numHolePixels);
-	for (int i = 0; i < numHolePixels; ++i)
-	{
-		mHoleFilledDepth[i] = static_cast<float>(x[i]);
-	}
+		int numHolePixels = static_cast<int>(mConnectedHolePixelCoordinates[ithHole].size());
+
+		if (numHolePixels > 100) // find the right boundary conditions
+		{
+			Eigen::SparseMatrix<double> Lhs = constructPoissonLhs(layer, ithHole, true);
+			Eigen::VectorXd rhs = constructPoissonRhs(layer, ithHole, true);
+			Eigen::SimplicialCholesky<Eigen::SparseMatrix<double> > chol(Lhs);  // performs a Cholesky factorization of A
+			Eigen::VectorXd x = chol.solve(rhs);
+			Eigen::VectorXd recoveredRhs = Lhs * x;
 	
+			for (int i = 0; i < numHolePixels; ++i)
+			{
+				if (x[i] != x[i])
+					printf("solver does not work.");
+				if (recoveredRhs[i] != recoveredRhs[i])
+					printf("solver does not work.");
+				if (abs(recoveredRhs[i] - rhs[i]) > 1e-6)
+					printf("solver does not work.");
+			}
+
+			searchOptimalBoundaryCondition(ithHole, x);
+		}
+
+		Eigen::SparseMatrix<double> Lhs = constructPoissonLhs(layer, ithHole, false);
+		Eigen::VectorXd rhs = constructPoissonRhs(layer, ithHole, false);
+		Eigen::SimplicialCholesky<Eigen::SparseMatrix<double> > chol(Lhs);  // performs a Cholesky factorization of A
+		Eigen::VectorXd x = chol.solve(rhs);
+		Eigen::VectorXd recoveredRhs = Lhs * x;
+
+		for (int i = 0; i < numHolePixels; ++i)
+		{
+			if (x[i] != x[i])
+				printf("solver does not work.");
+			if (recoveredRhs[i] != recoveredRhs[i])
+				printf("solver does not work.");
+			if (abs(recoveredRhs[i] - rhs[i]) > 1e-6)
+				printf("solver does not work.");
+		}
+		for (int i = 0; i < numHolePixels; ++i)
+		{
+			const Eigen::Vector3i& holePxCoord = mConnectedHolePixelCoordinates[ithHole][i];
+			int index1D = mHolePixelIdx[holePxCoord[0]][holePxCoord[1]];
+			mHoleFilledDepth[index1D] = static_cast<float>(x[i]);
+		}
+	}
+
+
+	int numHolePixels = static_cast<int>(mHolePixelCoordinates.size());
 	for (int ithHolePixel = 0; ithHolePixel < numHolePixels; ++ithHolePixel)
 	{
 		Eigen::Vector3i pxCoord = mHolePixelCoordinates[ithHolePixel];
 		float originalDepth = mCurrentDepthImage[pxCoord[0]][pxCoord[1]][pxCoord[2]].d;
 		float currentDepth = mHoleFilledDepth[ithHolePixel];
 		mCurrentDepthImage[pxCoord[0]][pxCoord[1]][pxCoord[2]].d = mHoleFilledDepth[ithHolePixel];
+	}
+}
+
+void DepthImageInpainting::identifyBoundaryPixels(const vector<Eigen::Vector3i>& holePixels, vector<int>* boundaryPixels) const
+{
+	int numHolePixels = static_cast<int>(holePixels.size());
+	boundaryPixels->clear();
+	int height = mCurrentDepthImage.Height();
+	int width = mCurrentDepthImage.Width();
+
+	for (int i = 0; i < numHolePixels; ++i)
+	{
+		const Eigen::Vector3i& coord = holePixels[i];
+		for (int neighborOffsetI = -1; neighborOffsetI <= 1; ++neighborOffsetI)
+		{
+			for (int neighborOffsetJ = -1; neighborOffsetJ <= 1; ++neighborOffsetJ)
+			{
+				int neighborI = coord[0] + neighborOffsetI;
+				int neighborJ = coord[1] + neighborOffsetJ;
+				if (abs(neighborOffsetI) == abs(neighborOffsetJ)) continue;
+
+				if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mBoundaryType[neighborI][neighborJ] == NEUMANN_BOUNDARY)
+				{
+					continue;
+				}
+				else if (mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY)
+				{
+					boundaryPixels->push_back(i);
+				}
+			}
+		}
+	}
+
+}
+
+void DepthImageInpainting::computeBaseDiscrepancy(const vector<Eigen::Vector3i>& holePixels, const vector<int>& boundaryPixels, const Eigen::VectorXd& baseDepth, vector<float>* boundaryDiscrepancy) const
+{
+	boundaryDiscrepancy->clear();
+	int height = mCurrentDepthImage.Height();
+	int width = mCurrentDepthImage.Width();
+	int numBoundaryPixels = static_cast<int>(boundaryPixels.size());
+	for (int i = 0; i < numBoundaryPixels; ++i)
+	{
+		int currentPxIdx = boundaryPixels[i];
+		const Eigen::Vector3i& coord = holePixels[currentPxIdx];
+		for (int neighborOffsetI = -1; neighborOffsetI <= 1; ++neighborOffsetI)
+		{
+			for (int neighborOffsetJ = -1; neighborOffsetJ <= 1; ++neighborOffsetJ)
+			{
+				int neighborI = coord[0] + neighborOffsetI;
+				int neighborJ = coord[1] + neighborOffsetJ;
+				if (abs(neighborOffsetI) == abs(neighborOffsetJ)) continue;
+
+				if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mBoundaryType[neighborI][neighborJ] == NEUMANN_BOUNDARY)
+				{
+					continue;
+				}
+				else if (mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY)
+				{
+					int gradientIIdx = coord[0] + (neighborOffsetI - 1) / 2;
+					int gradientJIdx = coord[1] + (neighborOffsetJ - 1) / 2;
+
+					float currentGradient = baseDepth[currentPxIdx] - mCurrentDepthImage[neighborI][neighborJ][coord[2]].d;
+					float desiredGradient = mFeatureImage[gradientIIdx][gradientJIdx][coord[2]][abs(neighborOffsetJ)];
+					float discrepancy = currentGradient + (neighborOffsetI + neighborOffsetJ)* desiredGradient;
+
+					boundaryDiscrepancy->push_back(discrepancy);
+				}
+			}
+		}
+	}
+}
+
+float DepthImageInpainting::evaluateBoundaryDiscrepancy(const vector<float>& boundaryDiscrepancy, float depth) const
+{
+	int len = static_cast<int>(boundaryDiscrepancy.size());
+	float ret = 0;
+	for (int i = 0; i < len; ++i)
+	{
+		ret += abs(boundaryDiscrepancy[i] + depth);
+	}
+	return ret;
+}
+
+void DepthImageInpainting::updateBoundaryType(const vector<Eigen::Vector3i>& holePixels, const vector<int>& boundaryPixels, const Eigen::VectorXd& baseDepth, float optimalDepthBoundary)
+{
+	
+	int height = mCurrentDepthImage.Height();
+	int width = mCurrentDepthImage.Width();
+	int numBoundaryPixels = static_cast<int>(boundaryPixels.size());
+	for (int i = 0; i < numBoundaryPixels; ++i)
+	{
+		int currentPxIdx = boundaryPixels[i];
+		const Eigen::Vector3i& coord = holePixels[currentPxIdx];
+		for (int neighborOffsetI = -1; neighborOffsetI <= 1; ++neighborOffsetI)
+		{
+			for (int neighborOffsetJ = -1; neighborOffsetJ <= 1; ++neighborOffsetJ)
+			{
+				int neighborI = coord[0] + neighborOffsetI;
+				int neighborJ = coord[1] + neighborOffsetJ;
+				if (abs(neighborOffsetI) == abs(neighborOffsetJ)) continue;
+
+				if (neighborI < 0 || neighborI >= height || neighborJ < 0 || neighborJ >= width || mBoundaryType[neighborI][neighborJ] == NEUMANN_BOUNDARY)
+				{
+					continue;
+				}
+				else if (mBoundaryType[neighborI][neighborJ] == DIRICHELT_BOUNDARY)
+				{
+					int gradientIIdx = coord[0] + (neighborOffsetI - 1) / 2;
+					int gradientJIdx = coord[1] + (neighborOffsetJ - 1) / 2;
+
+					float currentGradient = baseDepth[currentPxIdx] + optimalDepthBoundary - mCurrentDepthImage[neighborI][neighborJ][coord[2]].d;
+					float desiredGradient = mFeatureImage[gradientIIdx][gradientJIdx][coord[2]][abs(neighborOffsetJ)];
+					float discrepancy = currentGradient + (neighborOffsetI + neighborOffsetJ)* desiredGradient;
+
+					if (abs(discrepancy) > 20) //threshold value, jie tan hack, 20 for the top view
+					{
+						mBoundaryType[neighborI][neighborJ] = NEUMANN_BOUNDARY;
+					}
+				}
+			}
+		}
+	}
+}
+
+void DepthImageInpainting::searchOptimalBoundaryCondition(int ithHole, const Eigen::VectorXd& baseDepth)
+{
+	float startDepth = 0;
+	float endDepth = 5000;
+	float step = 10;
+	float minScore = FLT_MAX;
+	float bestDepth = 0;
+	vector<int> boundaryPixels;
+	vector<float> boundaryDiscrepancy;
+	identifyBoundaryPixels(mConnectedHolePixelCoordinates[ithHole], &boundaryPixels);
+
+	int numBoundaryPixels = static_cast<int>(boundaryPixels.size());
+	computeBaseDiscrepancy(mConnectedHolePixelCoordinates[ithHole], boundaryPixels, baseDepth, &boundaryDiscrepancy);
+	for (float currentDepth = startDepth; currentDepth < endDepth; currentDepth += step)
+	{
+		float score = evaluateBoundaryDiscrepancy(boundaryDiscrepancy, currentDepth);
+		if (score < minScore)
+		{
+			minScore = score;
+			bestDepth = currentDepth;
+		}
+		LOG(INFO) << currentDepth << ": " << score;
+	}
+	for (int i = 0; i < numBoundaryPixels; ++i) //update the dirichelet boundary condition
+	{
+		updateBoundaryType(mConnectedHolePixelCoordinates[ithHole], boundaryPixels, baseDepth, bestDepth);
 	}
 }
 
@@ -795,7 +1025,7 @@ void DepthImageInpainting::computeFilledPixelNormals(int ithLayer)
 			Eigen::Vector3f tangentialAxis1(0, stepSize, mFeatureImage[v][u][ithLayer][0] / 1000.f);
 			Eigen::Vector3f tangentialAxis2(stepSize, 0, mFeatureImage[v][u][ithLayer][1] / 1000.f);
 			Eigen::Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
-			normal = -normal.normalized();
+			normal = normal.normalized(); //sometimes I flip the normal mannually.
 			CHECK(mCamera) << "Camera is not set in DepthImageInpainting::computeFilledPixelNormals().";
 
 
