@@ -53,10 +53,13 @@ void SaveMesh(const string& filename, const vector<Eigen::Vector3f>& points, con
 	SaveMesh(filename, &mesh);
 }
 
-void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals)
+void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, bool bAppend)
 {
-	points.clear();
-	normals.clear();
+	if (!bAppend)
+	{
+		points.clear();
+		normals.clear();
+	}
 
 	PointStream< Real >* pointStream = new PLYPointStream< Real >(filename.c_str());
 

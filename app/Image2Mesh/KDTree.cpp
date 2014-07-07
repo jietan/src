@@ -677,8 +677,8 @@ bool KDTreeNode::intersectSelf(aiVector3D &x1, aiVector3D &x2, aiVector3D &resul
 		 ++i) {
 		float alpha;
 		KDTreeTriangle *triPtr = &(this->tree->triangles[i->triangle]);
-		if (i->triangle == 5311 || i->triangle == 5590)
-			printf("hello");
+		//if (i->triangle == 5311 || i->triangle == 5590)
+		//	printf("hello");
 		if (lineTriangleIntersect1(x1, x2, triPtr->vertexes[0], triPtr->vertexes[1], triPtr->vertexes[2], alpha)) {
 			if (alpha < bestAlpha) {
 				bestAlpha = alpha;

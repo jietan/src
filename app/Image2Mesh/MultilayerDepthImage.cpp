@@ -287,3 +287,55 @@ void MultilayerDepthImage::findMinMaxDepth()
 		}
 	}
 }
+
+
+MultilayerDepthImageWithMask::~MultilayerDepthImageWithMask()
+{
+
+}
+void MultilayerDepthImageWithMask::Simplify()
+{
+	const float depthMergeThreshold = 20;
+
+	vector<vector<vector<ExtendedDepthPixelWithMask> > > sDepthMap;
+	sDepthMap.resize(mHeight);
+	for (int i = 0; i < mHeight; ++i)
+	{
+		LOG(INFO) << "DepthCamera::simplifyMultilayerDepthImage() is processing " << i << "th row.";
+		sDepthMap[i].resize(mWidth);
+		for (int j = 0; j < mWidth; ++j)
+		{
+
+			if (mData[i][j].empty()) continue;
+			int nDepthValues = static_cast<int>(mData[i][j].size());
+			float depthCenter = mData[i][j][0].d;
+			int maskCenter = mData[i][j][0].m;
+			Eigen::Vector3f normalCenter = mData[i][j][0].n;
+			int count = 1;
+			for (int k = 1; k < nDepthValues; ++k)
+			{
+				float currentDepth = mData[i][j][k].d;
+				Eigen::Vector3f currentNormal = mData[i][j][k].n;
+				int currentMask = mData[i][j][k].m;
+				if (abs(depthCenter - currentDepth) < depthMergeThreshold && maskCenter == currentMask)
+				{
+					depthCenter = (depthCenter * count + currentDepth) / (count + 1);
+					normalCenter += currentNormal;
+					count++;
+				}
+				else
+				{
+					normalCenter.normalize();
+					sDepthMap[i][j].push_back(ExtendedDepthPixelWithMask(depthCenter, normalCenter, maskCenter));
+					depthCenter = currentDepth;
+					normalCenter = currentNormal;
+					maskCenter = currentMask;
+					count = 1;
+				}
+			}
+			normalCenter.normalize();
+			sDepthMap[i][j].push_back(ExtendedDepthPixelWithMask(depthCenter, normalCenter, maskCenter));
+		}
+	}
+	mData = sDepthMap;
+}
