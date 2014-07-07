@@ -43,6 +43,9 @@ using namespace std;
 #include "utility/ConfigManager.h"
 #include "MultilayerDepthImage.h"
 #include "MeshIO.h"
+#include "PatchMatch.h"
+#include "distanceMetric.h"
+#include "CVImageHelper.h"
 
 //#include "gflags/gflags.h"
 #define GLOG_NO_ABBREVIATED_SEVERITIES
@@ -935,5 +938,46 @@ int main(int argc, char** argv)
 		dCameraFrontView.SetData(newDepthImage);
 		dCameraFrontView.GetPointCloud(points, normals, PORTION_ALL);
 		SavePointCloud("results/crossViewDepthImage_Ortho_Top_Front.ply", points, colors, normals);
+	}
+	else if (task == 10)
+	{
+
+		cv::Mat srcImageFromFile;
+		cv::Mat dstImageFromFile;
+		srcImageFromFile = ReadColorImage("../../patchmatch-2.1/a.png");
+		dstImageFromFile = ReadColorImage("../../patchmatch-2.1/b.png");
+
+		//cv::namedWindow("src window", cv::WINDOW_AUTOSIZE);
+		//cv::imshow("src window", srcImageFromFile);
+
+		//cv::namedWindow("dst window", cv::WINDOW_AUTOSIZE);
+		//cv::imshow("dst window", dstImageFromFile);
+
+		Image<Eigen::Vector3f> src;
+		Image<Eigen::Vector3f> dst;
+		FromCVToImage(srcImageFromFile, src);
+		FromCVToImage(dstImageFromFile, dst);
+		src.Create(srcImageFromFile.rows, srcImageFromFile.cols);
+		dst.Create(dstImageFromFile.rows, dstImageFromFile.cols);
+
+		PatchMatch<Eigen::Vector3f> pmTest;
+		pmTest.SetSrc(&src, NULL);
+		pmTest.SetDst(&dst, NULL);
+		pmTest.SetDistanceMetric(dist1);
+		pmTest.ComputeNNF();
+		const Image<Eigen::Vector2i>& nnf = pmTest.GetNNF();
+		const Image<float>& nnd = pmTest.GetNND();
+		const Image<Eigen::Vector3f>& reconstructedImage = pmTest.GetReconstructedDst();
+
+		cv::Mat nnfToFile, reconToFile, nnfVisualizeToFile;
+		FromImageToCV(nnf, nnfToFile);
+		FromImageToCV(reconstructedImage, reconToFile);
+		//FromPosImageToColorCV(nnf, nnfVisualizeToFile);
+
+		cv::imwrite("../../patchmatch-2.1/testNNF.png", nnfToFile);
+		cv::imwrite("../../patchmatch-2.1/testRecon.png", reconToFile);
+		//cv::imwrite("../../patchmatch-2.1/testNNFVisualize.png", nnfVisualizeToFile);
+		//cv::imwrite("../../patchmatch-2.1/testNND.png", nndToFile);
+		//cv::waitKey(0);
 	}
 }

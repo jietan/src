@@ -4,13 +4,13 @@
 #include <vector>
 using namespace std;
 
+#include "Image.h"
+
 template <typename T>
-class MultilayerImage
+class MultilayerImage : public Image<vector<T> >
 {
 public:
-	MultilayerImage() : mWidth(0),
-	mHeight(0),
-	mLayers(0)
+	MultilayerImage() : mLayers(0)
 	{
 
 	}
@@ -18,69 +18,15 @@ public:
 	{
 
 	}
-
-	vector<vector<T> >& operator[] (int i)
-	{
-		return mData[i];
-	}
-
-	const vector<vector<T> >& operator[] (int i) const
-	{
-		return mData[i];
-	}
-	virtual void Create(int nRows, int nCol)
-	{
-		mHeight = nRows;
-		mWidth = nCol;
-		mData.resize(mHeight);
-		for (int i = 0; i < mHeight; ++i)
-		{
-			mData[i].resize(mWidth);
-		}
-	}
 	virtual void Process()
 	{
 		findNumLayers();
-	}
-	virtual void Read(const string& filename)
-	{
-
-	}
-	virtual void Save(const string& filename)
-	{
-
-	}
-	virtual int Width() const
-	{
-		return mWidth;
-	}
-	virtual int Height() const
-	{
-		return mHeight;
 	}
 	virtual int NumLayers() const
 	{
 		return mLayers;
 	}
-	virtual void DownSample()
-	{
-		int newWidth = mWidth / 2;
-		int newHeight = mHeight / 2;
-		vector<vector<vector<T> > > newData;
-		newData.resize(newHeight);
-		for (int i = 0; i < newHeight; ++i)
-		{
-			newData[i].resize(newWidth);
-			for (int j = 0; j < newWidth; ++j)
-			{
-				newData[i][j] = mData[i * 2][j * 2];
-			}
-		}
-		mHeight = newHeight;
-		mWidth = newWidth;
-		mData = newData;
-		Process();
-	}
+
 
 protected:
 
@@ -99,10 +45,8 @@ protected:
 		}
 	}
 
-	int mWidth;
-	int mHeight;
 	int mLayers;
-	vector<vector<vector<T> > > mData;
+	
 };
 
 #endif

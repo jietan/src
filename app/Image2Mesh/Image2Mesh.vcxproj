@@ -257,10 +257,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CVImageHelper.cpp" />
     <ClCompile Include="DepthCamera.cpp" />
     <ClCompile Include="DepthImage.cpp" />
     <ClCompile Include="DepthInpainting.cpp" />
     <ClCompile Include="DepthSegmentation.cpp" />
+    <ClCompile Include="distanceMetric.cpp" />
+    <ClCompile Include="Image.cpp" />
     <ClCompile Include="ImageSegmentation.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="main.cpp" />
@@ -268,6 +271,7 @@
     <ClCompile Include="MultilayerDepthImage.cpp" />
     <ClCompile Include="MultilayerImage.cpp" />
     <ClCompile Include="MultilayerMaskImage.cpp" />
+    <ClCompile Include="PatchMatch.cpp" />
     <ClCompile Include="Segment.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -285,20 +289,27 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CVImageHelper.h" />
     <ClInclude Include="DepthCamera.h" />
     <ClInclude Include="DepthImage.h" />
     <ClInclude Include="DepthInpainting.h" />
     <ClInclude Include="DepthSegmentation.h" />
+    <ClInclude Include="distanceMetric.h" />
     <ClInclude Include="Framework.h" />
     <ClInclude Include="grid.h" />
     <ClInclude Include="extendedDepthPixel.h" />
+    <ClInclude Include="Image.h" />
     <ClInclude Include="ImageSegmentation.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="MeshIO.h" />
     <ClInclude Include="MultilayerDepthImage.h" />
     <ClInclude Include="MultilayerImage.h" />
     <ClInclude Include="MultilayerMaskImage.h" />
+    <ClInclude Include="PatchMatch.h" />
     <ClInclude Include="Segment.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="PatchMatch.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
