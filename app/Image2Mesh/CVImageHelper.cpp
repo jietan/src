@@ -30,6 +30,21 @@ void FromImageToCV(const Image<Eigen::Vector3f>& img, cv::Mat& data)
 	}
 }
 
+
+void FromImageToCV(const Image<float>& img, cv::Mat& data)
+{
+	int numRows = img.Height();
+	int numCols = img.Width();
+	data = cv::Mat(numRows, numCols, CV_8U);
+	for (int i = 0; i < numRows; ++i)
+	{
+		for (int j = 0; j < numCols; ++j)
+		{
+			data.at<uchar>(i, j) = static_cast<uchar>(img[i][j]);
+		}
+	}
+}
+
 void FromImageToCV(const Image<Eigen::Vector2i>& img, cv::Mat& data)
 {
 	int numRows = img.Height();
@@ -53,12 +68,14 @@ void FromPosImageToColorCV(const Image<Eigen::Vector2i>& img, cv::Mat& data)
 	{
 		for (int j = 0; j < numCols; ++j)
 		{
-			int col = XY_TO_INT(img[i][j][0], img[i][j][1]);
+			//int col = XY_TO_INT(img[i][j][1], img[i][j][0]);
 
-			int dr = (col & 255);
-			int dg = (col >> 8) & 255;
-			int db = (col >> 16);
-			data.at<cv::Vec3b>(i, j) = cv::Vec3b(dr, dg, db);
+			//int dr = (col & 255);
+			//int dg = (col >> 8) & 255;
+			//int db = (col >> 16);
+			int x = static_cast<int>(img[i][j][1] / 3.0);
+			int y = static_cast<int>(img[i][j][0] / 2.0);
+			data.at<cv::Vec3b>(i, j) = cv::Vec3b(x, 0, y);
 		}
 	}
 }

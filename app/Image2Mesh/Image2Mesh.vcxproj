@@ -264,6 +264,7 @@
     <ClCompile Include="DepthSegmentation.cpp" />
     <ClCompile Include="distanceMetric.cpp" />
     <ClCompile Include="Image.cpp" />
+    <ClCompile Include="ImageInpainting.cpp" />
     <ClCompile Include="ImageSegmentation.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="main.cpp" />
@@ -299,6 +300,7 @@
     <ClInclude Include="grid.h" />
     <ClInclude Include="extendedDepthPixel.h" />
     <ClInclude Include="Image.h" />
+    <ClInclude Include="ImageInpainting.h" />
     <ClInclude Include="ImageSegmentation.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="MeshIO.h" />
@@ -309,6 +311,7 @@
     <ClInclude Include="Segment.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ImageInpainting.inl" />
     <None Include="PatchMatch.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

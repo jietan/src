@@ -55,6 +55,8 @@ void PatchMatch<T>::ComputeNNF()
 			{
 				for (int j = 0; j < width; ++j)
 				{
+					if (mDstMask && (*mDstMask)[i][j] == MASK_KNOWN)
+						continue;
 					if (bUsePropagation)
 						propagate(ithIteration, i, j, bUseCausalNeighbors?SCANLINE_CAUSAL:NON_CAUSAL);
 					if (bUseRandomSearch)
@@ -68,6 +70,8 @@ void PatchMatch<T>::ComputeNNF()
 			{
 				for (int j = width - 1; j >= 0; --j)
 				{
+					if (mDstMask && (*mDstMask)[i][j] == MASK_KNOWN)
+						continue;
 					if (bUsePropagation)
 						propagate(ithIteration, i, j, bUseCausalNeighbors?REVERSE_SCANLINE_CAUSAL:NON_CAUSAL);
 					if (bUseRandomSearch)
@@ -133,23 +137,57 @@ void PatchMatch<T>::initialize(int causalType)
 
 	mNNF.Create(dstHeight, dstWidth);
 	mNND.Create(dstHeight, dstWidth);
-	for (int i = 0; i < dstHeight; ++i)
+
+	if (mInitialGuess)
 	{
-		for (int j = 0; j < dstWidth; ++j)
+		for (int i = 0; i < dstHeight; ++i)
 		{
-			while (true)
+			for (int j = 0; j < dstWidth; ++j)
 			{
-				int randI = rand() % srcHeight;
-				int randJ = rand() % srcWidth;
-				if (!mSrcMask || (*mSrcMask)[randI][randJ] == MASK_KNOWN)
+
+				if (mDstMask && (*mDstMask)[i][j] == MASK_KNOWN)
 				{
-					mNNF[i][j] = Eigen::Vector2i(randI, randJ);
-					mNND[i][j] = mDistMetric(mSrcImg, mSrcMask, mDstImg, mDstMask, Eigen::Vector2i(randI, randJ), Eigen::Vector2i(i, j), mPatchSize, causalType);
+					mNNF[i][j] = Eigen::Vector2i(i, j);
+					mNND[i][j] = mDistMetric(mSrcImg, mSrcMask, mDstImg, mDstMask, mNNF[i][j], Eigen::Vector2i(i, j), mPatchSize, causalType);
 				}
-				break;
+				else
+				{
+					mNNF[i][j] = (*mInitialGuess)[i][j];
+					mNND[i][j] = mDistMetric(mSrcImg, mSrcMask, mDstImg, mDstMask, mNNF[i][j], Eigen::Vector2i(i, j), mPatchSize, causalType);
+				}
 			}
 		}
 	}
+	else
+	{
+		for (int i = 0; i < dstHeight; ++i)
+		{
+			for (int j = 0; j < dstWidth; ++j)
+			{
+				if (!mDstMask || mDstMask && (*mDstMask)[i][j] == MASK_UNKNOWN)
+				{
+					while (true)
+					{
+						int randI = rand() % srcHeight;
+						int randJ = rand() % srcWidth;
+						if (!mSrcMask || (*mSrcMask)[randI][randJ] == MASK_KNOWN)
+						{
+							mNNF[i][j] = Eigen::Vector2i(randI, randJ);
+							mNND[i][j] = mDistMetric(mSrcImg, mSrcMask, mDstImg, mDstMask, mNNF[i][j], Eigen::Vector2i(i, j), mPatchSize, causalType);
+							break;
+						}
+					}
+				}
+				else
+				{
+					mNNF[i][j] = Eigen::Vector2i(i, j);
+					mNND[i][j] = mDistMetric(mSrcImg, mSrcMask, mDstImg, mDstMask, mNNF[i][j], Eigen::Vector2i(i, j), mPatchSize, causalType);
+				}
+
+			}
+		}
+	}
+
 }
 template <typename T>
 void PatchMatch<T>::propagate(int ithIteration, int i, int j, int causalType)

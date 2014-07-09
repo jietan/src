@@ -8,7 +8,8 @@ template <typename T>
 float dist1(const Image<T>* src, const Image<int>* sMask, const Image<T>* dst, const Image<int>* dMask, const Eigen::Vector2i& sIdx, const Eigen::Vector2i& dIdx, int patchSize, int causalType)
 {
 	Eigen::VectorXf elementDist = Eigen::VectorXf::Zero(patchSize * patchSize);
-
+	if (sMask && (*sMask)[sIdx[0]][sIdx[1]] == MASK_UNKNOWN)
+		return FLT_MAX;
 	int numPatchPixels = patchSize * patchSize;
 	int halfPatchSize = patchSize / 2;
 	int idx = 0;

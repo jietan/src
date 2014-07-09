@@ -46,6 +46,7 @@ using namespace std;
 #include "PatchMatch.h"
 #include "distanceMetric.h"
 #include "CVImageHelper.h"
+#include "ImageInpainting.h"
 
 //#include "gflags/gflags.h"
 #define GLOG_NO_ABBREVIATED_SEVERITIES
@@ -979,5 +980,55 @@ int main(int argc, char** argv)
 		//cv::imwrite("../../patchmatch-2.1/testNNFVisualize.png", nnfVisualizeToFile);
 		//cv::imwrite("../../patchmatch-2.1/testNND.png", nndToFile);
 		//cv::waitKey(0);
+	}
+	else if (task == 11)
+	{
+		cv::Mat imageFromFile;
+		cv::Mat maskFromFile;
+		imageFromFile = ReadColorImage("../../patchmatch-2.1/testInpaintingImage.png");
+		maskFromFile = ReadColorImage("../../patchmatch-2.1/testInpaintingMask.png");
+
+		Image<Eigen::Vector3f> img;
+		FromCVToImage(imageFromFile, img);
+
+		Image<int> mask;
+		mask.Create(maskFromFile.rows, maskFromFile.cols);
+		for (int i = 0; i < maskFromFile.rows; ++i)
+		{
+			for (int j = 0; j < maskFromFile.cols; ++j)
+			{
+				cv::Vec3b& col = maskFromFile.at<cv::Vec3b>(i, j);
+				if (col[0] != col[1])
+				{
+					mask[i][j] = MASK_UNKNOWN;
+				}
+				else
+				{
+					mask[i][j] = MASK_KNOWN;
+				}
+
+			}
+		}
+		ImageInpainting<Eigen::Vector3f> inpainter;
+		inpainter.SetSrc(&img, &mask);
+		inpainter.SetDst(&img, &mask);
+		inpainter.Inpaint();
+		const Image<Eigen::Vector3f>& result = inpainter.GetResult();
+		const Image<Eigen::Vector2i>& nnf = inpainter.GetNNF();
+		const Image<float>& nnd = inpainter.GetNND();
+
+		cv::Mat inpaintResult, nnfToFile, nnfVisualizeToFile, nndToFile;
+		FromImageToCV(result, inpaintResult);
+		FromImageToCV(nnf, nnfToFile);
+		FromImageToCV(nnd, nndToFile);
+		FromPosImageToColorCV(nnf, nnfVisualizeToFile);
+
+		cv::namedWindow("inpaint window", cv::WINDOW_AUTOSIZE);
+		cv::imshow("inpaint window", inpaintResult);
+		cv::imwrite("../../patchmatch-2.1/testInpaintingResult.png", inpaintResult);
+		cv::imwrite("../../patchmatch-2.1/testInpaintingNNF.png", nnfToFile);
+		cv::imwrite("../../patchmatch-2.1/testInpaintingNND.png", nndToFile);
+		cv::imwrite("../../patchmatch-2.1/testInpaintingNNFVis.png", nnfVisualizeToFile);
+		cv::waitKey(0);
 	}
 }
