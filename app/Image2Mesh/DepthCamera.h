@@ -79,6 +79,7 @@ public:
 	void Capture(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals);
 	void Capture(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& indices);
 	void SetData(const MultilayerDepthImage& depthMap);
+	void SetData(const DepthImage& depthMap);
 	void SetMask(const MultilayerMaskImage& mask);
 	void SaveMultilayerDepthImage(const string& filename);
 	void ReadMultilayerDepthImage(const string& filename);
@@ -89,9 +90,11 @@ public:
 	void SetReferenceDepthImages(const vector<DepthImage*> refImages);
 	void SetComparisonROI(int left, int right, int high, int low, float near, float far);
 	void CrossViewMaskUpdate(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage);
+	void CrossViewMaskUpdate1(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage);
 private:
 	Eigen::Vector3f constructRayDirection(int i, int j);
 	Eigen::Vector3f constructRayOrigin(int i, int j);
+	bool isPixelKnown(int ithRow, int jthCol, int kthLayer, const MultilayerMaskImage& mask);
 	bool isDepthValid(int ithRow, int jthCol, float depth, float& depthDelta);
 	bool isHoleBoundary(int ithRow, int jthCol, int kthLayer, const MultilayerMaskImage& mask);
 	bool moveDepthUntilValid(int ithRow, int jthCol, int kthLayer, MultilayerDepthImage& mergedDepthMap);

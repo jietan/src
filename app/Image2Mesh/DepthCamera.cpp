@@ -439,6 +439,43 @@ void DepthCamera::SetData(const MultilayerDepthImage& depthMap)
 	mDepthMap = depthMap;
 }
 
+void DepthCamera::SetData(const DepthImage& depthMap)
+{
+
+	int height = depthMap.NumRows();
+	int width = depthMap.NumCols();
+	mDepthMap.Create(height, width);
+	for (int i = 0; i < height; ++i)
+	{
+		for (int j = 0; j < width; ++j)
+		{
+			if (depthMap.Depth(i, j) < 0.01) continue;
+			mDepthMap[i][j].push_back(ExtendedDepthPixel(depthMap.Depth(i, j)));
+		}
+	}
+	float stepSize = GetOrthoWidth() / width;
+	for (int i = 0; i < height; ++i)
+	{
+		for (int j = 0; j < width; ++j)
+		{
+			if (depthMap.Depth(i, j) < 0.01) continue;
+
+			if (i - 1 >= 0 && j - 1 >= 0)
+			{
+				Eigen::Vector3f tangentialAxis1(0, stepSize, (mDepthMap[i][j][0].d - mDepthMap[i - 1][j][0].d) / 1000.f);
+				Eigen::Vector3f tangentialAxis2(stepSize, 0, (mDepthMap[i][j][0].d - mDepthMap[i][j - 1][0].d) / 1000.f);
+				Eigen::Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
+				normal.normalize(); //sometimes I flip the normal mannually.
+
+				Eigen::Vector3f gn = GetCameraPose().block(0, 0, 3, 3) * normal;
+				mDepthMap[i][j][0].n = gn;
+			}
+		}
+	}
+	mDepthMap.Process();
+
+}
+
 void DepthCamera::SetMask(const MultilayerMaskImage& mask)
 {
 	mMask = mask;
@@ -574,6 +611,180 @@ void DepthCamera::leaveTrace(int ithRowOld, int jthColOld, float depthOld, int i
 		}
 	}
 }
+
+bool DepthCamera::isPixelKnown(int ithRow, int jthCol, int kthLayer, const MultilayerMaskImage& mask)
+{
+	if (ithRow < 0 || ithRow >= mask.Height() || jthCol < 0 || jthCol >= mask.Width() || mask[ithRow][jthCol].size() <= kthLayer)
+		return true;
+	return mask[ithRow][jthCol][kthLayer] == MASK_KNOWN;
+}
+
+void DepthCamera::CrossViewMaskUpdate1(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage)
+{
+	if (moveDir != MOVE_UP)
+	{
+		CHECK(0) << "Only move up is implemented in DepthCamera::CrossViewMaskUpdate1()";
+	}
+	vector<Eigen::Vector3i> rootCandidate;
+	vector<pair<int, int> > rootNeighbors; //first is the lowest neighbor which is unknown and second is the highest neighbor which is unknown
+	for (int i = 240; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			int numLayers = static_cast<int>(mDepthMap[i][j].size());
+			for (int k = 0; k < numLayers; ++k)
+			{
+				if (j == 299 && i == 282)
+					printf("hello");
+				if (isPixelKnown(i, j, k, mMask))
+				{
+					for (int l = 0; l < mDepthMap[i - 1][j].size(); ++l)
+					{
+						if (!isPixelKnown(i - 1, j, l, mMask) && abs(mDepthMap[i][j][k].d - mDepthMap[i - 1][j][l].d) < 100)
+						{
+
+							rootCandidate.push_back(Eigen::Vector3i(i, j, k));
+							int start = i - 1;
+							while (!isPixelKnown(start, j, k, mMask) && start >= 0)
+							{
+								start--;
+							}
+							rootNeighbors.push_back(pair<int, int>(i - 1, start + 1));
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+	newDepthImage->Create(mHeight, mWidth);
+	newMaskImage->Create(mHeight, mWidth);
+
+	MultilayerDepthImageWithMask intermediateResult;
+	intermediateResult.Create(mHeight, mWidth);
+
+	const MultilayerDepthImage& depthImageOtherViewOld = otherViewOld.GetDepthImage();
+	const MultilayerMaskImage& maskImageOtherViewOld = otherViewOld.GetMaskImage();
+	const MultilayerDepthImage& depthImageOtherViewNew = otherViewNew.GetDepthImage();
+	int ithRowOtherView, ithColOtherView, ithRowNewPt, ithColNewPt;
+
+	MultilayerImage<Eigen::Vector2i> newCoordinates;
+	newCoordinates.Create(mHeight, mWidth);
+
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			
+			//__debugbreak();
+			int numLayers = static_cast<int>(mDepthMap[i][j].size());
+			newCoordinates[i][j].resize(numLayers, Eigen::Vector2i(-1, -1));
+			for (int k = 0; k < numLayers; ++k)
+			{
+				if (i == 411 && j == 309 && k == 4)
+					printf("hello");
+				if (mMask[i][j][k] == MASK_KNOWN)
+				{
+					intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], mMask[i][j][k]));
+					continue;
+				}
+				float depthDelta;
+
+				Eigen::Vector3f pt = GetPoint(i, j, mDepthMap[i][j][k].d);
+				float otherViewDepth = otherViewOld.GetDepth(pt, &ithRowOtherView, &ithColOtherView);
+				if (ithRowOtherView < 0 || ithRowOtherView >= mHeight || ithColOtherView < 0 || ithColOtherView >= mWidth)
+				{
+					intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], MASK_UNKNOWN));
+		
+					continue;
+				}
+				const vector<ExtendedDepthPixel>& otherViewPixel = depthImageOtherViewOld[ithRowOtherView][ithColOtherView];
+				int lenOtherView = static_cast<int>(otherViewPixel.size());
+				bool bFound = false;
+				for (int l = 0; l < lenOtherView; ++l)
+				{
+					if (abs(otherViewPixel[l].d - otherViewDepth) < 2)
+					{
+						bFound = true;
+						Eigen::Vector3f newPt = otherViewNew.GetPoint(ithRowOtherView, ithColOtherView, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].d);
+
+						float newDepth = GetDepth(newPt, &ithRowNewPt, &ithColNewPt);
+						//if (abs(depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n.dot(GetCameraFront())) > 0.1)
+						intermediateResult[ithRowNewPt][ithColNewPt].push_back(ExtendedDepthPixelWithMask(newDepth, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n, MASK_UNKNOWN));
+						newCoordinates[i][j][k] = (Eigen::Vector2i(ithRowNewPt, ithColNewPt));
+						break;
+					}
+				}
+				if (!bFound)
+				{
+					//if (isDepthValid(i, j, mDepthMap[i][j][k].d, depthDelta))
+					//intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], MASK_UNKNOWN));
+				
+				}
+			}
+		}
+	}
+
+	int numRoots = static_cast<int>(rootCandidate.size());
+	{
+		for (int i = 0; i < numRoots; ++i)
+		{
+			const Eigen::Vector3i& rootCoord = rootCandidate[i];
+			if (rootCoord[1] == 299)
+				printf("hello");
+			int rootHeight = rootCoord[0];
+			int minHeight = rootHeight;
+			for (int start = rootNeighbors[i].first; start >= rootNeighbors[i].second; --start)
+			{
+				int neighborHeight = newCoordinates[start][rootCoord[1]][rootCoord[2]][0];
+				if (neighborHeight >= 0 && neighborHeight < minHeight)
+					minHeight = neighborHeight;
+			}
+
+			if (minHeight < rootHeight)
+			{
+				leaveTrace(rootNeighbors[i].first, rootCoord[1], mDepthMap[rootCoord[0]][rootCoord[1]][rootCoord[2]].d, minHeight, rootCoord[1], mDepthMap[rootCoord[0]][rootCoord[1]][rootCoord[2]].d, rootCoord[2], MOVE_UP, &intermediateResult);
+			}
+		}
+	}
+
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			if (!intermediateResult[i][j].empty())
+				sort(intermediateResult[i][j].begin(), intermediateResult[i][j].end());
+
+		}
+	}
+	intermediateResult.Simplify();
+	float stepSize = GetOrthoWidth() / mWidth;
+	for (int i = 0; i < mHeight; ++i)
+	{
+		for (int j = 0; j < mWidth; ++j)
+		{
+			int len = static_cast<int>(intermediateResult[i][j].size());
+			for (int k = 0; k < len; ++k)
+			{
+
+				if (i - 1 >= 0 && j - 1 >= 0 && k < intermediateResult[i - 1][j].size() && k < intermediateResult[i][j - 1].size())
+				{
+					Eigen::Vector3f tangentialAxis1(0, stepSize, (intermediateResult[i][j][k].d - intermediateResult[i - 1][j][k].d) / 1000.f);
+					Eigen::Vector3f tangentialAxis2(stepSize, 0, (intermediateResult[i][j][k].d - intermediateResult[i][j - 1][k].d) / 1000.f);
+					Eigen::Vector3f normal = tangentialAxis1.cross(tangentialAxis2);
+					normal.normalize(); //sometimes I flip the normal mannually.
+
+					Eigen::Vector3f gn = GetCameraPose().block(0, 0, 3, 3) * normal;
+					intermediateResult[i][j][k].n = gn;
+				}
+				(*newDepthImage)[i][j].push_back(ExtendedDepthPixel(intermediateResult[i][j][k].d, intermediateResult[i][j][k].n));
+				(*newMaskImage)[i][j].push_back(intermediateResult[i][j][k].m);
+			}
+		}
+	}
+//	boundariesFromNearestNeighbor(*newDepthImage, *newMaskImage);
+}
 void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage)
 {
 	newDepthImage->Create(mHeight, mWidth);
@@ -622,7 +833,7 @@ void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const Dep
 						Eigen::Vector3f newPt = otherViewNew.GetPoint(ithRowOtherView, ithColOtherView, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].d);
 
 						float newDepth = GetDepth(newPt, &ithRowNewPt, &ithColNewPt);
-						if (abs(depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n.dot(GetCameraFront())) > 0.1)
+						//if (abs(depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n.dot(GetCameraFront())) > 0.1)
 							intermediateResult[ithRowNewPt][ithColNewPt].push_back(ExtendedDepthPixelWithMask(newDepth, depthImageOtherViewNew[ithRowOtherView][ithColOtherView][l].n, MASK_UNKNOWN));
 						bool bNeedLeaveTrace = false;
 						int nextDepthPointId = linearSearchInsertPos<ExtendedDepthPixel>(depthImagePointCloudOtherView[ithRowOtherView][ithColOtherView], otherViewDepth);
@@ -630,15 +841,15 @@ void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const Dep
 							bNeedLeaveTrace = true;
 						if (bNeedLeaveTrace)
 						{
-							leaveTrace(i, j, mDepthMap[i][j][k].d, ithRowNewPt, ithColNewPt, newDepth, k, moveDir, &intermediateResult);
+						//	leaveTrace(i, j, mDepthMap[i][j][k].d, ithRowNewPt, ithColNewPt, newDepth, k, moveDir, &intermediateResult);
 						}
 						break;
 					}
 				}
 				if (!bFound)
 				{
-					if (isDepthValid(i, j, mDepthMap[i][j][k].d, depthDelta))
-						intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], MASK_UNKNOWN));
+					//if (isDepthValid(i, j, mDepthMap[i][j][k].d, depthDelta))
+					//intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], MASK_UNKNOWN));
 				}
 			}
 		}
@@ -666,7 +877,7 @@ void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const Dep
 			}
 		}
 	}
-	boundariesFromNearestNeighbor(*newDepthImage, *newMaskImage);
+	//boundariesFromNearestNeighbor(*newDepthImage, *newMaskImage);
 }
 // assuming self is a noisy depth camera view but represent the truth, rhs is from the view of Poisson constructed mesh.
 void DepthCamera::Compare(const DepthCamera& rhs, bool isBoundaryFromNearestNeighbor, MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask)
@@ -709,7 +920,10 @@ void DepthCamera::Compare(const DepthCamera& rhs, bool isBoundaryFromNearestNeig
 				if (/*mergedDepthMap[i][j].empty() || */numPointsAgreeWithSurface[ithDepthSample])
 				{
 					mask[i][j].push_back(MASK_KNOWN);
-					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+					int id = findNearestPoint(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample], pointMeshMergingThreshold, dist);
+					CHECK(id >= 0) << "Things go wrong in DepthCamera::Compare().";
+					mergedDepthMap[i][j].push_back(mDepthMap[i][j][id]);
+					//mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 				}
 				else if (mComparisonROI.IsWithin(i, j, rhs.mDepthMap[i][j][ithDepthSample].d))//if (!mergedDepthMap[i][j].empty())
 				{

@@ -637,6 +637,7 @@ int main(int argc, char** argv)
 	cameraPose.col(2) = Eigen::Vector4f(cameraFront[0], cameraFront[1], cameraFront[2], 0);
 	cameraPose.col(3) = Eigen::Vector4f(cameraPos[0], cameraPos[1], cameraPos[2], 1);
 
+
 	int task = 0;
 	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "Task", task);
 	if (task == 0)
@@ -911,19 +912,19 @@ int main(int argc, char** argv)
 		dCameraFrontView.SetOrthoWidth(gCameraWidth);
 		dCameraFrontView.SetData(frontViewDepthMap);
 		dCameraFrontView.SetMask(frontViewDepthMask);
-		vector<DepthImage*> refDepthImages;
-		for (int i = 0; i < numFrames; i += 50)
-		{
-			char filename[MAX_FILENAME_LEN];
-			memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-			sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
-			DepthImage* depthImg = new DepthImage(filename);
-			depthImg->SetCameraPose(cameraPoses[i]);
-			refDepthImages.push_back(depthImg);
-		}
-		dCameraFrontView.SetReferenceDepthImages(refDepthImages);
-		ReadPointCloud("results/originalData.ply", points, normals);
-		dCameraFrontView.SetSimplifiedPointCloud(points);
+		//vector<DepthImage*> refDepthImages;
+		//for (int i = 0; i < numFrames; i += 50)
+		//{
+		//	char filename[MAX_FILENAME_LEN];
+		//	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+		//	sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
+		//	DepthImage* depthImg = new DepthImage(filename);
+		//	depthImg->SetCameraPose(cameraPoses[i]);
+		//	refDepthImages.push_back(depthImg);
+		//}
+		//dCameraFrontView.SetReferenceDepthImages(refDepthImages);
+		//ReadPointCloud("results/originalData.ply", points, normals);
+		//dCameraFrontView.SetSimplifiedPointCloud(points);
 		MultilayerDepthImage newDepthImage;
 		MultilayerMaskImage newMaskImage;
 
@@ -931,10 +932,12 @@ int main(int argc, char** argv)
 		topViewDepthMapPointCloud.Read("results/simplifiedDepthFromMultiview_Ortho_Top.data");
 		topViewDepthMapPointCloud.Process();
 
-		dCameraFrontView.CrossViewMaskUpdate(dCameraTopView, dCameraTopViewInpainted, topViewDepthMapPointCloud, MOVE_UP, &newDepthImage, &newMaskImage);
+		dCameraFrontView.CrossViewMaskUpdate1(dCameraTopView, dCameraTopViewInpainted, topViewDepthMapPointCloud, MOVE_UP, &newDepthImage, &newMaskImage);
 		newDepthImage.Process();
-		newDepthImage.Save("results/crossViewDepthImage_Ortho_Top_Front.data");
+		//newDepthImage.Save("results/crossViewDepthImage_Ortho_Top_Front.data");
 		newDepthImage.SaveDepthOnionImage("results/crossViewDepthImage_Ortho_Top_Front.png", &newMaskImage);
+		newDepthImage.SaveDepthImage("results/crossViewDepthImage_Ortho_Top_Front.png");
+		//newDepthImage.SaveDepthOnionImage("results/crossViewDepthImage_Ortho_Top_Front.png", NULL);
 		newMaskImage.Save("results/crossViewDepthImage_Ortho_Top_Front.mask");
 		dCameraFrontView.SetData(newDepthImage);
 		dCameraFrontView.GetPointCloud(points, normals, PORTION_ALL);
@@ -983,13 +986,13 @@ int main(int argc, char** argv)
 	}
 	else if (task == 11)
 	{
-		cv::Mat imageFromFile;
+		cv::Mat1w imageFromFile;
 		cv::Mat maskFromFile;
-		imageFromFile = ReadColorImage("../../patchmatch-2.1/testInpaintingImage.png");
+		imageFromFile = ReadDepthImage("../../patchmatch-2.1/testInpaintingImage.png");
 		maskFromFile = ReadColorImage("../../patchmatch-2.1/testInpaintingMask.png");
 
 		Image<Eigen::Vector3f> img;
-		FromCVToImage(imageFromFile, img);
+		FromCVToDepthImage(imageFromFile, img);
 
 		Image<int> mask;
 		mask.Create(maskFromFile.rows, maskFromFile.cols);
@@ -1017,8 +1020,9 @@ int main(int argc, char** argv)
 		const Image<Eigen::Vector2i>& nnf = inpainter.GetNNF();
 		const Image<float>& nnd = inpainter.GetNND();
 
-		cv::Mat inpaintResult, nnfToFile, nnfVisualizeToFile, nndToFile;
-		FromImageToCV(result, inpaintResult);
+		cv::Mat nnfToFile, nnfVisualizeToFile, nndToFile;
+		cv::Mat1w inpaintResult;
+		FromDepthImageToCV(result, inpaintResult);
 		FromImageToCV(nnf, nnfToFile);
 		FromImageToCV(nnd, nndToFile);
 		FromPosImageToColorCV(nnf, nnfVisualizeToFile);
@@ -1029,6 +1033,18 @@ int main(int argc, char** argv)
 		cv::imwrite("../../patchmatch-2.1/testInpaintingNNF.png", nnfToFile);
 		cv::imwrite("../../patchmatch-2.1/testInpaintingNND.png", nndToFile);
 		cv::imwrite("../../patchmatch-2.1/testInpaintingNNFVis.png", nnfVisualizeToFile);
-		cv::waitKey(0);
+
+		DepthCamera dCameraFrontView;
+		dCameraFrontView.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+		dCameraFrontView.SetExtrinsicParameters(cameraPose);
+		dCameraFrontView.SetProjectionType(gCameraProjectionType);
+		dCameraFrontView.SetOrthoWidth(gCameraWidth);
+		DepthImage depthImg("../../patchmatch-2.1/testInpaintingResult.png");
+		dCameraFrontView.SetData(depthImg);
+		dCameraFrontView.GetPointCloud(points, normals, PORTION_ALL);
+		SavePointCloud("../../patchmatch-2.1/testInpaintingResult.ply", points, colors, normals);
+
+		return 1;
+		//cv::waitKey(0);
 	}
 }

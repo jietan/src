@@ -79,6 +79,23 @@ void PatchMatch<T>::ComputeNNF()
 				}
 			}
 		}
+
+		//for (int i = 0; i < height; ++i)
+		//{
+		//	for (int j = 0; j < width; ++j)
+		//	{
+		//		if (!mDstMask || mDstMask && (*mDstMask)[i][j] == MASK_UNKNOWN)
+		//		{
+		//			if (i < 310 && (*mDstMask)[i + 100][j] == MASK_KNOWN)
+		//			{
+		//				mNNF[i][j] = Eigen::Vector2i(i + 100, j);
+		//				mNND[i][j] = mDistMetric(mSrcImg, mSrcMask, mDstImg, mDstMask, mNNF[i][j], Eigen::Vector2i(i, j), mPatchSize, bUseCausalNeighbors ? REVERSE_SCANLINE_CAUSAL : NON_CAUSAL);
+		//			}
+
+		//		}
+		//	}
+		//}
+
 		float totalError = 0;
 		for (int i = 0; i < height; ++i)
 		{

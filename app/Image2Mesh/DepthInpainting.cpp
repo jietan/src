@@ -1001,7 +1001,7 @@ void DepthImageInpainting::computeFeatureImage(int ithPyramid)
 	}
 	featureGx.Process();
 	featureGy.Process();
-	float min = -100.f / powf(2.f, ithPyramid);
+	float min = -10.f / powf(2.f, ithPyramid);
 	float max = -min;
 	featureGx.SaveDepthOnionImage("results/featureGx", NULL, &min, &max);
 	featureGy.SaveDepthOnionImage("results/featureGy", NULL, &min, &max);

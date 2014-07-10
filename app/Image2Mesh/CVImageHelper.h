@@ -13,4 +13,7 @@ void FromImageToCV(const Image<Eigen::Vector2i>& img, cv::Mat& data);
 void FromImageToCV(const Image<float>& img, cv::Mat& data);
 void FromPosImageToColorCV(const Image<Eigen::Vector2i>& img, cv::Mat& data);
 
+void FromCVToDepthImage(const cv::Mat1w& data, Image<Eigen::Vector3f>& img);
+void FromDepthImageToCV(const Image<Eigen::Vector3f>& img, cv::Mat1w& data);
+
 #endif

@@ -15,7 +15,6 @@ MultilayerDepthImage::~MultilayerDepthImage()
 
 }
 
-
 void MultilayerDepthImage::Process()
 {
 	findMinMaxDepth();

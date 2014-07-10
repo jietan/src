@@ -2,6 +2,35 @@
 
 #define XY_TO_INT(x, y) (((y)<<12)|(x))
 
+void FromCVToDepthImage(const cv::Mat1w& data, Image<Eigen::Vector3f>& img)
+{
+	img.Create(data.rows, data.cols);
+	for (int i = 0; i < data.rows; ++i)
+	{
+		for (int j = 0; j < data.cols; ++j)
+		{
+			ushort d = data.at<ushort>(i, j);
+			img[i][j][0] = d;
+			img[i][j][1] = 0;
+			img[i][j][2] = 0;
+		}
+	}
+}
+
+void FromDepthImageToCV(const Image<Eigen::Vector3f>& img, cv::Mat1w& data)
+{
+	int numRows = img.Height();
+	int numCols = img.Width();
+	data = cv::Mat1w(numRows, numCols);
+	for (int i = 0; i < numRows; ++i)
+	{
+		for (int j = 0; j < numCols; ++j)
+		{
+			data.at<ushort>(i, j) = static_cast<ushort>(img[i][j][0]);
+		}
+	}
+}
+
 void FromCVToImage(const cv::Mat& data, Image<Eigen::Vector3f>& img)
 {
 	img.Create(data.rows, data.cols);

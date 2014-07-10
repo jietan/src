@@ -158,7 +158,12 @@ void ImageInpainting<T>::vote(Image<T>* srcImg, Image<int>* srcMask, Image<T>* d
 {
 	int dstWidth = dstImg->Width();
 	int dstHeight = dstImg->Height();
+	int srcWidth = srcImg->Width();
+	int srcHeight = srcImg->Height();
 	resultImage->Create(dstHeight, dstWidth);
+	int patchSize;
+	DecoConfig::GetSingleton()->GetInt("PatchMatch", "PatchSize", patchSize);
+	int halfPatchSize = patchSize / 2;
 
 	for (int i = 0; i < dstHeight; ++i)
 	{
@@ -170,7 +175,41 @@ void ImageInpainting<T>::vote(Image<T>* srcImg, Image<int>* srcMask, Image<T>* d
 			{
 				int srcIndexI = (*nnf)[i][j][0];
 				int srcIndexJ = (*nnf)[i][j][1];
-				(*resultImage)[i][j] = (*srcImg)[srcIndexI][srcIndexJ];
+
+				float distance = (*nnd)[i][j];
+				float w = exp(-0.1 * distance);
+
+				T pixelValue = w * (*srcImg)[srcIndexI][srcIndexJ];
+				float totalW = w;
+				for (int iOffset = -halfPatchSize; iOffset <= halfPatchSize; ++iOffset)
+				{
+					for (int jOffset = -halfPatchSize; jOffset <= halfPatchSize; ++jOffset)
+					{
+						if (iOffset == 0 && jOffset == 0)
+							continue;
+						int realI = i + iOffset;
+						int realJ = j + jOffset;
+						if (realI >= 0 && realI < dstHeight && realJ >= 0 && realJ < dstWidth)
+						{
+							srcIndexI = (*nnf)[realI][realJ][0] - iOffset;
+							srcIndexJ = (*nnf)[realI][realJ][1] - jOffset;
+
+							if (srcIndexI >= 0 && srcIndexI < srcHeight && srcIndexJ >= 0 && srcIndexJ < srcWidth && (*dstMask)[srcIndexI][srcIndexJ] == MASK_KNOWN)
+							{
+								float distance = (*nnd)[realI][realJ];
+								float w = exp(-0.1 * distance);
+								//LOG(INFO) << "W: " << w;
+
+								pixelValue += w * (*srcImg)[srcIndexI][srcIndexJ];
+								totalW += w;
+							}
+						}
+
+
+					}
+				}
+
+				(*resultImage)[i][j] = pixelValue / totalW;
 			}
 		}
 	}
