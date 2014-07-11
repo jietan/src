@@ -920,16 +920,16 @@ void DepthCamera::Compare(const DepthCamera& rhs, bool isBoundaryFromNearestNeig
 				if (/*mergedDepthMap[i][j].empty() || */numPointsAgreeWithSurface[ithDepthSample])
 				{
 					mask[i][j].push_back(MASK_KNOWN);
-					int id = findNearestPoint(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample], pointMeshMergingThreshold, dist);
-					CHECK(id >= 0) << "Things go wrong in DepthCamera::Compare().";
-					mergedDepthMap[i][j].push_back(mDepthMap[i][j][id]);
-					//mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
+					//int id = findNearestPoint(mDepthMap[i][j], rhs.mDepthMap[i][j][ithDepthSample], pointMeshMergingThreshold, dist);
+					//CHECK(id >= 0) << "Things go wrong in DepthCamera::Compare().";
+					//mergedDepthMap[i][j].push_back(mDepthMap[i][j][id]);
+					mergedDepthMap[i][j].push_back(rhs.mDepthMap[i][j][ithDepthSample]);
 				}
-				else if (mComparisonROI.IsWithin(i, j, rhs.mDepthMap[i][j][ithDepthSample].d))//if (!mergedDepthMap[i][j].empty())
-				{
-					mask[i][j].push_back(MASK_UNKNOWN);
-					mergedDepthMap[i][j].push_back(ExtendedDepthPixel(rhs.mDepthMap[i][j][ithDepthSample].d, Eigen::Vector3f::Zero()));
-				}
+				//else if (mComparisonROI.IsWithin(i, j, rhs.mDepthMap[i][j][ithDepthSample].d))//if (!mergedDepthMap[i][j].empty())
+				//{
+				//	mask[i][j].push_back(MASK_UNKNOWN);
+				//	mergedDepthMap[i][j].push_back(ExtendedDepthPixel(rhs.mDepthMap[i][j][ithDepthSample].d, Eigen::Vector3f::Zero()));
+				//}
 				
 
 			}

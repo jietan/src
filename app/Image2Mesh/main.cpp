@@ -612,25 +612,25 @@ int main(int argc, char** argv)
 	vector<Eigen::Vector3i> colors;
 	Eigen::MatrixXf cameraPose = cameraPoses[ithDepthToProcess];
 
-	//Eigen::Vector3f cameraFront = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
-	//Eigen::Vector3f cameraRight = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f);
-	//Eigen::Vector3f cameraUp = cameraRight.cross(cameraFront);
-	//cameraUp.normalize();
-	//cameraFront = cameraUp.cross(cameraRight);
-	//cameraFront.normalize();
-	//Eigen::Vector3f cameraPos = Eigen::Vector3f(1.06286, 1.28835, 1.30427) - cameraFront + 0.2 * cameraRight - 0.2 * cameraUp;
-
-	Eigen::Vector3f cameraFront = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f); 
-	cameraFront.normalize();
-	Eigen::Vector3f cameraUp = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
+	Eigen::Vector3f cameraFront = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
+	Eigen::Vector3f cameraRight = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f);
+	Eigen::Vector3f cameraUp = cameraRight.cross(cameraFront);
 	cameraUp.normalize();
-	
-	Eigen::Vector3f cameraRight = cameraFront.cross(cameraUp);
-	cameraRight.normalize();
 	cameraFront = cameraUp.cross(cameraRight);
 	cameraFront.normalize();
+	Eigen::Vector3f cameraPos = Eigen::Vector3f(1.06286, 1.28835, 1.30427) - cameraFront + 0.2 * cameraRight - 0.2 * cameraUp;
 
-	Eigen::Vector3f cameraPos = Eigen::Vector3f(0.585555f, 2.11679f, 1.20261f) - cameraFront + 0.6f * Eigen::Vector3f(0.160215f, -0.926381f, -0.340808f);
+	//Eigen::Vector3f cameraFront = Eigen::Vector3f(0.939416f, -0.118723f, 0.321563f); 
+	//cameraFront.normalize();
+	//Eigen::Vector3f cameraUp = Eigen::Vector3f(-0.0654295f, 0.911619f, 0.405796f);
+	//cameraUp.normalize();
+	//
+	//Eigen::Vector3f cameraRight = cameraFront.cross(cameraUp);
+	//cameraRight.normalize();
+	//cameraFront = cameraUp.cross(cameraRight);
+	//cameraFront.normalize();
+
+	//Eigen::Vector3f cameraPos = Eigen::Vector3f(0.585555f, 2.11679f, 1.20261f) - cameraFront + 0.6f * Eigen::Vector3f(0.160215f, -0.926381f, -0.340808f);
 
 	cameraPose.col(0) = Eigen::Vector4f(cameraRight[0], cameraRight[1], cameraRight[2], 0);
 	cameraPose.col(1) = Eigen::Vector4f(cameraUp[0], cameraUp[1], cameraUp[2], 0);
@@ -723,7 +723,7 @@ int main(int argc, char** argv)
 		dCameraPoints.SetExtrinsicParameters(cameraPose);
 		dCameraPoints.SetProjectionType(gCameraProjectionType);
 		dCameraPoints.SetOrthoWidth(gCameraWidth);
-		string filename = "results/simplifiedDepthFromMultiview_Ortho.data";
+		string filename = "results/simplifiedDepthFromMultiview_Ortho_Top.data";
 		dCameraPoints.ReadMultilayerDepthImage(filename);
 		dCameraPoints.ProcessMultiLayerDepthImage();
 
@@ -733,11 +733,11 @@ int main(int argc, char** argv)
 		dCameraMesh.SetProjectionType(gCameraProjectionType);
 		dCameraMesh.SetOrthoWidth(gCameraWidth);
 		//filename = "results/depthFromMultiviewFromMesh.data";
-		filename = "results/depthFromMultiviewMesh_Ortho.data";
+		filename = "results/depthFromMultiviewMesh_Ortho_Top.data";
 		dCameraMesh.ReadMultilayerDepthImage(filename);
 		dCameraMesh.ProcessMultiLayerDepthImage();
 		dCameraMesh.GetPointCloud(points, normals, PORTION_ALL);
-		SavePointCloud("results/depthFromMultiviewMesh_Ortho.ply", points, colors, normals);
+		SavePointCloud("results/depthFromMultiviewMesh_Ortho_Top.ply", points, colors, normals);
 
 		//vector<DepthImage*> refDepthImages;
 		//for (int i = 0; i < numFrames; i += 50)
@@ -768,12 +768,12 @@ int main(int argc, char** argv)
 		
 		dCameraCombined.ProcessMultiLayerDepthImage();
 		dCameraCombined.GetPointCloud(points, normals, PORTION_ALL);
-		SavePointCloud("results/combinedPointMeshDepthImage_Ortho.ply", points, colors, normals);
+		SavePointCloud("results/combinedPointMeshDepthImage_Ortho_Top.ply", points, colors, normals);
 		dCameraCombined.GetPointCloud(points, normals, PORTION_UNKNOWN);
-		SavePointCloud("results/combinedPointMeshDepthImageHole_Ortho.ply", points, colors, normals);
+		SavePointCloud("results/combinedPointMeshDepthImageHole_Ortho_Top.ply", points, colors, normals);
 
-		mergedDepthMap.Save("results/combinedPointMeshDepthImage_Ortho.data");
-		depthMask.Save("results/combinedPointMeshDepthImageMask_Ortho.mask");
+		mergedDepthMap.Save("results/combinedPointMeshDepthImage_Ortho_Top.data");
+		depthMask.Save("results/combinedPointMeshDepthImageMask_Ortho_Top.mask");
 		//mergedDepthMap.SaveDepthThresholdingImage("results/combinedPointMeshDepthImage_Ortho.png", 20, &depthMask);
 		mergedDepthMap.SaveDepthOnionImage("results/combinedPointMeshDepthImage_Ortho.png", &depthMask);
 		//int numDepthImageReferences = static_cast<int>(refDepthImages.size());
