@@ -257,7 +257,7 @@
     </ClCompile>
     <Lib>
       <AdditionalDependencies>./MiscLib/Release/MiscLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)PrimitiveShapes.lib</OutputFile>
+      <OutputFile>$(OutDir)PrimitiveShapes32.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastDebug|Win32'">
@@ -281,7 +281,7 @@
     </ClCompile>
     <Lib>
       <AdditionalDependencies>./MiscLib/Release/MiscLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)PrimitiveShapes.lib</OutputFile>
+      <OutputFile>$(OutDir)PrimitiveShapes32.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

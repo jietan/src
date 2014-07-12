@@ -539,6 +539,86 @@ void BuildMultiLayerDepthImage(const vector<Eigen::Vector3f>& points, const vect
 	dCamera.Capture(points, normals);
 }
 
+void ComputeVertexNormals(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& faces, vector<Eigen::Vector3f>* meshVertexNormals)
+{
+	CHECK(meshVertexNormals) << "MeshVertexNormals must be allocated in ComputeVertexNormals().";
+	meshVertexNormals->clear();
+	int numVertices = static_cast<int>(vertices.size());
+	int numFaces = static_cast<int>(faces.size());
+	meshVertexNormals->resize(numVertices, Eigen::Vector3f::Zero());
+	for (int i = 0; i < numFaces; ++i)
+	{
+		Eigen::Vector3f n = TriangleNormal(vertices[faces[i][0]], vertices[faces[i][1]], vertices[faces[i][2]]);
+		(*meshVertexNormals)[faces[i][0]] += n;
+		(*meshVertexNormals)[faces[i][1]] += n;
+		(*meshVertexNormals)[faces[i][2]] += n;
+	}
+	for (int i = 0; i < numVertices; ++i)
+	{
+		(*meshVertexNormals)[i].normalize();
+	}
+}
+void MeshToPointCloud(int samplingDensity, const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& faces, vector<Eigen::Vector3f>& meshVertexNormals, vector<Eigen::Vector3f>* points, vector<Eigen::Vector3f>* normals)
+{
+	CHECK(points && normals) << "points and normals should be allocated in MeshToPointCloud().";
+	points->clear();
+	normals->clear();
+	int numFaces = static_cast<int>(faces.size());
+	for (int i = 0; i < numFaces; ++i)
+	{
+		int ia = faces[i][0];
+		int ib = faces[i][1];
+		int ic = faces[i][2];
+
+		float area = TriangleArea(vertices[ia], vertices[ib], vertices[ic]);
+		float numSamples = samplingDensity * area;
+		
+		float numSamplesChancePart = numSamples - static_cast<int>(numSamples);
+		double chance = RandDouble(0, 1);
+		if (chance <= numSamplesChancePart)
+			numSamples += 1;
+		for (int j = 0; j < numSamples; ++j)
+		{
+			Eigen::Vector3f p, n;
+			RandomPointInTriangle(vertices[ia], vertices[ib], vertices[ic], meshVertexNormals[ia], meshVertexNormals[ib], meshVertexNormals[ic], &p, &n);
+			if (n[0] != n[0]) continue;
+			points->push_back(p);
+			normals->push_back(n);
+		}
+	}
+}
+
+void RemoveRedundantPoints(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, const vector<Eigen::Vector3f>& refPoints, vector<Eigen::Vector3f>* truePoints, vector<Eigen::Vector3f>* trueNormals)
+{
+	CHECK(truePoints && trueNormals) << "True points and normals should be allocated in RemoveRedundantPoints().";
+	truePoints->clear();
+	trueNormals->clear();
+	sehoon::ann::KDTree tree;
+	int numPoints = static_cast<int>(refPoints.size());
+	tree.setDim(3);
+	for (int i = 0; i < numPoints; ++i)
+	{
+		if (i % 10000 == 0)
+			LOG(INFO) << "Finish adding " << i << "th points out of " << numPoints;
+		tree.add(refPoints[i]);
+	}
+	tree.initANN();
+
+	numPoints = static_cast<int>(points.size());
+
+	for (int i = 0; i < numPoints; ++i)
+	{
+		vector<int> idx = tree.kSearch(points[i], 1);
+		const Eigen::Vector3f& nnp = refPoints[idx[0]];
+		if ((nnp - points[i]).norm() < 0.005)
+		{
+			truePoints->push_back(points[i]);
+			trueNormals->push_back(normals[i]);
+		}
+	}
+
+}
+
 int main(int argc, char** argv)
 {
 	//ParseCommandLineFlags(&argc, &argv, true);
@@ -1046,5 +1126,35 @@ int main(int argc, char** argv)
 
 		return 1;
 		//cv::waitKey(0);
+	}
+	else if (task == 12)
+	{
+		srand(0);
+		string tableFolder, tableId, inputFileName, outputFileName, referenceFileName;
+		DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableFolder", tableFolder);
+		DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableId", tableId);
+		DecoConfig::GetSingleton()->GetString("Image2Mesh", "InputFileName", inputFileName);
+		DecoConfig::GetSingleton()->GetString("Image2Mesh", "OutputFileName", outputFileName);
+		DecoConfig::GetSingleton()->GetString("Image2Mesh", "ReferenceFileName", referenceFileName);
+
+		string fullInputFileName = tableFolder + "/" + tableId + "/" + inputFileName;
+		string fullOutputFileName = tableFolder + "/" + tableId +  "/"+ outputFileName;
+		string fullReferenceFileName = tableFolder + "/" + tableId + "/" + referenceFileName;
+		
+		vector<Eigen::Vector3f> refPoints, refNormals;
+		ReadPointCloud(fullReferenceFileName, refPoints, refNormals);
+
+
+		int samplingDensity;
+		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "SampleDensity", samplingDensity);
+		vector<Eigen::Vector3f> vertices; 
+		vector<Eigen::Vector3f> meshVertexNormals;
+		vector<Eigen::Vector3i> faces;
+		ReadMesh(fullInputFileName, &vertices, &faces);
+		ComputeVertexNormals(vertices, faces, &meshVertexNormals);
+		MeshToPointCloud(samplingDensity, vertices, faces, meshVertexNormals, &points, &normals);
+		vector<Eigen::Vector3f> truePoints, trueNormals;
+		RemoveRedundantPoints(points, normals, refPoints, &truePoints, &trueNormals);
+		SavePointCloud(fullOutputFileName, truePoints, colors, trueNormals);
 	}
 }

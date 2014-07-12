@@ -5,6 +5,7 @@
 #include "pointCloudToPrimitive/ConePrimitiveShapeConstructor.h"
 #include "pointCloudToPrimitive/TorusPrimitiveShapeConstructor.h"
 
+#include "utility/ConfigManager.h"
 #include <string>
 #include <vector>
 using namespace std;
@@ -75,10 +76,14 @@ int main()
 	// fill or load point cloud from file
 	vector<Eigen::Vector3f> points;
 	vector<Eigen::Vector3f> normals;
-	//ReadPointCloud("../../../Tables/399318621.826096/points.plysimplified.ply", points, normals, false);
-	ReadPointCloud("../../../Tables/399318621.826096/combinedPointMeshDepthImage_Ortho_Front.ply", points, normals, false);
-	ReadPointCloud("../../../Tables/399318621.826096/combinedPointMeshDepthImage_Ortho_Top.ply", points, normals, true);
-	//ReadPointCloud("C:\\Users\\JieTan\\Documents\\MyProjects\\AdobeIntern\\src\\app\\Image2Mesh\\results\\simplifiedDepthFromMultiview_Ortho.ply", points, normals, false);
+
+	string tableFolder, tableId, inputFileName, outputFileName, referenceFileName;
+	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableFolder", tableFolder);
+	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableId", tableId);
+	inputFileName = "pointsFromSimplifiedMesh.ply";
+	string fullInputFileName = tableFolder + "/" + tableId + "/" + inputFileName;
+	ReadPointCloud(fullInputFileName, points, normals, false);
+
 	Eigen::Vector3f minPt, maxPt;
 	ComputeBoundingBox(points, minPt, maxPt);
 	int numPoints = static_cast<int>(points.size());
@@ -94,12 +99,12 @@ int main()
 	// don't forget to set the bbox in pc
 
 	RansacShapeDetector::Options ransacOptions;
-	ransacOptions.m_epsilon = 0.01f * pc.getScale(); // set distance threshold to .01f of bounding box width
+	ransacOptions.m_epsilon = 0.01;// 0.001f * pc.getScale(); // set distance threshold to .01f of bounding box width
 	// NOTE: Internally the distance threshold is taken as 3 * ransacOptions.m_epsilon!!!
-	ransacOptions.m_bitmapEpsilon = .02f * pc.getScale(); // set bitmap resolution to .02f of bounding box width
+	ransacOptions.m_bitmapEpsilon = .02f/* * pc.getScale()*/; // set bitmap resolution to .02f of bounding box width
 	// NOTE: This threshold is NOT multiplied internally!
 	ransacOptions.m_normalThresh = .9f; // this is the cos of the maximal normal deviation
-	ransacOptions.m_minSupport = 300; // this is the minimal number of points required for a primitive
+	ransacOptions.m_minSupport = 1000; // this is the minimal number of points required for a primitive
 	ransacOptions.m_probability = .001f; // this is the "probability" with which a primitive is overlooked
 
 	RansacShapeDetector detector(ransacOptions); // the detector object
@@ -108,8 +113,8 @@ int main()
 	detector.Add(new PlanePrimitiveShapeConstructor());
 	detector.Add(new SpherePrimitiveShapeConstructor());
 	detector.Add(new CylinderPrimitiveShapeConstructor());
-	//detector.Add(new ConePrimitiveShapeConstructor());
-	//detector.Add(new TorusPrimitiveShapeConstructor());
+	detector.Add(new ConePrimitiveShapeConstructor());
+	detector.Add(new TorusPrimitiveShapeConstructor());
 
 	MiscLib::Vector< std::pair< MiscLib::RefCountPtr< PrimitiveShape >, size_t > > shapes; // stores the detected shapes
 	size_t remaining = detector.Detect(pc, 0, pc.size(), &shapes); // run detection
@@ -120,6 +125,8 @@ int main()
 	{
 		vector<Eigen::Vector3f> clusteredP;
 		vector<Eigen::Vector3f> clusteredN;
+		vector<Eigen::Vector3f> clusteredPP;
+		vector<Eigen::Vector3f> clusteredPN;
 		cout << "Shape " << i << ": " << shapes[i].first->Identifier() << ": " << shapes[i].second << endl;
 
 		for (int j = pc.size() - sum - shapes[i].second; j < pc.size() - sum; ++j)
@@ -129,10 +136,24 @@ int main()
 			clusteredP.push_back(Eigen::Vector3f(x, y, z));
 			pc[j].normal.getValue(x, y, z);
 			clusteredN.push_back(Eigen::Vector3f(x, y, z));
+			Vec3f pp, pn;
+			shapes[i].first->Project(pc[j].pos, &pp);
+			shapes[i].first->Normal(pp, &pn);
+			pp.getValue(x, y, z);
+			clusteredPP.push_back(Eigen::Vector3f(x, y, z));
+
+			if (pc[j].normal.dot(pn) < 0)
+			{
+				pn = -pn;
+			}
+			pn.getValue(x, y, z);
+			clusteredPN.push_back(Eigen::Vector3f(x, y, z));
 		}
 		char outFileName[512];
-		sprintf(outFileName, "results\\part%03d.ply", i);
+		sprintf(outFileName, "%s\\%s\\parts\\part%03d.ply", tableFolder.c_str(), tableId.c_str(), i);
 		SavePointCloud(outFileName, clusteredP, clusteredN);
+		sprintf(outFileName, "%s\\%s\\partsProjected\\part%03dProjected.ply", tableFolder.c_str(), tableId.c_str(), i);
+		SavePointCloud(outFileName, clusteredPP, clusteredPN);
 		sum += shapes[i].second;
 	}
 	// returns number of unassigned points

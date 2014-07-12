@@ -1090,6 +1090,32 @@ double RandDouble(double low, double high)
 	return temp;
 }
 
+float TriangleArea(const Eigen::Vector3f& a, const Eigen::Vector3f& b, const Eigen::Vector3f& c)
+{
+	Eigen::Vector3f ab = b - a;
+	Eigen::Vector3f ac = c - a;
+	Eigen::Vector3f cross = ab.cross(ac);
+	return 0.5f * cross.norm();
+}
+Eigen::Vector3f TriangleNormal(const Eigen::Vector3f& a, const Eigen::Vector3f& b, const Eigen::Vector3f& c)
+{
+	Eigen::Vector3f ab = b - a;
+	Eigen::Vector3f ac = c - a;
+	Eigen::Vector3f cross = ab.cross(ac);
+	return cross.normalized();
+}
+void RandomPointInTriangle(const Eigen::Vector3f& a, const Eigen::Vector3f& b, const Eigen::Vector3f& c, const Eigen::Vector3f& na, const Eigen::Vector3f& nb, const Eigen::Vector3f& nc, Eigen::Vector3f* p, Eigen::Vector3f* n)
+{
+	float r1 = static_cast<float>(RandDouble(0, 1));
+	float r2 = static_cast<float>(RandDouble(0, 1));
+	float w1 = (1 - sqrt(r1));
+	float w2 = (sqrt(r1) * (1 - r2));
+	float w3 = (sqrt(r1) * r2);
+	*p = w1 * a + w2 * b + w3 * c;
+	*n = w1 * na + w2 * nb + w3 * nc;
+	n->normalize();
+}
+
 double TriangleArea(const vector3& a, const vector3& b, const vector3& c)
 {
 	vector3 ab = b - a;
