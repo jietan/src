@@ -67,6 +67,11 @@ void TorusPrimitiveShape::Normal(const Vec3f &p, Vec3f *n) const
 	m_torus.Normal(p, n);
 }
 
+void TorusPrimitiveShape::FlipNormal()
+{
+
+}
+
 unsigned int TorusPrimitiveShape::ConfidenceTests(unsigned int numTests,
 	float epsilon, float normalThresh, float rms, const PointCloud &pc,
 	const MiscLib::Vector< size_t > &indices) const

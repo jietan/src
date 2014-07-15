@@ -82,7 +82,7 @@ void MultilayerDepthImage::Save(const string& filename)
 }
 
 
-void MultilayerDepthImage::SaveDepthImage(const string& filename)
+void MultilayerDepthImage::SaveDepthImage(const string& filename) const
 {
 	int numRows = mHeight;
 	int numCols = mWidth;

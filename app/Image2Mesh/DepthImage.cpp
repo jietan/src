@@ -72,8 +72,16 @@ bool DepthImage::IsPointBehind(const Eigen::Vector3f& point, float& depthDelta) 
 	int ithRow, jthCol;
 	float depth = pointToDepth(point, ithRow, jthCol);
 	if (ithRow < 0 || ithRow >= mHeight || jthCol < 0 || jthCol >= mWidth)
-		return false;
+	{
+		depthDelta = FLT_MAX;
+		return true;
+	}
 	float cameraDepth = mData.at<float>(ithRow, jthCol);
+	//if (cameraDepth < 10)
+	//{
+	//	depthDelta = 0;
+	//	return false;
+	//}
 	depthDelta = depth - cameraDepth;
 	return depth > cameraDepth;
 	

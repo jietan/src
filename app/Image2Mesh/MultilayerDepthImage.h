@@ -25,7 +25,7 @@ public:
 	void SaveDepthOnionImage(const string& filename, const MultilayerMaskImage* mask = NULL, float* min = NULL, float* max = NULL);
 	void Simplify();
 
-	void SaveDepthImage(const string& filename);
+	void SaveDepthImage(const string& filename) const;
 	/* to fit the original vector interface */
 private:
 	void saveDepthImageVisualization(const string& filename, const cv::Mat1f* image, const cv::Mat1i* mask, float* min = NULL, float* max = NULL);

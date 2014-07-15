@@ -51,6 +51,8 @@ public:
 	virtual void Project(const Vec3f &p, Vec3f *pp) const = 0;
 	// gets the normal of the shape at the projection of p
 	virtual void Normal(const Vec3f &p, Vec3f *n) const = 0;
+	virtual void FlipNormal() = 0;
+	
 	// finds the largest connected component in the points indexed by indices
 	// Upon return the indices of the points that belong to the largest component
 	// have been moved to the front of indices and their number is returned.

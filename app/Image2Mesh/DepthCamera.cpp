@@ -8,21 +8,30 @@ using namespace google;
 #include "utility/utility.h"
 #include "KDTree.h"
 #include <intrin.h>
+#include <queue>
 
-
+const int NO_VALUE = 0;
+const int UNKNOWN = 1;
+const int CONNECTED = 2;
 
 float dist(const ExtendedDepthPixel& lhs, const ExtendedDepthPixel& rhs)
 {
 	return (abs(lhs.d - rhs.d));
 }
 
-DepthCamera::DepthCamera() : mProjType(PERSP_PROJ)
+DepthCamera::DepthCamera() : mProjType(PERSP_PROJ), mWall(NULL), mFloor(NULL)
 {
 
 }
 DepthCamera::~DepthCamera()
 {
 
+}
+
+void DepthCamera::SetWallAndFloor(PrimitiveShape* wall, PrimitiveShape* floor)
+{
+	mWall = wall;
+	mFloor = floor;
 }
 
 void DepthCamera::SetSimplifiedPointCloud(const vector<Eigen::Vector3f>& points)
@@ -41,7 +50,7 @@ void DepthCamera::SetSimplifiedPointCloud(const vector<Eigen::Vector3f>& points)
 
 void DepthCamera::SetComparisonROI(int left, int right, int high, int low, float near, float far)
 {
-	mComparisonROI = ROI(left, right, high, low, near, far);
+//	mComparisonROI = ROI(left, right, high, low, near, far);
 }
 
 float DepthCamera::GetOrthoWidth() const
@@ -193,6 +202,147 @@ void DepthCamera::Capture(const vector<Eigen::Vector3f>& vertices, const vector<
 	
 }
 
+void DepthCamera::Capture(vector<Part>& parts)
+{
+	mDepthMap.Create(mHeight, mWidth);
+	int numPritimives = static_cast<int>(parts.size());
+	Eigen::Vector3f lookAtDir = mPose.block(0, 0, 3, 3) * Eigen::Vector3f(0, 0, 1);
+	int numReferenceCameras = static_cast<int>(mRefDepthImages.size());
+
+	for (int k = 0; k < numPritimives; ++k)
+	{
+		Image<int> connectionMap;
+		MultilayerDepthImage candidateDepthImage;
+		candidateDepthImage.Create(mHeight, mWidth);
+		connectionMap.Create(mHeight, mWidth);
+		vector<Eigen::Vector2i> validBoundarySeed;
+		for (int i = 0; i < mHeight; i += 1)
+		{
+			//LOG(INFO) << "DepthCamera::Capture() is processing " << i << "th row.";
+
+			for (int j = 0; j < mWidth; ++j)
+			{
+				Eigen::Vector3f rayOrigin = constructRayOrigin(i, j);
+				Eigen::Vector3f rayDir = constructRayDirection(i, j);
+				vector<float> depths;
+				vector<Eigen::Vector3f> normals;
+				vector<int> bValid;
+
+				PrimitiveShape* primitive = parts[k].GetShape();
+				if (primitive->Identifier() == 0)
+				{
+					const PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(primitive);
+					float t = planePrimitive->Internal().Intersect(Vec3f(rayOrigin[0], rayOrigin[1], rayOrigin[2]), Vec3f(rayDir[0], rayDir[1], rayDir[2]));
+					Vec3f pt = Vec3f(rayOrigin[0], rayOrigin[1], rayOrigin[2]) + t * Vec3f(rayDir[0], rayDir[1], rayDir[2]);
+					Eigen::Vector3f intersection(pt.getValue());
+					float depth = (intersection - rayOrigin).dot(lookAtDir); //intersectionPt[2];
+					if (depth > DepthImage::msDepthNearThreshold && depth < DepthImage::msDepthFarThreshold)
+					{
+						Vec3f n;
+						planePrimitive->Normal(pt, &n);
+						Eigen::Vector3f normal(n.getValue());
+						if (normal.dot(lookAtDir) < 0)
+						{
+							depths.push_back(depth);
+							normals.push_back(normal);
+							bValid.push_back(1);
+						}
+					}
+				}
+				else if (primitive->Identifier() == 2)
+				{
+					const CylinderPrimitiveShape* cylinderPrimitive = static_cast<CylinderPrimitiveShape*>(primitive);
+					float t[2];
+					int numIntersections = cylinderPrimitive->Internal().Intersect(Vec3f(rayOrigin[0], rayOrigin[1], rayOrigin[2]), Vec3f(rayDir[0], rayDir[1], rayDir[2]), &(t[0]), &(t[1]));
+					//if (numIntersections == 2)
+					//	printf("hello");
+					for (int ithIntersection = 0; ithIntersection < numIntersections; ++ithIntersection)
+					{
+						Vec3f pt = Vec3f(rayOrigin[0], rayOrigin[1], rayOrigin[2]) + t[ithIntersection] * Vec3f(rayDir[0], rayDir[1], rayDir[2]);
+						Eigen::Vector3f intersection(pt.getValue());
+						float depth = (intersection - rayOrigin).dot(lookAtDir); //intersectionPt[2];
+						if (depth > DepthImage::msDepthNearThreshold && depth < DepthImage::msDepthFarThreshold)
+						{
+							Vec3f n;
+							cylinderPrimitive->Normal(pt, &n);
+							Eigen::Vector3f normal(n.getValue());
+							if (normal.dot(rayDir) < 0)
+							{
+								depths.push_back(depth);
+								normals.push_back(normal);
+								bValid.push_back(1);
+							}
+						}
+					}
+				}
+
+				int numCandidateDepths = static_cast<int>(depths.size());
+				for (int ithDepth = 0; ithDepth < numCandidateDepths; ++ithDepth)
+				{
+
+					float depth = depths[ithDepth] * 1000;
+					Eigen::Vector3f point = GetPoint(i, j, depth);
+
+					//float referenceDepth = mRefDepthImages[0]->Depth(i, j);
+					//if (referenceDepth > 10 && depth - referenceDepth > 20)
+					for (int ithCamera = 0; ithCamera < numReferenceCameras; ++ithCamera)
+					{
+						float deltaDepth;
+						mRefDepthImages[ithCamera]->IsPointBehind(point, deltaDepth);
+
+						if (!mRefDepthImages[ithCamera]->IsPointBehind(point, deltaDepth) || deltaDepth < 10)
+						{
+							bValid[ithDepth] = 0;
+							break;
+						}
+					}
+
+					if (bValid[ithDepth])
+					{
+						float depth = depths[ithDepth] * 1000;
+						Eigen::Vector3f point = GetPoint(i, j, depth);
+
+						if (wallCulling(point)) continue;
+						const Eigen::Vector3f normal = normals[ithDepth];
+						candidateDepthImage[i][j].push_back(ExtendedDepthPixel(depth, normal));
+
+						if (!connectionCulling(parts[k], point))
+						{
+							validBoundarySeed.push_back(Eigen::Vector2i(i, j));
+							connectionMap[i][j] = CONNECTED;
+						}
+						else
+						{
+							connectionMap[i][j] = UNKNOWN;
+						}
+
+					}
+				}
+
+
+			}
+		}
+		spreadConnectionInfo(validBoundarySeed, connectionMap);
+		for (int i = 0; i < mHeight; ++i)
+		{
+			for (int j = 0; j < mWidth; ++j)
+			{
+				if (candidateDepthImage[i][j].empty() || connectionMap[i][j] != CONNECTED)
+					continue;
+				const ExtendedDepthPixel& px = candidateDepthImage[i][j][0];
+				if (mDepthMap[i][j].empty())
+				{
+					mDepthMap[i][j].push_back(px);
+				}
+				else if (px.d < mDepthMap[i][j][0].d)
+				{
+					mDepthMap[i][j][0] = px;
+				}
+			}
+		}
+
+	}
+}
 void DepthCamera::Capture(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals)
 {
 	
@@ -689,7 +839,7 @@ void DepthCamera::CrossViewMaskUpdate1(const DepthCamera& otherViewOld, const De
 					intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], mMask[i][j][k]));
 					continue;
 				}
-				float depthDelta;
+	//			float depthDelta;
 
 				Eigen::Vector3f pt = GetPoint(i, j, mDepthMap[i][j][k].d);
 				float otherViewDepth = otherViewOld.GetDepth(pt, &ithRowOtherView, &ithColOtherView);
@@ -813,7 +963,6 @@ void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const Dep
 					intermediateResult[i][j].push_back(ExtendedDepthPixelWithMask(mDepthMap[i][j][k], mMask[i][j][k]));
 					continue;
 				}
-				float depthDelta;
 
 				Eigen::Vector3f pt = GetPoint(i, j, mDepthMap[i][j][k].d);
 				float otherViewDepth = otherViewOld.GetDepth(pt, &ithRowOtherView, &ithColOtherView);
@@ -1294,4 +1443,72 @@ Eigen::Vector3f DepthCamera::GetCameraPosition() const
 Eigen::Vector3f DepthCamera::GetCameraUp() const
 {
 	return mPose.col(1).head(3);
+}
+
+bool DepthCamera::wallCulling(const Eigen::Vector3f& pt) const
+{
+	const float threshold = 0.01;
+	if (mWall)
+	{
+		float signedDist = mWall->SignedDistance(Vec3f(pt[0], pt[1], pt[2]));
+		if (signedDist < -threshold)
+			return true;
+	}
+	if (mFloor)
+	{
+		float signedDist = mFloor->SignedDistance(Vec3f(pt[0], pt[1], pt[2]));
+		if (signedDist < -threshold)
+			return true;
+	}
+	return false;
+}
+bool DepthCamera::connectionCulling(Part& part, const Eigen::Vector3f& pt) const
+{
+	return !part.IsPointClose(pt);
+}
+
+void DepthCamera::spreadConnectionInfo(const vector<Eigen::Vector2i>& validBoundarySeed, Image<int>& connectionMap)
+{
+	int height = connectionMap.Height();
+	int width = connectionMap.Width();
+
+	Eigen::MatrixXi inQ = Eigen::MatrixXi::Zero(height, width);
+	queue<Eigen::Vector2i> toVisit;
+
+	int numSeeds = static_cast<int>(validBoundarySeed.size());
+	for (int i = 0; i < numSeeds; ++i)
+	{
+		toVisit.push(validBoundarySeed[i]);
+		inQ(validBoundarySeed[i][0], validBoundarySeed[i][1]) = 1;
+	}
+
+	while (!toVisit.empty())
+	{
+		Eigen::Vector2i visiting = toVisit.front();
+		//LOG(INFO) << visiting[0] << " " << visiting[1];
+
+		toVisit.pop();
+		connectionMap[visiting[0]][visiting[1]] = CONNECTED;
+		
+		if (visiting[0] - 1 >= 0 && connectionMap[visiting[0] - 1][visiting[1]] == UNKNOWN && !inQ(visiting[0] - 1, visiting[1]))
+		{
+			inQ(visiting[0] - 1, visiting[1]) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0] - 1, visiting[1]));
+		}
+		if (visiting[0] + 1 < height && connectionMap[visiting[0] + 1][visiting[1]] == UNKNOWN && !inQ(visiting[0] + 1, visiting[1]))
+		{
+			inQ(visiting[0] + 1, visiting[1]) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0] + 1, visiting[1]));
+		}
+		if (visiting[1] - 1 >= 0 && connectionMap[visiting[0]][visiting[1] - 1] == UNKNOWN && !inQ(visiting[0], visiting[1] - 1))
+		{
+			inQ(visiting[0], visiting[1] - 1) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0], visiting[1] - 1));
+		}
+		if (visiting[1] + 1 < width && connectionMap[visiting[0]][visiting[1] + 1] == UNKNOWN && !inQ(visiting[0], visiting[1] + 1))
+		{
+			inQ(visiting[0], visiting[1] + 1) = 1;
+			toVisit.push(Eigen::Vector2i(visiting[0], visiting[1] + 1));
+		}
+	}
 }

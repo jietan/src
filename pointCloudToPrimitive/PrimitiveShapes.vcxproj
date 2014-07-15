@@ -165,19 +165,24 @@
     <OutDir>..\lib\</OutDir>
     <IntDir>Release\</IntDir>
     <IncludePath>C:\local\boost_1_55_0;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <TargetName>$(ProjectName)32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FastDebug|Win32'">
     <OutDir>..\lib\</OutDir>
-    <IntDir>Release\</IntDir>
+    <IntDir>FastDebug\</IntDir>
     <IncludePath>C:\local\boost_1_55_0;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <TargetName>$(ProjectName)32_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>../lib</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>C:\local\boost_1_55_0;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FastDebug|x64'">
-    <OutDir>$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>../lib</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>C:\local\boost_1_55_0;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <TargetName>$(ProjectName)_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseOpenMP|Win32'">
     <OutDir>$(Configuration)\</OutDir>
@@ -281,7 +286,7 @@
     </ClCompile>
     <Lib>
       <AdditionalDependencies>./MiscLib/Release/MiscLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)PrimitiveShapes32.lib</OutputFile>
+      <OutputFile>$(OutDir)PrimitiveShapes32_d.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -307,7 +312,7 @@
       <DisableSpecificWarnings>4503;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Lib>
-      <AdditionalDependencies>./MiscLib/$(Platform)/$(Configuration)/MiscLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)PrimitiveShapes.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
@@ -335,7 +340,7 @@
       <DisableSpecificWarnings>4503;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Lib>
-      <AdditionalDependencies>./MiscLib/$(Platform)/$(Configuration)/MiscLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)PrimitiveShapes.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>

@@ -27,6 +27,7 @@ public:
 		const Vec3f &n, std::pair< float, float > *dn) const;
 	void Project(const Vec3f &p, Vec3f *pp) const;
 	void Normal(const Vec3f &p, Vec3f *n) const;
+	void FlipNormal();
 	unsigned int ConfidenceTests(unsigned int numTests, float epsilon,
 		float normalThresh, float rms, const PointCloud &pc,
 		const MiscLib::Vector< size_t > &indices) const;

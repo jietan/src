@@ -66,6 +66,10 @@ void ConePrimitiveShape::Normal(const Vec3f &p, Vec3f *n) const
 	m_cone.Normal(p, n);
 }
 
+void ConePrimitiveShape::FlipNormal()
+{
+
+}
 unsigned int ConePrimitiveShape::ConfidenceTests(unsigned int numTests,
 	float epsilon, float normalThresh, float rms, const PointCloud &pc,
 	const MiscLib::Vector< size_t > &indices) const

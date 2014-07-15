@@ -16,11 +16,17 @@
 #include "PlanePrimitiveShape.h"
 extern MiscLib::performance_t totalTime_cylinderConnected;
 
-CylinderPrimitiveShape::CylinderPrimitiveShape()
+CylinderPrimitiveShape::CylinderPrimitiveShape() : m_bFlipNormal(false)
 {}
 
+CylinderPrimitiveShape::CylinderPrimitiveShape(std::istream* in)
+{
+	(*in) >> m_bFlipNormal;
+	m_cylinder.Init(false, in);
+}
 CylinderPrimitiveShape::CylinderPrimitiveShape(const Cylinder &cylinder)
-: m_cylinder(cylinder)
+: m_cylinder(cylinder),
+m_bFlipNormal(false)
 {}
 
 size_t CylinderPrimitiveShape::Identifier() const
@@ -46,7 +52,8 @@ float CylinderPrimitiveShape::Distance(const Vec3f &p) const
 
 float CylinderPrimitiveShape::SignedDistance(const Vec3f &p) const
 {
-	return m_cylinder.SignedDistance(p);
+	float ret = m_cylinder.SignedDistance(p);
+	return m_bFlipNormal ? -ret : ret;
 }
 
 float CylinderPrimitiveShape::NormalDeviation(const Vec3f &p,
@@ -73,6 +80,13 @@ void CylinderPrimitiveShape::Project(const Vec3f &p, Vec3f *pp) const
 void CylinderPrimitiveShape::Normal(const Vec3f &p, Vec3f *n) const
 {
 	m_cylinder.Normal(p, n);
+	if (m_bFlipNormal)
+		*n = -(*n);
+}
+
+void CylinderPrimitiveShape::FlipNormal()
+{
+	m_bFlipNormal = true;
 }
 
 unsigned int CylinderPrimitiveShape::ConfidenceTests(unsigned int numTests,
@@ -131,7 +145,10 @@ void CylinderPrimitiveShape::Serialize(std::ostream *o, bool binary) const
 		(*o) << id;
 	}
 	else
+	{
 		(*o) << "2" << " ";
+		(*o) << m_bFlipNormal << " ";
+	}
 	m_cylinder.Serialize(binary, o);
 	if(!binary)
 		*o << std::endl;

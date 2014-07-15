@@ -320,288 +320,288 @@ public:
 	friend DecoArchive& operator>> (DecoArchive& Ar, DecoQuaternion& q);
 };
 
-class Box
-{
-private:
-	vector3 Min;
-	vector3 Max;
-public:
-	Box() { Init(); }
-	Box( const vector3& InMin, const vector3& InMax ) : Min(InMin), Max(InMax) {}
-	void Set(const vector3& InMin, const vector3& InMax)
-	{
-		Min = InMin;
-		Max = InMax; 
-	}
-	// Functions.
-	void Init()
-	{ 
-		Min = Max = vector3(0,0,0);
-	}
-	const vector3& GetMin() const
-	{
-		return Min;
-	}
-	const vector3& GetMax() const
-	{
-		return Max;
-	}
-	void AllVerteices(vector3* Vertices) const;
-	Box& operator+=( const vector3 &Other )
-	{
-		Min.x = min( Min.x, Other.x );
-			Min.y = min( Min.y, Other.y );
-			Min.z = min( Min.z, Other.z );
+//class Box
+//{
+//private:
+//	vector3 Min;
+//	vector3 Max;
+//public:
+//	Box() { Init(); }
+//	Box( const vector3& InMin, const vector3& InMax ) : Min(InMin), Max(InMax) {}
+//	void Set(const vector3& InMin, const vector3& InMax)
+//	{
+//		Min = InMin;
+//		Max = InMax; 
+//	}
+//	// Functions.
+//	void Init()
+//	{ 
+//		Min = Max = vector3(0,0,0);
+//	}
+//	const vector3& GetMin() const
+//	{
+//		return Min;
+//	}
+//	const vector3& GetMax() const
+//	{
+//		return Max;
+//	}
+//	void AllVerteices(vector3* Vertices) const;
+//	Box& operator+=( const vector3 &Other )
+//	{
+//		Min.x = min( Min.x, Other.x );
+//			Min.y = min( Min.y, Other.y );
+//			Min.z = min( Min.z, Other.z );
+//
+//			Max.x = max( Max.x, Other.x );
+//			Max.y = max( Max.y, Other.y );
+//			Max.z = max( Max.z, Other.z );
+//		return *this;
+//	}
+//	Box operator+( const vector3& Other ) const
+//	{
+//		return Box(*this) += Other;
+//	}
+//	Box& operator+=( const Box& Other )
+//	{
+//			Min.x = min( Min.x, Other.Min.x );
+//			Min.y = min( Min.y, Other.Min.y );
+//			Min.z = min( Min.z, Other.Min.z );
+//
+//			Max.x = max( Max.x, Other.Max.x );
+//			Max.y = max( Max.y, Other.Max.y );
+//			Max.z = max( Max.z, Other.Max.z );
+//		return *this;
+//	}
+//	Box operator+( const Box& Other ) const
+//	{
+//		return Box(*this) += Other;
+//	}
+//	vector3& operator[]( INT i )
+//	{
+//		assert(i>-1);
+//		assert(i<2);
+//		if( i == 0 )		return Min;
+//		else				return Max;
+//	}
+//    void Move(double x, double y, double z)
+//    {
+//        Min.x += x;
+//        Min.y += y;
+//        Min.z += z;
+//
+//        Max.x += x;
+//        Max.y += y;
+//        Max.z += z;
+//    }
+//	Box ExpandBy( double W ) const
+//	{
+//		return Box( Min - vector3(W,W,W), Max + vector3(W,W,W) );
+//	}
+//	Box ExpandBy( vector3 V) const
+//	{
+//		return Box( Min - V, Max + V);
+//	}
+//	// Returns the midpoint between the min and max points.
+//	vector3 GetCenter() const
+//	{
+//		return vector3( ( Min + Max ) * 0.5f );
+//	}
+//	// Returns the extent around the center
+//	vector3 GetExtent() const
+//	{
+//		return 0.5f*(Max - Min);
+//	}
+//
+//	void GetCenterAndExtents( vector3 & center, vector3 & Extents ) const
+//	{
+//		Extents = Max - Min;
+//		Extents *= .5f;
+//		center = Min + Extents;
+//	}
+//
+//	BOOL Intersect( const Box & other ) const
+//	{
+//		if( Min.x > other.Max.x || other.Min.x > Max.x )
+//			return FALSE;
+//		if( Min.y > other.Max.y || other.Min.y > Max.y )
+//			return FALSE;
+//		if( Min.z > other.Max.z || other.Min.z > Max.z )
+//			return FALSE;
+//		return TRUE;
+//	}
+//	Box TransformBy (const matrix44& matrix) const;
+//	double RayCheck(const vector3& origin, const vector3& dir) const; //not intersect if return value <= 0, else return value means time t
+//	ConvexVolume GetVolume(void) const;
+//	BOOL TriangleInBox (const vector3& a, const vector3& b, const vector3& c) const;
+//	friend DecoArchive& operator<< (DecoArchive& Ar, const Box& b);
+//	friend DecoArchive& operator>> (DecoArchive& Ar, Box& b);
+//};
 
-			Max.x = max( Max.x, Other.x );
-			Max.y = max( Max.y, Other.y );
-			Max.z = max( Max.z, Other.z );
-		return *this;
-	}
-	Box operator+( const vector3& Other ) const
-	{
-		return Box(*this) += Other;
-	}
-	Box& operator+=( const Box& Other )
-	{
-			Min.x = min( Min.x, Other.Min.x );
-			Min.y = min( Min.y, Other.Min.y );
-			Min.z = min( Min.z, Other.Min.z );
-
-			Max.x = max( Max.x, Other.Max.x );
-			Max.y = max( Max.y, Other.Max.y );
-			Max.z = max( Max.z, Other.Max.z );
-		return *this;
-	}
-	Box operator+( const Box& Other ) const
-	{
-		return Box(*this) += Other;
-	}
-	vector3& operator[]( INT i )
-	{
-		assert(i>-1);
-		assert(i<2);
-		if( i == 0 )		return Min;
-		else				return Max;
-	}
-    void Move(double x, double y, double z)
-    {
-        Min.x += x;
-        Min.y += y;
-        Min.z += z;
-
-        Max.x += x;
-        Max.y += y;
-        Max.z += z;
-    }
-	Box ExpandBy( double W ) const
-	{
-		return Box( Min - vector3(W,W,W), Max + vector3(W,W,W) );
-	}
-	Box ExpandBy( vector3 V) const
-	{
-		return Box( Min - V, Max + V);
-	}
-	// Returns the midpoint between the min and max points.
-	vector3 GetCenter() const
-	{
-		return vector3( ( Min + Max ) * 0.5f );
-	}
-	// Returns the extent around the center
-	vector3 GetExtent() const
-	{
-		return 0.5f*(Max - Min);
-	}
-
-	void GetCenterAndExtents( vector3 & center, vector3 & Extents ) const
-	{
-		Extents = Max - Min;
-		Extents *= .5f;
-		center = Min + Extents;
-	}
-
-	BOOL Intersect( const Box & other ) const
-	{
-		if( Min.x > other.Max.x || other.Min.x > Max.x )
-			return FALSE;
-		if( Min.y > other.Max.y || other.Min.y > Max.y )
-			return FALSE;
-		if( Min.z > other.Max.z || other.Min.z > Max.z )
-			return FALSE;
-		return TRUE;
-	}
-	Box TransformBy (const matrix44& matrix) const;
-	double RayCheck(const vector3& origin, const vector3& dir) const; //not intersect if return value <= 0, else return value means time t
-	ConvexVolume GetVolume(void) const;
-	BOOL TriangleInBox (const vector3& a, const vector3& b, const vector3& c) const;
-	friend DecoArchive& operator<< (DecoArchive& Ar, const Box& b);
-	friend DecoArchive& operator>> (DecoArchive& Ar, Box& b);
-};
-
-class Plane
-{
-private:
-	vector3 Normal;
-	double W;
-public:
-	Plane()
-	{}
-	Plane( const Plane& P )
-		:	Normal(P.Normal)
-		,	W(P.W)
-	{}
-	Plane( const vector3& V )
-		:	Normal(V)
-		,	W(0)
-	{}
-	Plane ( const vector4& V )
-		:	Normal(V.x, V.y, V.z)
-		,	W(V.w)
-	{}
-	Plane( double InX, double InY, double InZ, double InW )
-		:	Normal(InX,InY,InZ)
-		,	W(InW)
-	{}
-	Plane( vector3 InNormal, double InW )
-		:	Normal(InNormal), W(InW)
-	{}
-	Plane( vector3 InBase, const vector3 &InNormal )
-		:	Normal(InNormal)
-		,	W(-DotProduct(InBase, InNormal))
-	{}
-	Plane( vector3 A, vector3 B, vector3 C )
-		:	Normal( CrossProduct((B-A), (C-A)))
-		,	W( -DotProduct(A, CrossProduct((B-A), (C-A))))
-	{}
-
-	// Functions.
-	vector3 GetNormal() const
-	{
-		return Normal;
-	}
-	double GetOffset() const
-	{
-		return W;
-	}
-
-	double PlaneDot( const vector3 &P ) const
-	{
-		return Normal.x * P.x + Normal.y * P.y + Normal.z * P.z + W;
-	}
-	Plane Flip() const
-	{
-		return Plane(-Normal.x,-Normal.y,-Normal.z,-W);
-	}
-	BOOL operator==( const Plane& V ) const
-	{
-		return Normal == V.Normal && W == V.W;
-	}
-	BOOL operator!=( const Plane& V ) const
-	{
-		return Normal != V.Normal || W != V.W;
-	}
-	Plane operator+( const Plane& V ) const
-	{
-		return Plane( Normal + V.Normal, W + V.W );
-	}
-	Plane operator-( const Plane& V ) const
-	{
-		return Plane( Normal - V.Normal, W - V.W );
-	}
-	Plane operator/( double Scale ) const
-	{
-		double RScale = 1.f/Scale;
-		return Plane( Normal * RScale, W * RScale );
-	}
-	Plane operator*( double Scale ) const
-	{
-		return Plane( Normal * Scale, W * Scale );
-	}
-	Plane operator*( const Plane& V )
-	{
-		return Plane ( Normal.x * V.Normal.x, Normal.y * V.Normal.y, Normal.z * V.Normal.z, W*V.W );
-	}
-	Plane operator+=( const Plane& V )
-	{
-		Normal += V.Normal;
-		W += V.W;
-		return *this;
-	}
-	Plane operator-=( const Plane& V )
-	{
-		Normal -= V.Normal;
-		W -= V.W;
-		return *this;
-	}
-	Plane operator*=( double Scale )
-	{
-		Normal *= Scale;
-		W *= Scale;
-		return *this;
-	}
-	Plane operator*=( const Plane& V )
-	{
-		Normal.x *= V.Normal.x; 
-		Normal.y *= V.Normal.y;
-		Normal.z *= V.Normal.z;
-		W *= V.W;
-		return *this;
-	}
-	Plane operator/=( double V )
-	{
-		double RV = 1.f/V;
-		Normal *= RV;
-		W *= RV;
-		return *this;
-	}
-	Plane TransformBy (const matrix44& matrix) const;
-	double RayCheck(const vector3& origin, const vector3& dir) const
-	{
-		double intersectionTime = this->PlaneDot(origin) / DotProduct(Normal, dir);
-		return intersectionTime;
-	}
-	vector3 RayIntersect(const vector3& origin, const vector3& dir) const
-	{
-		double intersectionTime = -this->PlaneDot(origin) / DotProduct(Normal, dir);
-		return origin + intersectionTime * dir;
-	}
-	friend DecoArchive& operator<< (DecoArchive& Ar, const Plane& p);
-	friend DecoArchive& operator>> (DecoArchive& Ar, Plane& p);
-};
+//class Plane
+//{
+//private:
+//	vector3 Normal;
+//	double W;
+//public:
+//	Plane()
+//	{}
+//	Plane( const Plane& P )
+//		:	Normal(P.Normal)
+//		,	W(P.W)
+//	{}
+//	Plane( const vector3& V )
+//		:	Normal(V)
+//		,	W(0)
+//	{}
+//	Plane ( const vector4& V )
+//		:	Normal(V.x, V.y, V.z)
+//		,	W(V.w)
+//	{}
+//	Plane( double InX, double InY, double InZ, double InW )
+//		:	Normal(InX,InY,InZ)
+//		,	W(InW)
+//	{}
+//	Plane( vector3 InNormal, double InW )
+//		:	Normal(InNormal), W(InW)
+//	{}
+//	Plane( vector3 InBase, const vector3 &InNormal )
+//		:	Normal(InNormal)
+//		,	W(-DotProduct(InBase, InNormal))
+//	{}
+//	Plane( vector3 A, vector3 B, vector3 C )
+//		:	Normal( CrossProduct((B-A), (C-A)))
+//		,	W( -DotProduct(A, CrossProduct((B-A), (C-A))))
+//	{}
+//
+//	// Functions.
+//	vector3 GetNormal() const
+//	{
+//		return Normal;
+//	}
+//	double GetOffset() const
+//	{
+//		return W;
+//	}
+//
+//	double PlaneDot( const vector3 &P ) const
+//	{
+//		return Normal.x * P.x + Normal.y * P.y + Normal.z * P.z + W;
+//	}
+//	Plane Flip() const
+//	{
+//		return Plane(-Normal.x,-Normal.y,-Normal.z,-W);
+//	}
+//	BOOL operator==( const Plane& V ) const
+//	{
+//		return Normal == V.Normal && W == V.W;
+//	}
+//	BOOL operator!=( const Plane& V ) const
+//	{
+//		return Normal != V.Normal || W != V.W;
+//	}
+//	Plane operator+( const Plane& V ) const
+//	{
+//		return Plane( Normal + V.Normal, W + V.W );
+//	}
+//	Plane operator-( const Plane& V ) const
+//	{
+//		return Plane( Normal - V.Normal, W - V.W );
+//	}
+//	Plane operator/( double Scale ) const
+//	{
+//		double RScale = 1.f/Scale;
+//		return Plane( Normal * RScale, W * RScale );
+//	}
+//	Plane operator*( double Scale ) const
+//	{
+//		return Plane( Normal * Scale, W * Scale );
+//	}
+//	Plane operator*( const Plane& V )
+//	{
+//		return Plane ( Normal.x * V.Normal.x, Normal.y * V.Normal.y, Normal.z * V.Normal.z, W*V.W );
+//	}
+//	Plane operator+=( const Plane& V )
+//	{
+//		Normal += V.Normal;
+//		W += V.W;
+//		return *this;
+//	}
+//	Plane operator-=( const Plane& V )
+//	{
+//		Normal -= V.Normal;
+//		W -= V.W;
+//		return *this;
+//	}
+//	Plane operator*=( double Scale )
+//	{
+//		Normal *= Scale;
+//		W *= Scale;
+//		return *this;
+//	}
+//	Plane operator*=( const Plane& V )
+//	{
+//		Normal.x *= V.Normal.x; 
+//		Normal.y *= V.Normal.y;
+//		Normal.z *= V.Normal.z;
+//		W *= V.W;
+//		return *this;
+//	}
+//	Plane operator/=( double V )
+//	{
+//		double RV = 1.f/V;
+//		Normal *= RV;
+//		W *= RV;
+//		return *this;
+//	}
+//	Plane TransformBy (const matrix44& matrix) const;
+//	double RayCheck(const vector3& origin, const vector3& dir) const
+//	{
+//		double intersectionTime = this->PlaneDot(origin) / DotProduct(Normal, dir);
+//		return intersectionTime;
+//	}
+//	vector3 RayIntersect(const vector3& origin, const vector3& dir) const
+//	{
+//		double intersectionTime = -this->PlaneDot(origin) / DotProduct(Normal, dir);
+//		return origin + intersectionTime * dir;
+//	}
+//	friend DecoArchive& operator<< (DecoArchive& Ar, const Plane& p);
+//	friend DecoArchive& operator>> (DecoArchive& Ar, Plane& p);
+//};
 
 enum EClippingFlag
 {
 	CF_Inside = 0x1,
 	CF_Outside = 0x2
 };
-class ConvexVolume
-{
-public:
-
-	enum { MAX_VOLUME_PLANES = 32 };
-
-	Plane	BoundingPlanes[MAX_VOLUME_PLANES];
-	INT		NumPlanes;
-
-	// Constructor
-	ConvexVolume()
-	{
-		NumPlanes = 0;
-	}
-	ConvexVolume(const ConvexVolume& rhs) : NumPlanes(rhs.NumPlanes)
-	{
-		for (int i = 0; i < MAX_VOLUME_PLANES; i++)
-		{
-			BoundingPlanes[i] = rhs.BoundingPlanes[i];
-		}
-	}
-	ConvexVolume TransformBy(const matrix44& matrix) const;
-	// BoxCheck - Determines whether a box is inside of the volume, outside of the volume, or both.  Returns EClippingFlag.
-	BYTE BoxCheck(const Box& InBox);
-	BYTE BoxCheck(const vector3& Origin, const vector3& Extent);
-	friend DecoArchive& operator<< (DecoArchive& Ar, const ConvexVolume& cv);
-	friend DecoArchive& operator>> (DecoArchive& Ar, ConvexVolume& cv);
-};
+//class ConvexVolume
+//{
+//public:
+//
+//	enum { MAX_VOLUME_PLANES = 32 };
+//
+//	Plane	BoundingPlanes[MAX_VOLUME_PLANES];
+//	INT		NumPlanes;
+//
+//	// Constructor
+//	ConvexVolume()
+//	{
+//		NumPlanes = 0;
+//	}
+//	ConvexVolume(const ConvexVolume& rhs) : NumPlanes(rhs.NumPlanes)
+//	{
+//		for (int i = 0; i < MAX_VOLUME_PLANES; i++)
+//		{
+//			BoundingPlanes[i] = rhs.BoundingPlanes[i];
+//		}
+//	}
+//	ConvexVolume TransformBy(const matrix44& matrix) const;
+//	// BoxCheck - Determines whether a box is inside of the volume, outside of the volume, or both.  Returns EClippingFlag.
+//	BYTE BoxCheck(const Box& InBox);
+//	BYTE BoxCheck(const vector3& Origin, const vector3& Extent);
+//	friend DecoArchive& operator<< (DecoArchive& Ar, const ConvexVolume& cv);
+//	friend DecoArchive& operator>> (DecoArchive& Ar, ConvexVolume& cv);
+//};
 
 enum AXIS
 {
@@ -658,7 +658,7 @@ private:
 
 
 unsigned short CeilPower2(unsigned short x);
-Box Bounding(vector3* array, size_t num);
+//Box Bounding(vector3* array, size_t num);
 BOOL TriangleRayIntersection (const vector3& a, const vector3& b, const vector3& c, const vector3& origin,const vector3& dir, vector3 *intersection, double* t);
 BOOL PointInTriangle (const vector3& pt, const vector3& a, const vector3& b, const vector3& c);
 BOOL PointInLine (const vector3& pt, const vector3& a, const vector3& b, BOOL bSegment = TRUE);

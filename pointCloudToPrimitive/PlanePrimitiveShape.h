@@ -18,6 +18,7 @@ class DLL_LINKAGE PlanePrimitiveShape
 public:
 	PlanePrimitiveShape(const Vec3f &a, const Vec3f &b, const Vec3f &c);
 	PlanePrimitiveShape(const Plane &plane);
+	PlanePrimitiveShape(std::istream* in);
 	size_t Identifier() const;
 	unsigned int RequiredSamples() const { return Plane::RequiredSamples; }
 	PrimitiveShape *Clone() const;
@@ -28,6 +29,7 @@ public:
 		std::pair< float, float > *dn) const;
 	void Project(const Vec3f &p, Vec3f *pp) const;
 	void Normal(const Vec3f &p, Vec3f *n) const;
+	void FlipNormal();
 	unsigned int ConfidenceTests(unsigned int numTests, float epsilon,
 		float normalThresh, float rms, const PointCloud &pc,
 		const MiscLib::Vector< size_t > &indices) const;
@@ -87,6 +89,7 @@ private:
 		MiscLib::Vector< std::pair< float, float > > *bmpParams) const;
 
 private:
+	bool m_bFlipNormal;
 	Plane m_plane;
 	GfxTL::HyperplaneCoordinateSystem< float, 3 > m_hcs;
 };

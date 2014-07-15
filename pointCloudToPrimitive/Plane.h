@@ -31,6 +31,7 @@ public:
 	float Distance(const Vec3f &pos) const { return abs(m_dist - m_normal.dot(pos)); }
 	float SignedDistance(const Vec3f &pos) const { return m_normal.dot(pos) - m_dist; }
 	void Normal(const Vec3f &, Vec3f *n) const { *n = m_normal; }
+	void FlipNormal() { m_normal = -m_normal; m_dist = -m_dist; }
 	float DistanceAndNormal(const Vec3f &pos, Vec3f *n) const { *n = m_normal; return Distance(pos); }
 	const Vec3f &getNormal () const {return m_normal;}
 	const Vec3f &getPosition () const {return m_pos;}
@@ -60,6 +61,7 @@ protected:
 	Vec3f m_normal;
 	Vec3f m_pos;
 	float m_dist;
+
 };
 
 template< class IteratorT >

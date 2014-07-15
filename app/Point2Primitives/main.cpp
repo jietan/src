@@ -80,7 +80,7 @@ int main()
 	string tableFolder, tableId, inputFileName, outputFileName, referenceFileName;
 	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableFolder", tableFolder);
 	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableId", tableId);
-	inputFileName = "pointsFromSimplifiedMesh.ply";
+	inputFileName = "pointsFromSimplifiedMesh1.ply";
 	string fullInputFileName = tableFolder + "/" + tableId + "/" + inputFileName;
 	ReadPointCloud(fullInputFileName, points, normals, false);
 
@@ -111,17 +111,18 @@ int main()
 
 	// set which primitives are to be detected by adding the respective constructors
 	detector.Add(new PlanePrimitiveShapeConstructor());
-	detector.Add(new SpherePrimitiveShapeConstructor());
+	//detector.Add(new SpherePrimitiveShapeConstructor());
 	detector.Add(new CylinderPrimitiveShapeConstructor());
-	detector.Add(new ConePrimitiveShapeConstructor());
-	detector.Add(new TorusPrimitiveShapeConstructor());
+	//detector.Add(new ConePrimitiveShapeConstructor());
+	//detector.Add(new TorusPrimitiveShapeConstructor());
 
 	MiscLib::Vector< std::pair< MiscLib::RefCountPtr< PrimitiveShape >, size_t > > shapes; // stores the detected shapes
 	size_t remaining = detector.Detect(pc, 0, pc.size(), &shapes); // run detection
 	cout << "Number of shapes: " << shapes.size() << endl;
 	cout << "Remainings: " << remaining << endl;
 	int sum = 0;
-	for (int i = 0; i < shapes.size(); ++i)
+	int numPrimitives = static_cast<int>(shapes.size());
+	for (int i = 0; i < numPrimitives; ++i)
 	{
 		vector<Eigen::Vector3f> clusteredP;
 		vector<Eigen::Vector3f> clusteredN;
@@ -129,6 +130,24 @@ int main()
 		vector<Eigen::Vector3f> clusteredPN;
 		cout << "Shape " << i << ": " << shapes[i].first->Identifier() << ": " << shapes[i].second << endl;
 
+		//if (shapes[i].first->Identifier() == 2)
+		//{
+		//	MiscLib::RefCountPtr<CylinderPrimitiveShape> cylinderPrimitive = (shapes[i].first);
+		//	const Cylinder& cylinder = cylinderPrimitive->Internal();
+		//	float radius = cylinder.Radius();
+		//	
+		//	if (radius > 1.0)
+		//	{
+		//		PointCloud newpc;
+		//		for (int j = pc.size() - sum - shapes[i].second; j < pc.size() - sum; ++j)
+		//		{
+		//			newpc.push_back(pc[j]);
+		//		}
+		//		
+
+		//	}
+		//}
+		int voteToFlipNormal = 0;
 		for (int j = pc.size() - sum - shapes[i].second; j < pc.size() - sum; ++j)
 		{
 			float x, y, z;
@@ -145,16 +164,29 @@ int main()
 			if (pc[j].normal.dot(pn) < 0)
 			{
 				pn = -pn;
+				voteToFlipNormal++;
 			}
 			pn.getValue(x, y, z);
 			clusteredPN.push_back(Eigen::Vector3f(x, y, z));
 		}
+		if (static_cast<float>(voteToFlipNormal) / shapes[i].second > 0.5)
+			shapes[i].first->FlipNormal();
 		char outFileName[512];
 		sprintf(outFileName, "%s\\%s\\parts\\part%03d.ply", tableFolder.c_str(), tableId.c_str(), i);
 		SavePointCloud(outFileName, clusteredP, clusteredN);
 		sprintf(outFileName, "%s\\%s\\partsProjected\\part%03dProjected.ply", tableFolder.c_str(), tableId.c_str(), i);
 		SavePointCloud(outFileName, clusteredPP, clusteredPN);
 		sum += shapes[i].second;
+	}
+
+	outputFileName = "allParts.txt";
+	string fullOutputName = tableFolder + "/" + tableId + "/" + outputFileName;
+
+	ofstream out(fullOutputName.c_str());
+	out << numPrimitives << endl;
+	for (int i = 0; i < numPrimitives; ++i)
+	{
+		shapes[i].first->Serialize(&out, false);
 	}
 	// returns number of unassigned points
 	// the array shapes is filled with pointers to the detected shapes

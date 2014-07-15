@@ -33,6 +33,7 @@ public:
 	}
 	virtual void Create(int nRows, int nCol)
 	{
+		mData.clear();
 		mHeight = nRows;
 		mWidth = nCol;
 		mData.resize(mHeight);

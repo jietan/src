@@ -73,237 +73,237 @@ DecoQuaternion DecoQuaternion::operator* (const DecoQuaternion& rhs) const
 
 
 
-Box Box::TransformBy (const matrix44& matrix) const
-{
-	vector3 vertices[NUM_VERTICES_IN_BOX];
-	vector3 minPoint(MAX_DOUBLE, MAX_DOUBLE, MAX_DOUBLE);
-	vector3 maxPoint(MIN_DOUBLE, MIN_DOUBLE, MIN_DOUBLE);
-	AllVerteices(vertices);
-	for (size_t ithVertex = 0; ithVertex < NUM_VERTICES_IN_BOX; ithVertex++)
-	{
-		vector4 homoVertex(vertices[ithVertex].x, vertices[ithVertex].y, vertices[ithVertex].z, 1.f);
-		vector4 transVertex = matrix * homoVertex;
-		vertices[ithVertex] = vector3(transVertex.x, transVertex.y, transVertex.z);		
-	}
-	Box bb = Bounding(vertices, NUM_VERTICES_IN_BOX);
-
-	return bb;
-}
-
-void Box::AllVerteices(vector3* Vertices) const
-{
-	assert(Vertices);
-	vector3 center, extent;
-	GetCenterAndExtents(center, extent);
-	Vertices[0] = vector3(center.x - extent.x, center.y - extent.y, center.z - extent.z);
-	Vertices[1] = vector3(center.x + extent.x, center.y - extent.y, center.z - extent.z);
-	Vertices[2] = vector3(center.x + extent.x, center.y - extent.y, center.z + extent.z);
-	Vertices[3] = vector3(center.x - extent.x, center.y - extent.y, center.z + extent.z);
-	Vertices[4] = vector3(center.x - extent.x, center.y + extent.y, center.z - extent.z);
-	Vertices[5] = vector3(center.x + extent.x, center.y + extent.y, center.z - extent.z);
-	Vertices[6] = vector3(center.x + extent.x, center.y + extent.y, center.z + extent.z);
-	Vertices[7] = vector3(center.x - extent.x, center.y + extent.y, center.z + extent.z);
-}
-
-double Box::RayCheck(const vector3& origin, const vector3& dir) const
-{
-	double t = -1;
-	ConvexVolume box = GetVolume();
-	for (size_t ithFace = 0; ithFace < MAX_FACES_BOX / 2; ithFace++)
-	{
-		vector3 faceNormal = box.BoundingPlanes[ithFace].GetNormal();
-		double testDir = DotProduct(faceNormal, dir);
-		//if (testDir < 0)
-		{
-			double intersectionTime = -box.BoundingPlanes[ithFace].PlaneDot(origin) / testDir;
-			if (intersectionTime > 0)
-			{
-				vector3 intersectionPoint(origin + intersectionTime * dir);
-
-				if (intersectionPoint.x <= Max.x + EPSILON_FLOAT && intersectionPoint.x >= Min.x - EPSILON_FLOAT
-					&& intersectionPoint.y <= Max.y + EPSILON_FLOAT && intersectionPoint.y >= Min.y - EPSILON_FLOAT
-					&& intersectionPoint.z <= Max.z + EPSILON_FLOAT && intersectionPoint.z >= Min.z - EPSILON_FLOAT)
-				{
-					if (t < 0 || t > intersectionTime)
-					{
-						t = intersectionTime;
-					}
-				}
-			}
-		}
-	}
-	return t;
-}
-
-bool checkWithInBox (const vector3& pt, const vector3& lbb, const vector3& ruf)
-{
-	return (pt.x >= lbb.x && pt.y >= lbb.y && pt.z>= lbb.z && pt.x < ruf.x && pt.y < ruf.y && pt.z < ruf.z);
-}
-
-BOOL Box::TriangleInBox (const vector3& a, const vector3& b, const vector3& c) const
-{
-	vector3 pt[3];
-	pt[0] = a;
-	pt[1] = b;
-	pt[2] = c;
-
-	bool bInBox = true;
-	for (int i = 0; i < 3; i++)
-	{
-		bInBox &= checkWithInBox(pt[i], Min, Max);
-	}
-	if (bInBox)
-		return true;
-	for (int i = 0; i < 3; i++) 
-	{
-		vector3 start = pt[i];
-		vector3 end = pt[(i + 1) % 3];
-
-		vector3 dir = end - start;
-		double t = DotProduct(Min - start, vector3(-1, 0, 0)) / DotProduct(dir, vector3(-1, 0, 0)); //left face
-		{
-			if (t >= 0 && t < 1) 
-			{
-				vector3 crossPt = start + dir * t;
-				if (checkWithInBox(crossPt, Min, vector3(Min.x + EPSILON_FLOAT, Max.y, Max.z)))
-					return true;
-			}
-
-		}
-		t = DotProduct(Min - start, vector3(0, -1, 0)) / DotProduct(dir, vector3(0, -1, 0)); //bottom face
-		{
-			if (t >= 0 && t < 1) 
-			{
-				vector3 crossPt = start + dir * t;
-				if (checkWithInBox(crossPt, Min, vector3(Max.x, Min.y + EPSILON_FLOAT, Max.z)))
-					return true;
-			}
-
-		}
-		t = DotProduct(Min - start, vector3(0, 0, -1)) / DotProduct(dir, vector3(0, 0, -1)); //back face
-		{
-			if (t >= 0 && t < 1) 
-			{
-				vector3 crossPt = start + dir * t;
-				if (checkWithInBox(crossPt, Min, vector3(Max.x, Max.y, Min.z + EPSILON_FLOAT)))
-					return true;
-			}
-
-		}
-		t = DotProduct(Min - start, vector3(1, 0, 0)) / DotProduct(dir, vector3(1, 0, 0)); //right face
-		{
-			if (t >= 0 && t < 1) 
-			{
-				vector3 crossPt = start + dir * t;
-				if (checkWithInBox(crossPt, vector3(Max.x - EPSILON_FLOAT, Min.y, Min.z), Max))
-					return true;
-			}
-
-		}
-		t = DotProduct(Min - start, vector3(0, 1, 0)) / DotProduct(dir, vector3(0, 1, 0)); //up face
-		{
-			if (t >= 0 && t < 1) 
-			{
-				vector3 crossPt = start + dir * t;
-				if (checkWithInBox(crossPt, vector3(Min.x, Max.y - EPSILON_FLOAT, Min.z), Max))
-					return true;
-			}
-
-		}
-		t = DotProduct(Min - start, vector3(0, 0, 1)) / DotProduct(dir, vector3(0, 0, 1)); //front face
-		{
-			if (t >= 0 && t < 1) 
-			{
-				vector3 crossPt = start + dir * t;
-				if (checkWithInBox(crossPt, vector3(Min.x, Min.y, Max.z - EPSILON_FLOAT), Max))
-					return true;
-			}
-
-		}
-	}
-	return false;
-}
-
-ConvexVolume Box::GetVolume(void) const
-{
-	vector3 vertices[NUM_VERTICES_IN_BOX];
-	AllVerteices(vertices);
-	ConvexVolume volume;
-	volume.NumPlanes = MAX_FACES_BOX / 2; //calculate by quads instead of triangles, so / 2
-	volume.BoundingPlanes[0] = Plane(vertices[0], vertices[1], vertices[3]);
-	volume.BoundingPlanes[1] = Plane(vertices[4], vertices[7], vertices[6]);
-	volume.BoundingPlanes[2] = Plane(vertices[0], vertices[3], vertices[7]);
-	volume.BoundingPlanes[3] = Plane(vertices[1], vertices[5], vertices[6]);
-	volume.BoundingPlanes[4] = Plane(vertices[6], vertices[7], vertices[3]);
-	volume.BoundingPlanes[5] = Plane(vertices[0], vertices[4], vertices[5]);
-	return volume;
-}
-
-Plane Plane::TransformBy (const matrix44& matrix) const
-{
-	matrix33 M(vector3(matrix[0].x, matrix[0].y, matrix[0].z),
-			   vector3(matrix[1].x, matrix[1].y, matrix[1].z),
-			   vector3(matrix[2].x, matrix[2].y, matrix[2].z));
-	vector3 T(matrix[3].x, matrix[3].y, matrix[3].z);
-	matrix33 invM(M);
-	invM.invert();
-	vector3 invMT = -(invM * T);
-	matrix44 invF(vector4(invM[0].x, invM[0].y, invM[0].z, 0),
-				  vector4(invM[1].x, invM[1].y, invM[1].z, 0),
-				  vector4(invM[2].x, invM[2].y, invM[2].z, 0),
-				  vector4(invMT.x  , invMT.y  , invMT.z  , 1));
-	matrix44 invTransposeF(invF);
-	invTransposeF.transpose();
-	vector4 plane(this->Normal.x, this->Normal.y, this->Normal.z, this->W);
-	Plane transformed(invTransposeF * plane);
-
-	return transformed;
-}
-
-ConvexVolume ConvexVolume::TransformBy(const matrix44& matrix) const
-{
-	ConvexVolume transformed;
-	for (INT ithPlane = 0; ithPlane < NumPlanes; ithPlane++)
-	{
-		transformed.BoundingPlanes[ithPlane] = BoundingPlanes[ithPlane].TransformBy(matrix);
-	}
-	transformed.NumPlanes = NumPlanes;
-	return transformed;
-}
-
-
-BYTE ConvexVolume::BoxCheck(const Box& InBox)
-{
-	BYTE result = 0;
-	//vector3 boxVertices[NUM_VERTICES_IN_BOX];
-	//InBox.AllVerteices(boxVertices);
-	vector3 center = InBox.GetCenter();
-	vector3 extent = InBox.GetExtent();
-	double R = extent.length();
-	INT counter = 0;
-	for (int ithPlane = 0; ithPlane < NumPlanes; ithPlane++)
-	{
-		Plane boundingPlane = BoundingPlanes[ithPlane];
-		{
-			double signedDistance = boundingPlane.PlaneDot(center);
-			if (signedDistance >= 0 || -signedDistance <= R)
-			{
-				counter++;
-			}
-		}
-	}
-	if (counter == NumPlanes)
-		result |= CF_Inside;
-	else 
-		result |= CF_Outside;
-	return result;
-}
-
-BYTE ConvexVolume::BoxCheck(const vector3& Origin, const vector3& Extent)
-{
-	Box testBox(Origin - Extent, Origin + Extent);
-	return BoxCheck(testBox);
-}
+//Box Box::TransformBy (const matrix44& matrix) const
+//{
+//	vector3 vertices[NUM_VERTICES_IN_BOX];
+//	vector3 minPoint(MAX_DOUBLE, MAX_DOUBLE, MAX_DOUBLE);
+//	vector3 maxPoint(MIN_DOUBLE, MIN_DOUBLE, MIN_DOUBLE);
+//	AllVerteices(vertices);
+//	for (size_t ithVertex = 0; ithVertex < NUM_VERTICES_IN_BOX; ithVertex++)
+//	{
+//		vector4 homoVertex(vertices[ithVertex].x, vertices[ithVertex].y, vertices[ithVertex].z, 1.f);
+//		vector4 transVertex = matrix * homoVertex;
+//		vertices[ithVertex] = vector3(transVertex.x, transVertex.y, transVertex.z);		
+//	}
+//	Box bb = Bounding(vertices, NUM_VERTICES_IN_BOX);
+//
+//	return bb;
+//}
+//
+//void Box::AllVerteices(vector3* Vertices) const
+//{
+//	assert(Vertices);
+//	vector3 center, extent;
+//	GetCenterAndExtents(center, extent);
+//	Vertices[0] = vector3(center.x - extent.x, center.y - extent.y, center.z - extent.z);
+//	Vertices[1] = vector3(center.x + extent.x, center.y - extent.y, center.z - extent.z);
+//	Vertices[2] = vector3(center.x + extent.x, center.y - extent.y, center.z + extent.z);
+//	Vertices[3] = vector3(center.x - extent.x, center.y - extent.y, center.z + extent.z);
+//	Vertices[4] = vector3(center.x - extent.x, center.y + extent.y, center.z - extent.z);
+//	Vertices[5] = vector3(center.x + extent.x, center.y + extent.y, center.z - extent.z);
+//	Vertices[6] = vector3(center.x + extent.x, center.y + extent.y, center.z + extent.z);
+//	Vertices[7] = vector3(center.x - extent.x, center.y + extent.y, center.z + extent.z);
+//}
+//
+//double Box::RayCheck(const vector3& origin, const vector3& dir) const
+//{
+//	double t = -1;
+//	ConvexVolume box = GetVolume();
+//	for (size_t ithFace = 0; ithFace < MAX_FACES_BOX / 2; ithFace++)
+//	{
+//		vector3 faceNormal = box.BoundingPlanes[ithFace].GetNormal();
+//		double testDir = DotProduct(faceNormal, dir);
+//		//if (testDir < 0)
+//		{
+//			double intersectionTime = -box.BoundingPlanes[ithFace].PlaneDot(origin) / testDir;
+//			if (intersectionTime > 0)
+//			{
+//				vector3 intersectionPoint(origin + intersectionTime * dir);
+//
+//				if (intersectionPoint.x <= Max.x + EPSILON_FLOAT && intersectionPoint.x >= Min.x - EPSILON_FLOAT
+//					&& intersectionPoint.y <= Max.y + EPSILON_FLOAT && intersectionPoint.y >= Min.y - EPSILON_FLOAT
+//					&& intersectionPoint.z <= Max.z + EPSILON_FLOAT && intersectionPoint.z >= Min.z - EPSILON_FLOAT)
+//				{
+//					if (t < 0 || t > intersectionTime)
+//					{
+//						t = intersectionTime;
+//					}
+//				}
+//			}
+//		}
+//	}
+//	return t;
+//}
+//
+//bool checkWithInBox (const vector3& pt, const vector3& lbb, const vector3& ruf)
+//{
+//	return (pt.x >= lbb.x && pt.y >= lbb.y && pt.z>= lbb.z && pt.x < ruf.x && pt.y < ruf.y && pt.z < ruf.z);
+//}
+//
+//BOOL Box::TriangleInBox (const vector3& a, const vector3& b, const vector3& c) const
+//{
+//	vector3 pt[3];
+//	pt[0] = a;
+//	pt[1] = b;
+//	pt[2] = c;
+//
+//	bool bInBox = true;
+//	for (int i = 0; i < 3; i++)
+//	{
+//		bInBox &= checkWithInBox(pt[i], Min, Max);
+//	}
+//	if (bInBox)
+//		return true;
+//	for (int i = 0; i < 3; i++) 
+//	{
+//		vector3 start = pt[i];
+//		vector3 end = pt[(i + 1) % 3];
+//
+//		vector3 dir = end - start;
+//		double t = DotProduct(Min - start, vector3(-1, 0, 0)) / DotProduct(dir, vector3(-1, 0, 0)); //left face
+//		{
+//			if (t >= 0 && t < 1) 
+//			{
+//				vector3 crossPt = start + dir * t;
+//				if (checkWithInBox(crossPt, Min, vector3(Min.x + EPSILON_FLOAT, Max.y, Max.z)))
+//					return true;
+//			}
+//
+//		}
+//		t = DotProduct(Min - start, vector3(0, -1, 0)) / DotProduct(dir, vector3(0, -1, 0)); //bottom face
+//		{
+//			if (t >= 0 && t < 1) 
+//			{
+//				vector3 crossPt = start + dir * t;
+//				if (checkWithInBox(crossPt, Min, vector3(Max.x, Min.y + EPSILON_FLOAT, Max.z)))
+//					return true;
+//			}
+//
+//		}
+//		t = DotProduct(Min - start, vector3(0, 0, -1)) / DotProduct(dir, vector3(0, 0, -1)); //back face
+//		{
+//			if (t >= 0 && t < 1) 
+//			{
+//				vector3 crossPt = start + dir * t;
+//				if (checkWithInBox(crossPt, Min, vector3(Max.x, Max.y, Min.z + EPSILON_FLOAT)))
+//					return true;
+//			}
+//
+//		}
+//		t = DotProduct(Min - start, vector3(1, 0, 0)) / DotProduct(dir, vector3(1, 0, 0)); //right face
+//		{
+//			if (t >= 0 && t < 1) 
+//			{
+//				vector3 crossPt = start + dir * t;
+//				if (checkWithInBox(crossPt, vector3(Max.x - EPSILON_FLOAT, Min.y, Min.z), Max))
+//					return true;
+//			}
+//
+//		}
+//		t = DotProduct(Min - start, vector3(0, 1, 0)) / DotProduct(dir, vector3(0, 1, 0)); //up face
+//		{
+//			if (t >= 0 && t < 1) 
+//			{
+//				vector3 crossPt = start + dir * t;
+//				if (checkWithInBox(crossPt, vector3(Min.x, Max.y - EPSILON_FLOAT, Min.z), Max))
+//					return true;
+//			}
+//
+//		}
+//		t = DotProduct(Min - start, vector3(0, 0, 1)) / DotProduct(dir, vector3(0, 0, 1)); //front face
+//		{
+//			if (t >= 0 && t < 1) 
+//			{
+//				vector3 crossPt = start + dir * t;
+//				if (checkWithInBox(crossPt, vector3(Min.x, Min.y, Max.z - EPSILON_FLOAT), Max))
+//					return true;
+//			}
+//
+//		}
+//	}
+//	return false;
+//}
+//
+//ConvexVolume Box::GetVolume(void) const
+//{
+//	vector3 vertices[NUM_VERTICES_IN_BOX];
+//	AllVerteices(vertices);
+//	ConvexVolume volume;
+//	volume.NumPlanes = MAX_FACES_BOX / 2; //calculate by quads instead of triangles, so / 2
+//	volume.BoundingPlanes[0] = Plane(vertices[0], vertices[1], vertices[3]);
+//	volume.BoundingPlanes[1] = Plane(vertices[4], vertices[7], vertices[6]);
+//	volume.BoundingPlanes[2] = Plane(vertices[0], vertices[3], vertices[7]);
+//	volume.BoundingPlanes[3] = Plane(vertices[1], vertices[5], vertices[6]);
+//	volume.BoundingPlanes[4] = Plane(vertices[6], vertices[7], vertices[3]);
+//	volume.BoundingPlanes[5] = Plane(vertices[0], vertices[4], vertices[5]);
+//	return volume;
+//}
+//
+//Plane Plane::TransformBy (const matrix44& matrix) const
+//{
+//	matrix33 M(vector3(matrix[0].x, matrix[0].y, matrix[0].z),
+//			   vector3(matrix[1].x, matrix[1].y, matrix[1].z),
+//			   vector3(matrix[2].x, matrix[2].y, matrix[2].z));
+//	vector3 T(matrix[3].x, matrix[3].y, matrix[3].z);
+//	matrix33 invM(M);
+//	invM.invert();
+//	vector3 invMT = -(invM * T);
+//	matrix44 invF(vector4(invM[0].x, invM[0].y, invM[0].z, 0),
+//				  vector4(invM[1].x, invM[1].y, invM[1].z, 0),
+//				  vector4(invM[2].x, invM[2].y, invM[2].z, 0),
+//				  vector4(invMT.x  , invMT.y  , invMT.z  , 1));
+//	matrix44 invTransposeF(invF);
+//	invTransposeF.transpose();
+//	vector4 plane(this->Normal.x, this->Normal.y, this->Normal.z, this->W);
+//	Plane transformed(invTransposeF * plane);
+//
+//	return transformed;
+//}
+//
+//ConvexVolume ConvexVolume::TransformBy(const matrix44& matrix) const
+//{
+//	ConvexVolume transformed;
+//	for (INT ithPlane = 0; ithPlane < NumPlanes; ithPlane++)
+//	{
+//		transformed.BoundingPlanes[ithPlane] = BoundingPlanes[ithPlane].TransformBy(matrix);
+//	}
+//	transformed.NumPlanes = NumPlanes;
+//	return transformed;
+//}
+//
+//
+//BYTE ConvexVolume::BoxCheck(const Box& InBox)
+//{
+//	BYTE result = 0;
+//	//vector3 boxVertices[NUM_VERTICES_IN_BOX];
+//	//InBox.AllVerteices(boxVertices);
+//	vector3 center = InBox.GetCenter();
+//	vector3 extent = InBox.GetExtent();
+//	double R = extent.length();
+//	INT counter = 0;
+//	for (int ithPlane = 0; ithPlane < NumPlanes; ithPlane++)
+//	{
+//		Plane boundingPlane = BoundingPlanes[ithPlane];
+//		{
+//			double signedDistance = boundingPlane.PlaneDot(center);
+//			if (signedDistance >= 0 || -signedDistance <= R)
+//			{
+//				counter++;
+//			}
+//		}
+//	}
+//	if (counter == NumPlanes)
+//		result |= CF_Inside;
+//	else 
+//		result |= CF_Outside;
+//	return result;
+//}
+//
+//BYTE ConvexVolume::BoxCheck(const vector3& Origin, const vector3& Extent)
+//{
+//	Box testBox(Origin - Extent, Origin + Extent);
+//	return BoxCheck(testBox);
+//}
 
 
 
@@ -728,28 +728,28 @@ unsigned short CeilPower2(unsigned short x)
 	x |= x >> 8;
 	return x + 1;
 }
-Box Bounding(vector3* array, size_t num)
-{
-	Box bb(vector3(MAX_DOUBLE, MAX_DOUBLE, MAX_DOUBLE), vector3(MIN_DOUBLE, MIN_DOUBLE, MIN_DOUBLE));
-	for (size_t ithVertex = 0; ithVertex < num; ++ithVertex)
-	{
-		if (array[ithVertex].x > bb[1].x)
-			bb[1].x = array[ithVertex].x;
-		if (array[ithVertex].x < bb[0].x)
-			bb[0].x = array[ithVertex].x;
-
-		if (array[ithVertex].y > bb[1].y)
-			bb[1].y = array[ithVertex].y;
-		if (array[ithVertex].y < bb[0].y)
-			bb[0].y = array[ithVertex].y;
-
-		if (array[ithVertex].z > bb[1].z)
-			bb[1].z = array[ithVertex].z;
-		if (array[ithVertex].z < bb[0].z)
-			bb[0].z = array[ithVertex].z;
-	}
-	return bb;
-}
+//Box Bounding(vector3* array, size_t num)
+//{
+//	Box bb(vector3(MAX_DOUBLE, MAX_DOUBLE, MAX_DOUBLE), vector3(MIN_DOUBLE, MIN_DOUBLE, MIN_DOUBLE));
+//	for (size_t ithVertex = 0; ithVertex < num; ++ithVertex)
+//	{
+//		if (array[ithVertex].x > bb[1].x)
+//			bb[1].x = array[ithVertex].x;
+//		if (array[ithVertex].x < bb[0].x)
+//			bb[0].x = array[ithVertex].x;
+//
+//		if (array[ithVertex].y > bb[1].y)
+//			bb[1].y = array[ithVertex].y;
+//		if (array[ithVertex].y < bb[0].y)
+//			bb[0].y = array[ithVertex].y;
+//
+//		if (array[ithVertex].z > bb[1].z)
+//			bb[1].z = array[ithVertex].z;
+//		if (array[ithVertex].z < bb[0].z)
+//			bb[0].z = array[ithVertex].z;
+//	}
+//	return bb;
+//}
 
 BOOL TriangleRayIntersection (const vector3& a, const vector3& b, const vector3& c, const vector3& origin,const vector3& dir, vector3 *intersection, double* time)
 {
@@ -902,85 +902,85 @@ DOUBLE PointPolylineDistance(const vector3& pt, const vector<vector3>& polyline,
 	return minDistance;
 }
 
-DOUBLE PointTriangleDistance(const vector3& pt, const vector3& a, const vector3& b, const vector3& c)
-{
-	Plane p(a, b, c);
-	vector3 Normal = p.GetNormal();
-	DOUBLE Offset = p.GetOffset();
-	vector3 intersectPt = p.RayIntersect(pt, Normal);
-	if (PointInTriangle(intersectPt, a, b, c))
-	{
-		return (pt - intersectPt).length();
-	}
-	else
-	{
-		DOUBLE minDist = min(PointLineDistance(pt, a, b), PointLineDistance(pt, b, c));
-		minDist = min(minDist, PointLineDistance(pt, c, a));
-		return minDist;
-	}
-}
+//DOUBLE PointTriangleDistance(const vector3& pt, const vector3& a, const vector3& b, const vector3& c)
+//{
+//	Plane p(a, b, c);
+//	vector3 Normal = p.GetNormal();
+//	DOUBLE Offset = p.GetOffset();
+//	vector3 intersectPt = p.RayIntersect(pt, Normal);
+//	if (PointInTriangle(intersectPt, a, b, c))
+//	{
+//		return (pt - intersectPt).length();
+//	}
+//	else
+//	{
+//		DOUBLE minDist = min(PointLineDistance(pt, a, b), PointLineDistance(pt, b, c));
+//		minDist = min(minDist, PointLineDistance(pt, c, a));
+//		return minDist;
+//	}
+//}
 
-DOUBLE RayPolylineDistance(const vector3& origin, const vector3& dir, const vector<Eigen::Vector3d>& polyLine, double& depth)
-{
-    int numSegments = static_cast<int>(polyLine.size()) - 1;
-    double minDist = 1e20;
-    for (int i = 0; i < numSegments; ++i)
-    {
-        double rayDepth;
-        double distance = RayLineDistance(origin, dir, vector3(polyLine[i]), vector3(polyLine[i + 1]), rayDepth, true);
-        if (distance < minDist)
-        {
-            minDist = distance;
-            depth = rayDepth;
-        }
-    }
-    return minDist;
-}
+//DOUBLE RayPolylineDistance(const vector3& origin, const vector3& dir, const vector<Eigen::Vector3d>& polyLine, double& depth)
+//{
+//    int numSegments = static_cast<int>(polyLine.size()) - 1;
+//    double minDist = 1e20;
+//    for (int i = 0; i < numSegments; ++i)
+//    {
+//        double rayDepth;
+//        double distance = RayLineDistance(origin, dir, vector3(polyLine[i]), vector3(polyLine[i + 1]), rayDepth, true);
+//        if (distance < minDist)
+//        {
+//            minDist = distance;
+//            depth = rayDepth;
+//        }
+//    }
+//    return minDist;
+//}
 
-DOUBLE RayLineDistance(const vector3& origin, const vector3& dir, const vector3& a, const vector3& b, double& depth, bool isLineSegmen)
-{
-    vector3 ab = b - a;
-    vector3 n = CrossProduct(dir, ab);
-    n.normalize();
-    vector3 ob = b - origin;
-    double dist = DotProduct(ob, n);
-    Plane p(a, dir);
-    double distanceAlongDirToNearestPoint = p.PlaneDot(origin);
-    vector3 nearestPoint = origin - distanceAlongDirToNearestPoint * dir;
-    //if (abs(dir.x) > EPSILON_FLOAT)
-    //    depth = (nearestPoint - origin).x / dir.x;
-    //else if (abs(dir.y) > EPSILON_FLOAT)
-    //    depth = (nearestPoint - origin).y / dir.y;
-    //else 
-    //    depth = (nearestPoint - origin).z / dir.z;
-    depth = -distanceAlongDirToNearestPoint;
-    if (depth <= 0)
-        return PointLineDistance(origin, a, b, isLineSegmen);
-    else
-    {
-        vector3 planeNormal = ab;
-        planeNormal.normalize();
-        Plane pl(nearestPoint, planeNormal);
-        if (pl.PlaneDot(a) * pl.PlaneDot(b) < 0)
-            return abs(dist);
-        else
-        {
-            double depth1, depth2;
-            double dist1 = PointRayDistance(a, origin, dir, depth1);
-            double dist2 = PointRayDistance(b, origin, dir, depth2);
-            if (dist1 < dist2)
-            {
-                depth = depth1;
-                return (dist1);
-            }
-            else
-            {
-                depth = depth2;
-                return (dist2);
-            }
-        }
-    }
-}
+//DOUBLE RayLineDistance(const vector3& origin, const vector3& dir, const vector3& a, const vector3& b, double& depth, bool isLineSegmen)
+//{
+//    vector3 ab = b - a;
+//    vector3 n = CrossProduct(dir, ab);
+//    n.normalize();
+//    vector3 ob = b - origin;
+//    double dist = DotProduct(ob, n);
+//    Plane p(a, dir);
+//    double distanceAlongDirToNearestPoint = p.PlaneDot(origin);
+//    vector3 nearestPoint = origin - distanceAlongDirToNearestPoint * dir;
+//    //if (abs(dir.x) > EPSILON_FLOAT)
+//    //    depth = (nearestPoint - origin).x / dir.x;
+//    //else if (abs(dir.y) > EPSILON_FLOAT)
+//    //    depth = (nearestPoint - origin).y / dir.y;
+//    //else 
+//    //    depth = (nearestPoint - origin).z / dir.z;
+//    depth = -distanceAlongDirToNearestPoint;
+//    if (depth <= 0)
+//        return PointLineDistance(origin, a, b, isLineSegmen);
+//    else
+//    {
+//        vector3 planeNormal = ab;
+//        planeNormal.normalize();
+//        Plane pl(nearestPoint, planeNormal);
+//        if (pl.PlaneDot(a) * pl.PlaneDot(b) < 0)
+//            return abs(dist);
+//        else
+//        {
+//            double depth1, depth2;
+//            double dist1 = PointRayDistance(a, origin, dir, depth1);
+//            double dist2 = PointRayDistance(b, origin, dir, depth2);
+//            if (dist1 < dist2)
+//            {
+//                depth = depth1;
+//                return (dist1);
+//            }
+//            else
+//            {
+//                depth = depth2;
+//                return (dist2);
+//            }
+//        }
+//    }
+//}
 
 void indexTo2d(int index, int& xIndex, int& yIndex, int numX, int numY)
 {
@@ -1249,14 +1249,14 @@ double ComputeWeightFromLWLinearRegression(double dist, double maxDist)
 	return weight;
 }
 
-DecoArchive& operator<< (DecoArchive& Ar, const Box& b)
-{
-	return Ar << b.Min << b.Max;
-}
-DecoArchive& operator>> (DecoArchive& Ar, Box& b)
-{
-	return Ar >> b.Min >> b. Max;
-}
+//DecoArchive& operator<< (DecoArchive& Ar, const Box& b)
+//{
+//	return Ar << b.Min << b.Max;
+//}
+//DecoArchive& operator>> (DecoArchive& Ar, Box& b)
+//{
+//	return Ar >> b.Min >> b. Max;
+//}
 DecoArchive& operator<< (DecoArchive& Ar, const DecoQuaternion& q)
 {
 	return Ar << q.m_v << q.m_w;
@@ -1265,28 +1265,28 @@ DecoArchive& operator>> (DecoArchive& Ar, DecoQuaternion& q)
 {
 	return Ar >> q.m_w >> q.m_w;
 }
-DecoArchive& operator<< (DecoArchive& Ar, const Plane& p)
-{
-	return Ar << p.Normal << p.W;
-}
-DecoArchive& operator>> (DecoArchive& Ar, Plane& p)
-{
-	return Ar >> p.Normal >> p.W;
-}
-DecoArchive& operator<< (DecoArchive& Ar, const ConvexVolume& cv)
-{
-	Ar << cv.NumPlanes;
-	for (INT i = 0; i < cv.NumPlanes; i++)
-		Ar << cv.BoundingPlanes[i];
-	return Ar;
-}
-DecoArchive& operator>> (DecoArchive& Ar, ConvexVolume& cv)
-{
-	Ar >> cv.NumPlanes;
-	for (INT i = 0; i < cv.NumPlanes; i++)
-		Ar >> cv.BoundingPlanes[i];
-	return Ar;
-}
+//DecoArchive& operator<< (DecoArchive& Ar, const Plane& p)
+//{
+//	return Ar << p.Normal << p.W;
+//}
+//DecoArchive& operator>> (DecoArchive& Ar, Plane& p)
+//{
+//	return Ar >> p.Normal >> p.W;
+//}
+//DecoArchive& operator<< (DecoArchive& Ar, const ConvexVolume& cv)
+//{
+//	Ar << cv.NumPlanes;
+//	for (INT i = 0; i < cv.NumPlanes; i++)
+//		Ar << cv.BoundingPlanes[i];
+//	return Ar;
+//}
+//DecoArchive& operator>> (DecoArchive& Ar, ConvexVolume& cv)
+//{
+//	Ar >> cv.NumPlanes;
+//	for (INT i = 0; i < cv.NumPlanes; i++)
+//		Ar >> cv.BoundingPlanes[i];
+//	return Ar;
+//}
 DecoArchive& operator<< (DecoArchive& Ar, const Coords& coords)
 {
 	Ar << coords._origin;

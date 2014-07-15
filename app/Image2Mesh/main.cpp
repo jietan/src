@@ -47,6 +47,12 @@ using namespace std;
 #include "distanceMetric.h"
 #include "CVImageHelper.h"
 #include "ImageInpainting.h"
+#include "Part.h"
+
+#include "pointCloudToPrimitive/RansacShapeDetector.h"
+#include "pointCloudToPrimitive/PlanePrimitiveShape.h"
+#include "pointCloudToPrimitive/CylinderPrimitiveShape.h"
+
 
 //#include "gflags/gflags.h"
 #define GLOG_NO_ABBREVIATED_SEVERITIES
@@ -55,9 +61,9 @@ using namespace google;
 
 #define MAX_FILENAME_LEN 512
 
-string gDataFolder = "../../../Tables/";
-//string gDataName = "399318621.826096";
-string gDataName = "399400812.46835";
+//string gDataFolder = "../../../Tables/";
+////string gDataName = "399318621.826096";
+//string gDataName = "399400812.46835";
 char* outputFile = NULL;
 double gDepthThreshold = 2.5;
 const int gDepthImageWidth = 640;
@@ -65,6 +71,8 @@ const int gDepthImageHeight = 480;
 const float gFocalLenth = 525.0f;
 int gCameraProjectionType = 0;
 float gCameraWidth = 2.0;
+string gTableFolder;
+string gTableId;
 
 int echoStdout=0;
 typedef float Real;
@@ -186,7 +194,7 @@ int ReadCorrespondence(vector<pair<string, string> >& correspondence)
 {
 	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	sprintf(filename, "%s%s/input.match", gDataFolder.c_str(), gDataName.c_str());
+	sprintf(filename, "%s/%s/input.match", gTableFolder.c_str(), gTableId.c_str());
 	int numCorrespondence = 0;
 	ifstream inFile(filename);
 	string depthFilename, colorFilename;
@@ -204,7 +212,7 @@ int ReadCameraPoses(vector<Eigen::MatrixXf>& cameraPose)
 {
 	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	sprintf(filename, "%s%s/poses.txt", gDataFolder.c_str(), gDataName.c_str());
+	sprintf(filename, "%s/%s/poses.txt", gTableFolder.c_str(), gTableId.c_str());
 	int numViews = 0;
 
 	ifstream inFile(filename);
@@ -309,7 +317,7 @@ int Points2Mesh(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vecto
 
 	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-	sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
+	sprintf(filename, "%s/%s/points.ply", gTableFolder.c_str(), gTableId.c_str());
 
 	//int pointCount = tree.setTree( filename, Depth.value , MinDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value , xForm );
 	int pointCount = tree.setTree( points, normals, Depth.value , MinDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value , xForm );
@@ -509,7 +517,7 @@ void ConstructPointCloudFromDepthImages(int numFrames, const vector<pair<string,
 	{
 		char filename[MAX_FILENAME_LEN];
 		memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-		sprintf(filename, "%s%s/%s", gDataFolder.c_str(), gDataName.c_str(), correspondences[i].first.c_str());
+		sprintf(filename, "%s/%s/%s", gTableFolder.c_str(), gTableId.c_str(), correspondences[i].first.c_str());
 		DepthImage depthImg(filename);
 		depthImg.SetCameraPose(cameraPoses[i]);
 		depthImg.Process();
@@ -633,7 +641,9 @@ int main(int argc, char** argv)
 
 	LOG(INFO) << "start";
 	DecoConfig::GetSingleton()->Init("../config.ini");
-	DecoConfig::GetSingleton()->GetString("Image2Mesh", "DataName", gDataName);
+//	DecoConfig::GetSingleton()->GetString("Image2Mesh", "DataName", gDataName);
+	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableFolder", gTableFolder);
+	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableId", gTableId);
 
 	vector<pair<string, string> > correspondences;
 	int numImages = ReadCorrespondence(correspondences);
@@ -726,7 +736,7 @@ int main(int argc, char** argv)
 		ConstructPointCloudFromDepthImages(numFrames, correspondences, cameraPoses, points, normals);
 		char filename[MAX_FILENAME_LEN];
 		memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-		sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
+		sprintf(filename, "%s/%s/points.ply", gTableFolder.c_str(), gTableId.c_str());
 
 		int bSaveAllPoints = 0;
 		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "SaveAllPoints", bSaveAllPoints);
@@ -744,7 +754,7 @@ int main(int argc, char** argv)
 		/* construct multilayer depth image from high res point cloud */
 		char filename[MAX_FILENAME_LEN];
 		memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
-		sprintf(filename, "%s%s/points.ply", gDataFolder.c_str(), gDataName.c_str());
+		sprintf(filename, "%s/%s/points.ply", gTableFolder.c_str(), gTableId.c_str());
 //		sprintf(filename, "%s%s/points.plysimplified.ply", gDataFolder.c_str(), gDataName.c_str()); // for speedy test purpose
 		ReadPointCloud(filename, points, normals);
 		BuildMultiLayerDepthImage(points, normals, cameraPose);
@@ -770,7 +780,7 @@ int main(int argc, char** argv)
 		/* read the point cloud and perform Poisson surface reconstruction */
 		char filenamePrefix[MAX_FILENAME_LEN];
 		memset(filenamePrefix, 0, MAX_FILENAME_LEN * sizeof(char));
-		sprintf(filenamePrefix, "%s%s/points.plysimplified", gDataFolder.c_str(), gDataName.c_str());
+		sprintf(filenamePrefix, "%s/%s/points.plysimplified", gTableFolder.c_str(), gTableId.c_str());
 		string fileToRead = filenamePrefix;
 		fileToRead += ".ply";
 		ReadPointCloud(fileToRead, points, normals);
@@ -919,7 +929,7 @@ int main(int argc, char** argv)
 	{
 		char filenamePrefix[MAX_FILENAME_LEN];
 		memset(filenamePrefix, 0, MAX_FILENAME_LEN * sizeof(char));
-		sprintf(filenamePrefix, "%s%s/points.plysimplified", gDataFolder.c_str(), gDataName.c_str());
+		sprintf(filenamePrefix, "%s/%s/points.plysimplified", gTableFolder.c_str(), gTableId.c_str());
 		string fileToRead = filenamePrefix;
 		fileToRead += ".ply";
 		ReadPointCloud(fileToRead, points, normals);
@@ -1156,5 +1166,108 @@ int main(int argc, char** argv)
 		vector<Eigen::Vector3f> truePoints, trueNormals;
 		RemoveRedundantPoints(points, normals, refPoints, &truePoints, &trueNormals);
 		SavePointCloud(fullOutputFileName, truePoints, colors, trueNormals);
+	}
+	else if (task == 13)
+	{
+		
+		string inputFileName;
+
+		inputFileName = "allParts.txt";
+		string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
+		ifstream inParts(fullInputFileName.c_str());
+		int numParts;
+		inParts >> numParts;
+
+		vector<vector<Eigen::Vector3f> > allPoints;
+		vector<vector<Eigen::Vector3f> > allNormals;
+		vector<PrimitiveShape*> allPrimitives;
+		vector<Part> allParts;
+		vector<sehoon::ann::KDTree*> kdtrees;
+
+		allPoints.resize(numParts);
+		allNormals.resize(numParts);
+		allPrimitives.resize(numParts);
+
+		for (int i = 0; i < numParts; ++i)
+		{
+			char plyFileName[512];
+			sprintf(plyFileName, "%s/%s/parts/part%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+			ReadPointCloud(plyFileName, points, normals);
+
+			allPoints[i] = points;
+			allNormals[i] = normals;
+
+			int identifier;
+			inParts >> identifier;
+			PrimitiveShape* prim = NULL;
+			if (identifier == 0)
+			{
+				prim = new PlanePrimitiveShape(&inParts);
+			}
+			else if (identifier == 2)
+			{
+				prim = new CylinderPrimitiveShape(&inParts);
+			}
+			allPrimitives[i] = prim;
+			if (points.size() > 500)
+			{
+				sehoon::ann::KDTree* tree = new sehoon::ann::KDTree();
+				kdtrees.push_back(tree);
+				allParts.push_back(Part(prim, points, normals, tree));
+			}
+		}
+		
+		vector<DepthImage*> refDepthImages;
+		int stepVerifyCamera = 10;
+		int stepProposeCamera = 50;
+		for (int i = ithDepthToProcess; i < numFrames; i += stepVerifyCamera)
+		{
+			char filename[MAX_FILENAME_LEN];
+			memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+			sprintf(filename, "%s/%s/%s", gTableFolder.c_str(), gTableId.c_str(), correspondences[i].first.c_str());
+			DepthImage* depthImg = new DepthImage(filename);
+			depthImg->SetCameraPose(cameraPoses[i]);
+			refDepthImages.push_back(depthImg);
+		}
+		vector<Eigen::Vector3f> unseenPoints, unseenNormals;
+		int floorId, wallId;
+		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "WallId", wallId);
+		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "FloorId", floorId);
+		DepthCamera dCamera;
+		dCamera.SetIntrinsicParameters(gDepthImageWidth, gDepthImageHeight, gFocalLenth);
+		dCamera.SetProjectionType(gCameraProjectionType);
+		dCamera.SetOrthoWidth(gCameraWidth);
+		dCamera.SetReferenceDepthImages(refDepthImages);
+		PrimitiveShape* floor = NULL;
+		PrimitiveShape* wall = NULL;
+		if (floorId >= 0)
+		{
+			floor = allPrimitives[floorId];
+		}
+		if (wallId >= 0)
+		{
+			wall = allPrimitives[wallId];
+		}
+		dCamera.SetWallAndFloor(wall, floor);
+		//for (int i = ithDepthToProcess; i < numFrames; i += 50)
+		for (int i = ithDepthToProcess; i < numFrames; i += stepProposeCamera)
+		{
+			LOG(INFO) << "Processing " << i << "th camera view out of " << numFrames;
+			dCamera.SetExtrinsicParameters(cameraPoses[i]);
+			dCamera.Capture(allParts);
+			dCamera.GetDepthImage().SaveDepthImage(gTableFolder + "/" + gTableId + "/" + "testDepthImage.png");
+			dCamera.GetPointCloud(points, normals, PORTION_ALL);
+			//char fullOutputFileName[512];
+			//sprintf(fullOutputFileName, "%s\\%s\\UnseenPrimitive%03d.ply", tableFolder.c_str(), tableId.c_str(), i);
+			//SavePointCloud(fullOutputFileName, points, colors, normals);
+
+
+			unseenPoints.insert(unseenPoints.end(), points.begin(), points.end());
+			unseenNormals.insert(unseenNormals.end(), normals.begin(), normals.end());
+		}
+
+		
+		string fullOutputFileName = gTableFolder + "/" + gTableId + "/" + "UnseenPrimitive.ply";
+		SavePointCloud(fullOutputFileName, unseenPoints, colors, unseenNormals);
 	}
 }

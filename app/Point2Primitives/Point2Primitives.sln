@@ -15,8 +15,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PoissonSurface", "..\..\Poi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MiscLib", "..\..\pointCloudToPrimitive\MiscLib\MiscLib.vcxproj", "{2C9D3C96-7350-4E48-9BC5-DC083D0BBF0E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "utility", "..\..\utility\utility.vcxproj", "{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -106,26 +104,6 @@ Global
 		{2C9D3C96-7350-4E48-9BC5-DC083D0BBF0E}.ReleaseOpenMP|Win32.Build.0 = Release|Win32
 		{2C9D3C96-7350-4E48-9BC5-DC083D0BBF0E}.ReleaseOpenMP|x64.ActiveCfg = Release|x64
 		{2C9D3C96-7350-4E48-9BC5-DC083D0BBF0E}.ReleaseOpenMP|x64.Build.0 = Release|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Debug|Win32.ActiveCfg = Debug|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Debug|Win32.Build.0 = Debug|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Debug|x64.ActiveCfg = Debug|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Debug|x64.Build.0 = Debug|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.DebugOpenMP|Win32.ActiveCfg = Debug|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.DebugOpenMP|Win32.Build.0 = Debug|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.DebugOpenMP|x64.ActiveCfg = Debug|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.DebugOpenMP|x64.Build.0 = Debug|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.FastDebug|Win32.ActiveCfg = FastDebug|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.FastDebug|Win32.Build.0 = FastDebug|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.FastDebug|x64.ActiveCfg = FastDebug|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.FastDebug|x64.Build.0 = FastDebug|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Release|Win32.ActiveCfg = Release|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Release|Win32.Build.0 = Release|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Release|x64.ActiveCfg = Release|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.Release|x64.Build.0 = Release|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.ReleaseOpenMP|Win32.ActiveCfg = Release|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.ReleaseOpenMP|Win32.Build.0 = Release|Win32
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.ReleaseOpenMP|x64.ActiveCfg = Release|x64
-		{5D34BE97-81E5-4AFF-89B6-AC6E7739CA31}.ReleaseOpenMP|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

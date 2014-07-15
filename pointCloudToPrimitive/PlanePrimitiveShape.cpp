@@ -12,15 +12,23 @@ extern MiscLib::performance_t totalTime_planeConnected;
 
 PlanePrimitiveShape::PlanePrimitiveShape(const Vec3f &a, const Vec3f &b,
 	const Vec3f &c)
-: m_plane(a, b, c)
+: m_plane(a, b, c),
+m_bFlipNormal(false)
 {
 	m_hcs.FromNormal(m_plane.getNormal());
 }
 
 PlanePrimitiveShape::PlanePrimitiveShape(const Plane &plane)
-: m_plane(plane)
+: m_plane(plane),
+m_bFlipNormal(false)
 {
 	m_hcs.FromNormal(m_plane.getNormal());
+}
+
+PlanePrimitiveShape::PlanePrimitiveShape(std::istream* in)
+{
+	(*in) >> m_bFlipNormal;
+	m_plane.Init(false, in);
 }
 
 size_t PlanePrimitiveShape::Identifier() const
@@ -40,7 +48,9 @@ float PlanePrimitiveShape::Distance(const Vec3f &p) const
 
 float PlanePrimitiveShape::SignedDistance(const Vec3f &p) const
 {
-	return m_plane.SignedDistance(p);
+	float ret = m_plane.SignedDistance(p);
+
+	return m_bFlipNormal ? -ret : ret;
 }
 
 float PlanePrimitiveShape::NormalDeviation(const Vec3f &,
@@ -65,6 +75,13 @@ void PlanePrimitiveShape::Project(const Vec3f &p, Vec3f *pp) const
 void PlanePrimitiveShape::Normal(const Vec3f &p, Vec3f *n) const
 {
 	*n = m_plane.getNormal();
+	if (m_bFlipNormal)
+		*n = -(*n);
+}
+
+void PlanePrimitiveShape::FlipNormal()
+{
+	m_bFlipNormal = true;
 }
 
 unsigned int PlanePrimitiveShape::ConfidenceTests(unsigned int numTests,
@@ -118,7 +135,10 @@ void PlanePrimitiveShape::Serialize(std::ostream *o, bool binary) const
 		(*o) << id;
 	}
 	else
+	{
 		(*o) << "0" << " ";
+		(*o) << m_bFlipNormal << " ";
+	}
 	m_plane.Serialize(binary, o);
 	if(!binary)
 		*o << std::endl;

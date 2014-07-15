@@ -29,6 +29,7 @@ public:
 	bool Init(bool binary, std::istream *i);
 	PrimitiveShape *Clone() const;
 	float Distance(const Vec3f &p) const;
+	void FlipNormal();
 	float SignedDistance(const Vec3f &p) const;
 	float NormalDeviation(const Vec3f &p, const Vec3f &n) const;
 	void DistanceAndNormalDeviation(const Vec3f &p, const Vec3f &n,

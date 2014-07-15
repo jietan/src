@@ -12,6 +12,9 @@ using namespace std;
 #include "MultilayerDepthImage.h"
 #include "MultilayerMaskImage.h"
 #include "sehoon/ANNHelper.h"
+#include "pointCloudToPrimitive/PlanePrimitiveShape.h"
+#include "pointCloudToPrimitive/CylinderPrimitiveShape.h"
+#include "Part.h"
 
 #define ORTHO_PROJ 0
 #define PERSP_PROJ 1
@@ -76,6 +79,7 @@ public:
 	const MultilayerDepthImage& GetDepthImage() const;
 	const MultilayerMaskImage& GetMaskImage() const;
 	const Eigen::Matrix4f& GetCameraPose() const;
+	void Capture(vector<Part>& parts);
 	void Capture(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals);
 	void Capture(const vector<Eigen::Vector3f>& vertices, const vector<Eigen::Vector3i>& indices);
 	void SetData(const MultilayerDepthImage& depthMap);
@@ -91,6 +95,7 @@ public:
 	void SetComparisonROI(int left, int right, int high, int low, float near, float far);
 	void CrossViewMaskUpdate(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage);
 	void CrossViewMaskUpdate1(const DepthCamera& otherViewOld, const DepthCamera& otherViewNew, const MultilayerDepthImage& depthImagePointCloudOtherView, int moveDir, MultilayerDepthImage* newDepthImage, MultilayerMaskImage* newMaskImage);
+	void SetWallAndFloor(PrimitiveShape* wall, PrimitiveShape* floor);
 private:
 	Eigen::Vector3f constructRayDirection(int i, int j);
 	Eigen::Vector3f constructRayOrigin(int i, int j);
@@ -104,6 +109,9 @@ private:
 	void boundariesFromNearestNeighbor(MultilayerDepthImage& mergedDepthMap, MultilayerMaskImage& mask);
 	bool needLeaveTrace(int ithRow, int jthCol, int kthLayer, int moveDir);
 	void leaveTrace(int ithRowOld, int jthColOld, float depthOld, int ithRowNew, int jthColNew, float depthNew, int kthLayer, int moveDir, MultilayerDepthImageWithMask* image);
+	bool wallCulling(const Eigen::Vector3f& pt) const;
+	bool connectionCulling(Part& part, const Eigen::Vector3f& pt) const;
+	void spreadConnectionInfo(const vector<Eigen::Vector2i>& validBoundarySeed, Image<int>& connectionMap);
 	Eigen::Matrix4f mPose;
 	Eigen::Matrix4f mInvPose;
 	int mWidth;
@@ -119,6 +127,8 @@ private:
 	float mOrthoHeight;
 	vector<Eigen::Vector3f> mSimplifiedPointCloud;
 	ROI mComparisonROI;
+	PrimitiveShape* mWall;
+	PrimitiveShape* mFloor;
 };
 
 #endif
