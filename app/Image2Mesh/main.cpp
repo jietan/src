@@ -77,6 +77,7 @@ string gTableId;
 int echoStdout=0;
 typedef float Real;
 
+cv::Mat ImagingPart(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, PrimitiveShape* prim);
 
 void DumpOutput( const char* format , ... )
 {
@@ -1213,7 +1214,7 @@ int main(int argc, char** argv)
 			{
 				sehoon::ann::KDTree* tree = new sehoon::ann::KDTree();
 				kdtrees.push_back(tree);
-				allParts.push_back(Part(prim, points, normals, tree));
+				allParts.push_back(Part(prim, i, points, normals, tree));
 			}
 		}
 		
@@ -1269,5 +1270,135 @@ int main(int argc, char** argv)
 		
 		string fullOutputFileName = gTableFolder + "/" + gTableId + "/" + "UnseenPrimitive.ply";
 		SavePointCloud(fullOutputFileName, unseenPoints, colors, unseenNormals);
+	}
+	else if (task == 14)
+	{
+		string inputFileName;
+
+		inputFileName = "allParts.txt";
+		string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
+		ifstream inParts(fullInputFileName.c_str());
+		int numParts;
+		inParts >> numParts;
+
+		vector<vector<Eigen::Vector3f> > allPoints;
+		vector<vector<Eigen::Vector3f> > allNormals;
+		vector<PrimitiveShape*> allPrimitives;
+		vector<Part> allParts;
+		
+
+		allPoints.resize(numParts);
+		allNormals.resize(numParts);
+		allPrimitives.resize(numParts);
+
+		vector<Part> splittedParts;
+		for (int i = 0; i < numParts; ++i)
+		{
+			char plyFileName[512];
+			sprintf(plyFileName, "%s/%s/partsProjected/part%03dProjected.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+			ReadPointCloud(plyFileName, points, normals);
+
+			LOG(INFO) << "Part " << i;
+			allPoints[i] = points;
+			allNormals[i] = normals;
+
+			int identifier;
+			inParts >> identifier;
+			PrimitiveShape* prim = NULL;
+			if (identifier == 0)
+			{
+				prim = new PlanePrimitiveShape(&inParts);
+			}
+			else
+			{
+				CHECK(0) << "Only planes are supported.";
+			}
+			allPrimitives[i] = prim;
+			if (points.size() < 500) continue;
+			Part part(prim, i, points, normals, NULL);
+			
+
+			allParts.push_back(part);
+			//sprintf(pngFileName, "%s/%s/partsImage/part%03dConnectivity.png", gTableFolder.c_str(), gTableId.c_str(), i);
+			//cv::imwrite(pngFileName, components);
+
+			//part.DivideByNormalDirection(splittedParts);
+		}
+		numParts = static_cast<int>(allParts.size());
+		for (int i = 0; i < numParts; ++i)
+		{
+			allParts[i].Process();
+			allParts[i].DivideByNormalDirection(splittedParts);
+		}
+		allParts = splittedParts;
+		numParts = static_cast<int>(allParts.size());
+		splittedParts.clear();
+
+		for (int i = 0; i < numParts; ++i)
+		{
+			allParts[i].Process();
+			allParts[i].DivideByConnectivity(splittedParts);
+		}
+		allParts = splittedParts;
+		splittedParts.clear();
+		numParts = static_cast<int>(allParts.size());
+
+		char filename[512];
+		for (int i = 0; i < numParts; ++i)
+		{
+			//sprintf(plyFileName, "%s/%s/partsSplittedByNormal/part%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+			//SavePointCloud(plyFileName, allParts[i].GetPoints(), colors, allParts[i].GetNormals());
+
+			sprintf(filename, "%s/%s/partsSplitted/part%03d", gTableFolder.c_str(), gTableId.c_str(), i);
+			allParts[i].Save(filename);
+		}
+		string numPartsFileName = gTableFolder + "/" + gTableId + "/partsSplitted/numParts.txt";
+		ofstream outNumParts(numPartsFileName.c_str());
+		outNumParts << numParts;
+	}
+	else if (task == 15)
+	{
+		string inputFileName;
+
+		inputFileName = "allParts.txt";
+		string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
+		ifstream inParts(fullInputFileName.c_str());
+		int numPrimitives;
+		inParts >> numPrimitives;
+
+
+		vector<PrimitiveShape*> allPrimitives;
+		vector<Part> allParts;
+
+		allPrimitives.resize(numPrimitives);
+
+		for (int i = 0; i < numPrimitives; ++i)
+		{
+			int identifier;
+			inParts >> identifier;
+			PrimitiveShape* prim = NULL;
+			if (identifier == 0)
+			{
+				prim = new PlanePrimitiveShape(&inParts);
+			}
+			else
+			{
+				CHECK(0) << "Only planes are supported.";
+			}
+			allPrimitives[i] = prim;
+		}
+		int numParts;
+		string numPartsFileName = gTableFolder + "/" + gTableId + "/partsSplitted/numParts.txt";
+		ifstream inNumParts(numPartsFileName.c_str());
+		inNumParts >> numParts;
+		allParts.resize(numParts);
+		char filename[512];
+		for (int i = 0; i < numParts; ++i)
+		{
+			sprintf(filename, "%s/%s/partsSplitted/part%03d", gTableFolder.c_str(), gTableId.c_str(), i);
+			allParts[i].Read(filename, allPrimitives);
+			sprintf(filename, "%s/%s/partsSplitted/rectangle%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+			allParts[i].GetRectangle().SavePly(filename);
+		}
 	}
 }

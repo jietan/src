@@ -86,7 +86,7 @@ void CylinderPrimitiveShape::Normal(const Vec3f &p, Vec3f *n) const
 
 void CylinderPrimitiveShape::FlipNormal()
 {
-	m_bFlipNormal = true;
+	m_bFlipNormal = !m_bFlipNormal;
 }
 
 unsigned int CylinderPrimitiveShape::ConfidenceTests(unsigned int numTests,

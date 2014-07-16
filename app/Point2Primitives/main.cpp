@@ -99,12 +99,17 @@ int main()
 	// don't forget to set the bbox in pc
 
 	RansacShapeDetector::Options ransacOptions;
-	ransacOptions.m_epsilon = 0.01;// 0.001f * pc.getScale(); // set distance threshold to .01f of bounding box width
+	int minSupport;
+	DecoConfig::GetSingleton()->GetFloat("Image2Mesh", "RansacEplison", ransacOptions.m_epsilon);
+	DecoConfig::GetSingleton()->GetFloat("Image2Mesh", "RansacNormalThreshold", ransacOptions.m_normalThresh);
+	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "RansacMinSupport", minSupport);
+	
+	//ransacOptions.m_epsilon = 0.01;// 0.001f * pc.getScale(); // set distance threshold to .01f of bounding box width
 	// NOTE: Internally the distance threshold is taken as 3 * ransacOptions.m_epsilon!!!
-	ransacOptions.m_bitmapEpsilon = .02f/* * pc.getScale()*/; // set bitmap resolution to .02f of bounding box width
+	ransacOptions.m_bitmapEpsilon = 2 * ransacOptions.m_epsilon;//.02f/* * pc.getScale()*/; // set bitmap resolution to .02f of bounding box width
 	// NOTE: This threshold is NOT multiplied internally!
-	ransacOptions.m_normalThresh = .9f; // this is the cos of the maximal normal deviation
-	ransacOptions.m_minSupport = 1000; // this is the minimal number of points required for a primitive
+	//ransacOptions.m_normalThresh = .5f; // this is the cos of the maximal normal deviation
+	ransacOptions.m_minSupport = minSupport; //300; // this is the minimal number of points required for a primitive
 	ransacOptions.m_probability = .001f; // this is the "probability" with which a primitive is overlooked
 
 	RansacShapeDetector detector(ransacOptions); // the detector object
@@ -112,7 +117,7 @@ int main()
 	// set which primitives are to be detected by adding the respective constructors
 	detector.Add(new PlanePrimitiveShapeConstructor());
 	//detector.Add(new SpherePrimitiveShapeConstructor());
-	detector.Add(new CylinderPrimitiveShapeConstructor());
+	//detector.Add(new CylinderPrimitiveShapeConstructor());
 	//detector.Add(new ConePrimitiveShapeConstructor());
 	//detector.Add(new TorusPrimitiveShapeConstructor());
 

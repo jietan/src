@@ -259,6 +259,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BoxFromRectangles.cpp" />
     <ClCompile Include="CVImageHelper.cpp" />
     <ClCompile Include="DepthCamera.cpp" />
     <ClCompile Include="DepthImage.cpp" />
@@ -276,6 +277,7 @@
     <ClCompile Include="MultilayerMaskImage.cpp" />
     <ClCompile Include="Part.cpp" />
     <ClCompile Include="PatchMatch.cpp" />
+    <ClCompile Include="Rectangle.cpp" />
     <ClCompile Include="Segment.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -285,6 +287,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BoxFromRectangles.h" />
     <ClInclude Include="CVImageHelper.h" />
     <ClInclude Include="DepthCamera.h" />
     <ClInclude Include="DepthImage.h" />
@@ -304,6 +307,7 @@
     <ClInclude Include="MultilayerMaskImage.h" />
     <ClInclude Include="Part.h" />
     <ClInclude Include="PatchMatch.h" />
+    <ClInclude Include="Rectangle.h" />
     <ClInclude Include="Segment.h" />
   </ItemGroup>
   <ItemGroup>

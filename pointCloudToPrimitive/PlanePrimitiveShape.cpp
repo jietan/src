@@ -81,7 +81,7 @@ void PlanePrimitiveShape::Normal(const Vec3f &p, Vec3f *n) const
 
 void PlanePrimitiveShape::FlipNormal()
 {
-	m_bFlipNormal = true;
+	m_bFlipNormal = !m_bFlipNormal;
 }
 
 unsigned int PlanePrimitiveShape::ConfidenceTests(unsigned int numTests,
