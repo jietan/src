@@ -48,6 +48,7 @@ using namespace std;
 #include "CVImageHelper.h"
 #include "ImageInpainting.h"
 #include "Part.h"
+#include "BoxFromRectangles.h"
 
 #include "pointCloudToPrimitive/RansacShapeDetector.h"
 #include "pointCloudToPrimitive/PlanePrimitiveShape.h"
@@ -1400,5 +1401,21 @@ int main(int argc, char** argv)
 			sprintf(filename, "%s/%s/partsSplitted/rectangle%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
 			allParts[i].GetRectangle().SavePly(filename);
 		}
+		for (int i = 1; i < numParts; ++i)
+		{
+			for (int j = 1; j < numParts; ++j)
+			{
+
+				if (i >= j) continue;
+				//i = 1;
+				//j = 2;
+				BoxFromRectangles box;
+				box.Construct(allParts[i].GetRectangle(), allParts[j].GetRectangle());
+				sprintf(filename, "%s/%s/boxes/rectangle%03d_%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i, j);
+				box.SavePly(filename);
+			}
+		}
+	
+
 	}
 }

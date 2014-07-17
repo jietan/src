@@ -10,14 +10,15 @@ class PartRectangle
 {
 public:
 	PartRectangle();
-	bool IsRectangleInFront(const PartRectangle& rhs);
-	bool IsParellel(const PartRectangle& rhs);
-	bool IsOrthogonal(const PartRectangle& rhs);
-	float DistanceTo(const PartRectangle& rhs);
+	bool IsRectangleInBack(const PartRectangle& rhs) const;
+	bool IsParellel(const PartRectangle& rhs) const;
+	bool IsOrthogonal(const PartRectangle& rhs) const;
+	float DistanceTo(const PartRectangle& rhs) const;
+	float Area() const;
 	void SavePly(const string& filename);
 	void GetGeometry(vector<Eigen::Vector3f>& vertices, vector<Eigen::Vector3i>& faces);
 	Eigen::Vector3f mNormal;
-	float mW;
+	
 	Eigen::Vector3f mTangent1;
 	Eigen::Vector3f mTangent2;
 	Eigen::Vector3f mCenter;

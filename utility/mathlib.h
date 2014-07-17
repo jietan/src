@@ -694,4 +694,5 @@ double ComputeWeightFromLWLinearRegression(double dist, double maxDist);
 vector<int> Index1DToND(int id, const vector<int>& lenPerDim);
 int IndexNDTo1D(const vector<int>& indices, const vector<int>& lenPerDim);
 double sigmod(double x);
+void PCAOnPoints(const vector<Eigen::Vector3f>& points, Eigen::Vector3f& mean, Eigen::Vector3f axis[3]);
 #endif

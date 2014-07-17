@@ -52,23 +52,25 @@ const cv::Mat& Part::ImagePart()
 {
 	CHECK(mShape->Identifier() == 0) << "Only plane primitive is supported.";
 	int numPoints = static_cast<int>(mPoints.size());
-	Eigen::MatrixXf dataMat = Eigen::MatrixXf(numPoints, 3);
-	PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
-	Vec3f n = planePrimitive->Internal().getNormal();
-	cout << "Plane normals is :" << Eigen::Vector3f(n.getValue());
-	for (int i = 0; i < numPoints; ++i)
-	{
-		dataMat.row(i) = mPoints[i];
-	}
-	mCenter = dataMat.colwise().mean();
-	Eigen::MatrixXf centered = dataMat.rowwise() - mCenter.transpose();
-	Eigen::MatrixXf cov = centered.transpose() * centered;
+	//Eigen::MatrixXf dataMat = Eigen::MatrixXf(numPoints, 3);
+	//PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
+	//Vec3f n = planePrimitive->Internal().getNormal();
+	//cout << "Plane normals is :" << Eigen::Vector3f(n.getValue());
+	//for (int i = 0; i < numPoints; ++i)
+	//{
+	//	dataMat.row(i) = mPoints[i];
+	//}
+	//mCenter = dataMat.colwise().mean();
+	//Eigen::MatrixXf centered = dataMat.rowwise() - mCenter.transpose();
+	//Eigen::MatrixXf cov = centered.transpose() * centered;
 
-	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> es;
+	//Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> es;
 
-	es.compute(cov);
-	mAxis1 = es.eigenvectors().col(2);
-	mAxis2 = es.eigenvectors().col(1);
+	//es.compute(cov);
+	Eigen::Vector3f axes[3];
+	PCAOnPoints(mPoints, mCenter, axes);
+	mAxis1 = axes[2];
+	mAxis2 = axes[1];
 
 	mLocalCoords.resize(numPoints);
 	mBBMin[0] = mAxis1.dot(mPoints[0] - mCenter);
@@ -325,7 +327,7 @@ void Part::voteForNormal()
 	int numNormals = static_cast<int>(mNormals.size());
 	for (int i = 0; i < numNormals; ++i)
 	{
-		if (mNormals[i].dot(normal) < 0)
+		if (mNormals[i].dot(normal) > 0)
 			vote++;
 	}
 	if (vote > numNormals / 2)
@@ -373,6 +375,6 @@ PartRectangle Part::GetRectangle() const
 
 	Eigen::Vector2f bbCenter = (mBBMax + mBBMin) / 2.f;
 	ret.mCenter = mCenter + bbCenter[0] * mAxis1 + bbCenter[1] * mAxis2;
-	ret.mW = -ret.mNormal.dot(ret.mCenter);
+
 	return ret;
 }

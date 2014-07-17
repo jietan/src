@@ -1359,3 +1359,23 @@ double sigmod(double x)
 {
 	return 1.0 / (1.0 + exp(-x));
 }
+
+void PCAOnPoints(const vector<Eigen::Vector3f>& points, Eigen::Vector3f& mean, Eigen::Vector3f axis[3])
+{
+	int numPoints = static_cast<int>(points.size());
+	Eigen::MatrixXf dataMat = Eigen::MatrixXf(numPoints, 3);
+	for (int i = 0; i < numPoints; ++i)
+	{
+		dataMat.row(i) = points[i];
+	}
+	mean = dataMat.colwise().mean();
+	Eigen::MatrixXf centered = dataMat.rowwise() - mean.transpose();
+	Eigen::MatrixXf cov = centered.transpose() * centered;
+
+	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> es;
+
+	es.compute(cov);
+	axis[0] = es.eigenvectors().col(0);
+	axis[1] = es.eigenvectors().col(1);
+	axis[2] = es.eigenvectors().col(2);
+}
