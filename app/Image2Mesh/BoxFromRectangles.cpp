@@ -2,24 +2,28 @@
 #include "MeshIO.h"
 #include "utility/mathlib.h"
 
-BoxFromRectangles::BoxFromRectangles() : mIsValid(false)
+BoxFromRectangles::BoxFromRectangles() : mIsValid(false), mConfidence(0)
 {
 
 }
-bool BoxFromRectangles::Construct(const PartRectangle& rect1, const PartRectangle& rect2)
+bool BoxFromRectangles::Construct(const PartRectangle& rect1, const PartRectangle& rect2, int componentId1, int componentId2, float* score)
 {
+	mComponentId[0] = componentId1;
+	mComponentId[1] = componentId2;
 	if (!rect1.IsRectangleInBack(rect2) || !rect2.IsRectangleInBack(rect1))
 	{
 		mIsValid = false;
+		if (score)
+			*score = 0;
 		return mIsValid;
 	}
 	if (rect1.IsOrthogonal(rect2))
 	{
-		const float orthogonalDistanceThreshold = 0.1;
+		const float orthogonalDistanceThreshold = 0.02;
 		float dist = rect1.DistanceTo(rect2);
 		if (dist < orthogonalDistanceThreshold)
 		{
-			mIsValid = constructBoxOrthogonalRectangles(rect1, rect2);
+			mIsValid = constructBoxOrthogonalRectangles(rect1, rect2, &mConfidence);
 		}
 		else
 		{
@@ -32,10 +36,11 @@ bool BoxFromRectangles::Construct(const PartRectangle& rect1, const PartRectangl
 		float dist = rect1.DistanceTo(rect2);
 		if (dist < parallelDistanceThreshold)
 		{
-			mIsValid = constructBoxParallelRectangles(rect1, rect2);
-		}
-		
+			mIsValid = constructBoxParallelRectangles(rect1, rect2, &mConfidence);
+		}	
 	}
+	if (score)
+		*score = mConfidence;
 	return mIsValid;
 }
 void BoxFromRectangles::SavePly(const string& filename)
@@ -87,10 +92,12 @@ void BoxFromRectangles::generateBoxGeometry()
 	}
 }
 
-bool BoxFromRectangles::constructBoxOrthogonalRectangles(const PartRectangle& rect1, const PartRectangle& rect2)
+bool BoxFromRectangles::constructBoxOrthogonalRectangles(const PartRectangle& rect1, const PartRectangle& rect2, float* score)
 {
 	float a1 = rect1.Area();
 	float a2 = rect2.Area();
+	float largeArea = a1 > a2 ? a1 : a2;
+	float smallArea = a1 > a2 ? a2 : a1;
 	const PartRectangle& largeRect = a1 > a2 ? rect1 : rect2;
 	const PartRectangle& smallRect = a1 > a2 ? rect2 : rect1;
 	mAxis[0] = largeRect.mNormal;
@@ -136,13 +143,19 @@ bool BoxFromRectangles::constructBoxOrthogonalRectangles(const PartRectangle& re
 	allPoints.insert(allPoints.end(), largeRect.mPoints.begin(), largeRect.mPoints.end());
 	allPoints.insert(allPoints.end(), smallRect.mPoints.begin(), smallRect.mPoints.end());
 	computeCenterAndExtent(allPoints, mAxis, &mCenter, &mExtent);
+	if (score)
+	{
+		//*score = 0.5 * (largeArea / (4 * mExtent[1] * mExtent[2]) + smallArea / (4 * mExtent[0] * mExtent[2]));
+		*score = (a1 + a2) / TotalArea();
+	}
 
 	return true;
 }
-bool BoxFromRectangles::constructBoxParallelRectangles(const PartRectangle& rect1, const PartRectangle& rect2)
+bool BoxFromRectangles::constructBoxParallelRectangles(const PartRectangle& rect1, const PartRectangle& rect2, float* score)
 {
 	float a1 = rect1.Area();
 	float a2 = rect2.Area();
+
 	const PartRectangle& largeRect = a1 > a2 ? rect1 : rect2;
 	const PartRectangle& smallRect = a1 > a2 ? rect2 : rect1;
 	vector<Eigen::Vector3f> allPoints;
@@ -165,7 +178,11 @@ bool BoxFromRectangles::constructBoxParallelRectangles(const PartRectangle& rect
 	allPoints.insert(allPoints.end(), largeRect.mPoints.begin(), largeRect.mPoints.end());
 	allPoints.insert(allPoints.end(), smallRect.mPoints.begin(), smallRect.mPoints.end());
 	computeCenterAndExtent(allPoints, mAxis, &mCenter, &mExtent);
-	
+	if (score)
+	{
+		//*score = 0.5 * (a1 + a2) / (4 * mExtent[1] * mExtent[2]);
+		*score = (a1 + a2) / TotalArea();
+	}
 	return true;
 }
 
@@ -195,4 +212,18 @@ void BoxFromRectangles::computeCenterAndExtent(const vector<Eigen::Vector3f>& po
 	*extent = (bbMax - bbMin) / 2.f;
 	*center = axis.transpose() * (bbMax + bbMin) / 2.f;
 
+}
+
+float BoxFromRectangles::TotalArea() const
+{
+	return 8 * (mExtent[0] * mExtent[1] + mExtent[1] * mExtent[2] + mExtent[2] * mExtent[0]);
+}
+
+int BoxFromRectangles::ComponentId(int ithId) const
+{
+	return mComponentId[ithId];
+}
+float BoxFromRectangles::Confidence() const
+{
+	return mConfidence;
 }

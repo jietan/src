@@ -1296,7 +1296,7 @@ int main(int argc, char** argv)
 		for (int i = 0; i < numParts; ++i)
 		{
 			char plyFileName[512];
-			sprintf(plyFileName, "%s/%s/partsProjected/part%03dProjected.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+			sprintf(plyFileName, "%s/%s/parts/part%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
 			ReadPointCloud(plyFileName, points, normals);
 
 			LOG(INFO) << "Part " << i;
@@ -1320,30 +1320,42 @@ int main(int argc, char** argv)
 			
 
 			allParts.push_back(part);
-			//sprintf(pngFileName, "%s/%s/partsImage/part%03dConnectivity.png", gTableFolder.c_str(), gTableId.c_str(), i);
-			//cv::imwrite(pngFileName, components);
-
-			//part.DivideByNormalDirection(splittedParts);
 		}
-		numParts = static_cast<int>(allParts.size());
-		for (int i = 0; i < numParts; ++i)
-		{
-			allParts[i].Process();
-			allParts[i].DivideByNormalDirection(splittedParts);
-		}
-		allParts = splittedParts;
+		//numParts = static_cast<int>(allParts.size());
+		//for (int i = 0; i < numParts; ++i)
+		//{
+		//	allParts[i].Process();
+		//	allParts[i].DivideByNormalDirection(splittedParts);
+		//}
+		//allParts = splittedParts;
 		numParts = static_cast<int>(allParts.size());
 		splittedParts.clear();
 
+		//for (int i = 0; i < numParts; ++i)
+		//{
+		//	allParts[i].Process();
+		//	allParts[i].DivideByConnectivity(splittedParts);
+		//}
+		//allParts = splittedParts;
+		//splittedParts.clear();
+		//numParts = static_cast<int>(allParts.size());
+
 		for (int i = 0; i < numParts; ++i)
 		{
 			allParts[i].Process();
-			allParts[i].DivideByConnectivity(splittedParts);
+			allParts[i].DivideBySkeleton(splittedParts);
 		}
 		allParts = splittedParts;
 		splittedParts.clear();
 		numParts = static_cast<int>(allParts.size());
 
+		//int testPartId = 7;
+		//DecoConfig::GetSingleton()->GetInt("Image2Mesh", "TestPartId", testPartId);
+		//splittedParts.clear();
+		//allParts[testPartId].Process();
+		//allParts[testPartId].DivideBySkeleton(splittedParts);
+		//allParts = splittedParts;
+		//numParts = static_cast<int>(allParts.size());
 		char filename[512];
 		for (int i = 0; i < numParts; ++i)
 		{
@@ -1356,6 +1368,10 @@ int main(int argc, char** argv)
 		string numPartsFileName = gTableFolder + "/" + gTableId + "/partsSplitted/numParts.txt";
 		ofstream outNumParts(numPartsFileName.c_str());
 		outNumParts << numParts;
+
+
+
+
 	}
 	else if (task == 15)
 	{
@@ -1401,6 +1417,7 @@ int main(int argc, char** argv)
 			sprintf(filename, "%s/%s/partsSplitted/rectangle%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
 			allParts[i].GetRectangle().SavePly(filename);
 		}
+		vector<BoxFromRectangles> boxes;
 		for (int i = 1; i < numParts; ++i)
 		{
 			for (int j = 1; j < numParts; ++j)
@@ -1410,10 +1427,22 @@ int main(int argc, char** argv)
 				//i = 1;
 				//j = 2;
 				BoxFromRectangles box;
-				box.Construct(allParts[i].GetRectangle(), allParts[j].GetRectangle());
-				sprintf(filename, "%s/%s/boxes/rectangle%03d_%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i, j);
-				box.SavePly(filename);
+				float score;
+				if (box.Construct(allParts[i].GetRectangle(), allParts[j].GetRectangle(), i, j, &score))
+				{
+					boxes.push_back(box);
+				}
+
 			}
+		}
+		sort(boxes.begin(), boxes.end());
+		int numBoxes = static_cast<int>(boxes.size());
+		for (int i = 0; i < numBoxes; ++i)
+		{
+			BoxFromRectangles& box = boxes[i];
+			sprintf(filename, "%s/%s/boxes/rectangle%02d_%02d_%02d.ply", gTableFolder.c_str(), gTableId.c_str(), i, box.ComponentId(0), box.ComponentId(1));
+			LOG(INFO) << filename << ": " << box.Confidence();
+			box.SavePly(filename);
 		}
 	
 

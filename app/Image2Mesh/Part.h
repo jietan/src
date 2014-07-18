@@ -30,7 +30,7 @@ public:
 	void Process();
 	void DivideByNormalDirection(vector<Part>& newParts);
 	const cv::Mat& DivideByConnectivity(vector<Part>& newParts);
-	void DivideBySkeleton(vector<Part>& newParts);
+	void DivideBySkeleton(vector<Part>& newParts, int level = 0);
 	const Eigen::Vector3f& GetNormal() const;
 	void Save(const string& filename);
 	void Read(const string& filename, const vector<PrimitiveShape*> primitives);
@@ -38,7 +38,12 @@ public:
 private:
 	void voteForNormal();
 	void findBlobs(const cv::Mat &binary, std::vector < std::vector<cv::Point2i> > &blobs);
-
+	void seperatePartsInRectangle(const vector<cv::Vec2f>& lines, Part* splittedPart, Part* remainingPart);
+	void findPixelAssociatedWithLines(const vector<cv::Vec2f>& lines, vector<vector<Eigen::Vector2i> >* pxWithLines);
+	void constructRectangle(const cv::Vec2f& line, const vector<Eigen::Vector2i>& pxWithLines, Eigen::Vector2f axis[2], Eigen::Vector2f* center, Eigen::Vector2f* extent);
+	void classifyPointsAgainstRectangle(Eigen::Vector2f axis[2], const Eigen::Vector2f& center, const Eigen::Vector2f& extent, const vector<Eigen::Vector3f>& points, vector<int>* inRectPointId, vector<int>* outRectPointId);
+	void computeCenterAndExtent(const vector<Eigen::Vector2f>& px, const Eigen::Vector2f& axis, float* center, float* extent);
+	bool isPointInRectangle(const Eigen::Vector2f& localCoord, Eigen::Vector2f axis[2], const Eigen::Vector2f& center, const Eigen::Vector2f& extent);
 	PrimitiveShape* mShape;
 	int mShapeIndex;
 	vector<Eigen::Vector3f> mPoints;
@@ -51,6 +56,7 @@ private:
 	Eigen::Vector3f mPartNormal;
 	Eigen::Vector2f mBBMin;
 	Eigen::Vector2f mBBMax;
+	float mSkeletonResizeRatio;
 	float mImageRes;
 	
 	cv::Mat mImagePart;
