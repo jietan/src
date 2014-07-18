@@ -1429,13 +1429,14 @@ int main(int argc, char** argv)
 			{
 				
 				if (i >= j) continue;
+				//i = 19;
+				//j = 25;
 
-				//i = 1;
-				//j = 2;
 				BoxFromRectangles box;
 				float score;
 				if (box.Construct(allParts[i].GetRectangle(), allParts[j].GetRectangle(), i, j, &score))
 				{
+					//LOG(INFO) << i << " " << j;
 					boxes.push_back(box);
 				}
 
@@ -1446,6 +1447,8 @@ int main(int argc, char** argv)
 		for (int i = 0; i < numBoxes; ++i)
 		{
 			BoxFromRectangles& box = boxes[i];
+
+			LOG(INFO) << box.ComponentId(0) << " " << box.ComponentId(1);
 			sprintf(filename, "%s/%s/boxes/rectangle%02d_%02d_%02d.ply", gTableFolder.c_str(), gTableId.c_str(), i, box.ComponentId(0), box.ComponentId(1));
 			LOG(INFO) << filename << ": " << box.Confidence();
 			box.SavePly(filename);

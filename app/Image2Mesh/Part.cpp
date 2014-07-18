@@ -69,7 +69,7 @@ const cv::Mat& Part::ImagePart()
 	//Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> es;
 
 	//es.compute(cov);
-	Eigen::Vector3f axes[3];
+	vector<Eigen::Vector3f> axes;
 	PCAOnPoints(mPoints, mCenter, axes);
 	mAxis1 = axes[2];
 	mAxis2 = axes[1];
@@ -366,26 +366,26 @@ void Part::constructRectangle(const cv::Vec2f& line, const vector<Eigen::Vector2
 	cv::cvtColor(mImagePart, cdst, CV_GRAY2BGR);
 	cv::cvtColor(mSkeletonPart, cdst0, CV_GRAY2BGR);
 	float rho = line[0], theta = line[1];
-	cv::Point pt1, pt2;
-	double a = cos(theta), b = sin(theta);
-	double x0 = a*rho, y0 = b*rho;
-	pt1.x = cvRound(x0 + 1000 * (-b));
-	pt1.y = cvRound(y0 + 1000 * (a));
-	pt2.x = cvRound(x0 - 1000 * (-b));
-	pt2.y = cvRound(y0 - 1000 * (a));
-	cv::line(cdst0, pt1, pt2, cv::Scalar(0, 0, 255), 1, CV_AA);
-	cv::imshow("detected lines1", cdst0);
+	//cv::Point pt1, pt2;
+	//double a = cos(theta), b = sin(theta);
+	//double x0 = a*rho, y0 = b*rho;
+	//pt1.x = cvRound(x0 + 1000 * (-b));
+	//pt1.y = cvRound(y0 + 1000 * (a));
+	//pt2.x = cvRound(x0 - 1000 * (-b));
+	//pt2.y = cvRound(y0 - 1000 * (a));
+	//cv::line(cdst0, pt1, pt2, cv::Scalar(0, 0, 255), 1, CV_AA);
+	//cv::imshow("detected lines1", cdst0);
 
-	if (pxWithLines.empty())
-	{
-		cv::waitKey();
-	}
+	//if (pxWithLines.empty())
+	//{
+	//	cv::waitKey();
+	//}
 	for (int j = 0; j < pxWithLines.size(); ++j)
 		cdst.at<cv::Vec3b>(pxWithLines[j][0], pxWithLines[j][1]) = cv::Vec3b(0, 0, 255);
 
-	cv::imshow("detected lines", cdst);
-	cv::waitKey();
-	cv::destroyAllWindows();
+	//cv::imshow("detected lines", cdst);
+	//cv::waitKey();
+	//cv::destroyAllWindows();
 	//float theta = line[1];
 	axis[0] = Eigen::Vector2f(sin(theta), -cos(theta));
 	axis[1] = Eigen::Vector2f(cos(theta), sin(theta));

@@ -24,15 +24,15 @@ private:
 	void generateBoxGeometry();
 	bool constructBoxOrthogonalRectangles(const PartRectangle& rect1, const PartRectangle& rect2, float* score);
 	bool constructBoxParallelRectangles(const PartRectangle& rect1, const PartRectangle& rect2, float* score);
-	void computeCenterAndExtent(const vector<Eigen::Vector3f>& points, Eigen::Vector3f axes[3], Eigen::Vector3f* center, Eigen::Vector3f* extent);
+	void computeCenterAndExtent(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f> axes, Eigen::Vector3f* center, Eigen::Vector3f* extent);
 	bool mIsValid;
 	Eigen::Vector3f mCenter;
-	Eigen::Vector3f mAxis[3];
+	vector<Eigen::Vector3f> mAxis;
 	Eigen::Vector3f mExtent;
 
 	vector<Eigen::Vector3f> mVertices;
 	vector<Eigen::Vector3i> mFaces;
-	int mComponentId[2];
+	vector<int> mComponentId;
 	float mConfidence;
 };
 

@@ -36,8 +36,9 @@ bool PartRectangle::IsParellel(const PartRectangle& rhs) const
 bool PartRectangle::IsOrthogonal(const PartRectangle& rhs) const
 {
 	Eigen::Vector3f nRhs = rhs.mNormal;
-	const float cosAngleThreshold = 0.2f;
-	if (abs(mNormal.dot(nRhs)) < cosAngleThreshold)
+	const float cosAngleThreshold = 0.5f;
+	float cosAngle = abs(mNormal.dot(nRhs));
+	if (cosAngle < cosAngleThreshold)
 		return true;
 	else
 		return false;

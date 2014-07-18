@@ -1360,8 +1360,9 @@ double sigmod(double x)
 	return 1.0 / (1.0 + exp(-x));
 }
 
-void PCAOnPoints(const vector<Eigen::Vector3f>& points, Eigen::Vector3f& mean, Eigen::Vector3f axis[3])
+void PCAOnPoints(const vector<Eigen::Vector3f>& points, Eigen::Vector3f& mean, vector<Eigen::Vector3f>& axis)
 {
+	axis.resize(3);
 	int numPoints = static_cast<int>(points.size());
 	Eigen::MatrixXf dataMat = Eigen::MatrixXf(numPoints, 3);
 	for (int i = 0; i < numPoints; ++i)

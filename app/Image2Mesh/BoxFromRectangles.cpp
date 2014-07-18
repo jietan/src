@@ -4,7 +4,8 @@
 
 BoxFromRectangles::BoxFromRectangles() : mIsValid(false), mConfidence(0)
 {
-
+	mComponentId.resize(2);
+	mAxis.resize(3);
 }
 bool BoxFromRectangles::Construct(const PartRectangle& rect1, const PartRectangle& rect2, int componentId1, int componentId2, float* score)
 {
@@ -186,7 +187,7 @@ bool BoxFromRectangles::constructBoxParallelRectangles(const PartRectangle& rect
 	return true;
 }
 
-void BoxFromRectangles::computeCenterAndExtent(const vector<Eigen::Vector3f>& points, Eigen::Vector3f axes[3], Eigen::Vector3f* center, Eigen::Vector3f* extent)
+void BoxFromRectangles::computeCenterAndExtent(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f> axes, Eigen::Vector3f* center, Eigen::Vector3f* extent)
 {
 	Eigen::Matrix3f axis;
 	for (int i = 0; i < 3; ++i)
