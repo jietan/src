@@ -8,7 +8,7 @@ PartRectangle::PartRectangle()
 bool PartRectangle::IsRectangleInBack(const PartRectangle& rhs) const
 {
 	int numPointsRhs = static_cast<int>(rhs.mPoints.size());
-	const float frontRatioThreshold = 0.8f;
+	const float frontRatioThreshold = 0.75f;
 	int vote = 0;
 	for (int i = 0; i < numPointsRhs; ++i)
 	{
@@ -36,7 +36,7 @@ bool PartRectangle::IsParellel(const PartRectangle& rhs) const
 bool PartRectangle::IsOrthogonal(const PartRectangle& rhs) const
 {
 	Eigen::Vector3f nRhs = rhs.mNormal;
-	const float cosAngleThreshold = 0.1f;
+	const float cosAngleThreshold = 0.2f;
 	if (abs(mNormal.dot(nRhs)) < cosAngleThreshold)
 		return true;
 	else

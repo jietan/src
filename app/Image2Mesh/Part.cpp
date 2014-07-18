@@ -1,4 +1,5 @@
 #include "Part.h"
+#include <queue>
 #include "utility/ConfigManager.h"
 #include "MeshIO.h"
 
@@ -156,6 +157,10 @@ const cv::Mat& Part::SkeletonPart()
 void Part::DivideByNormalDirection(vector<Part>& newParts)
 {
 	int numPoints = static_cast<int>(mPoints.size());
+	int numPointsThreshold;
+	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "PartMinPointThreshold", numPointsThreshold);
+	if (numPoints < numPointsThreshold)
+		return;
 	PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
 	Vec3f n = planePrimitive->Internal().getNormal();
 	vector<Eigen::Vector3f> reversedPoints;
@@ -369,7 +374,7 @@ void Part::constructRectangle(const cv::Vec2f& line, const vector<Eigen::Vector2
 	pt2.x = cvRound(x0 - 1000 * (-b));
 	pt2.y = cvRound(y0 - 1000 * (a));
 	cv::line(cdst0, pt1, pt2, cv::Scalar(0, 0, 255), 1, CV_AA);
-	cv::imshow("detected lines0", cdst0);
+	cv::imshow("detected lines1", cdst0);
 
 	if (pxWithLines.empty())
 	{
@@ -380,6 +385,7 @@ void Part::constructRectangle(const cv::Vec2f& line, const vector<Eigen::Vector2
 
 	cv::imshow("detected lines", cdst);
 	cv::waitKey();
+	cv::destroyAllWindows();
 	//float theta = line[1];
 	axis[0] = Eigen::Vector2f(sin(theta), -cos(theta));
 	axis[1] = Eigen::Vector2f(cos(theta), sin(theta));
@@ -477,6 +483,12 @@ bool Part::isPointInRectangle(const Eigen::Vector2f& localCoord, Eigen::Vector2f
 
 void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 {
+	int numPointsThreshold;
+	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "PartMinPointThreshold", numPointsThreshold);
+
+	if (mPoints.size() < numPointsThreshold)
+		return;
+
 	if (mAreaRatio > 0.7)
 	{
 		newParts.push_back(*this);
@@ -496,20 +508,22 @@ void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 		cv::HoughLines(mSkeletonPart, lines, 1, CV_PI / 18, defaultThreshold, 0, 0);
 		defaultThreshold /= 2;
 	}
-	const cv::Vec2f line = lines[0];
-	cv::Mat cdst0;
-	cv::cvtColor(mImagePart, cdst0, CV_GRAY2BGR);
-	float rho = line[0] / mSkeletonResizeRatio, theta = line[1];
-	cv::Point pt1, pt2;
-	double a = cos(theta), b = sin(theta);
-	double x0 = a*rho, y0 = b*rho;
-	pt1.x = cvRound(x0 + 1000 * (-b));
-	pt1.y = cvRound(y0 + 1000 * (a));
-	pt2.x = cvRound(x0 - 1000 * (-b));
-	pt2.y = cvRound(y0 - 1000 * (a));
-	cv::line(cdst0, pt1, pt2, cv::Scalar(0, 0, 255), 1, CV_AA);
-	cv::imshow("detected lines0", cdst0);
-	cv::waitKey();
+
+	/* some visualization code */
+	//const cv::Vec2f line = lines[0];
+	//cv::Mat cdst0;
+	//cv::cvtColor(mImagePart, cdst0, CV_GRAY2BGR);
+	//float rho = line[0] / mSkeletonResizeRatio, theta = line[1];
+	//cv::Point pt1, pt2;
+	//double a = cos(theta), b = sin(theta);
+	//double x0 = a*rho, y0 = b*rho;
+	//pt1.x = cvRound(x0 + 1000 * (-b));
+	//pt1.y = cvRound(y0 + 1000 * (a));
+	//pt2.x = cvRound(x0 - 1000 * (-b));
+	//pt2.y = cvRound(y0 - 1000 * (a));
+	//cv::line(cdst0, pt1, pt2, cv::Scalar(0, 0, 255), 1, CV_AA);
+	//cv::imshow("detected lines0", cdst0);
+	//cv::waitKey();
 
 	if (lines.empty())
 	{
@@ -520,27 +534,26 @@ void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 	seperatePartsInRectangle(lines, &splittedPart, &remainingPart);
 	//newParts.push_back(splittedPart);
 
-	int numPointsThreshold;
-	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "PartMinPointThreshold", numPointsThreshold);
 
-	if (splittedPart.mPoints.size() >= numPointsThreshold)
+	vector<Part> toProcess;
+
+	splittedPart.Process();
+	splittedPart.DivideByConnectivity(toProcess);
+
+
+	remainingPart.Process();
+	remainingPart.DivideByConnectivity(toProcess);
+
+		//cv::Mat img = remainingPart.ImagePart();
+		//char tmpFilename[512];
+		//sprintf(tmpFilename, "../../../Tables/400000752.668193/partsImage/partSkeletonLevel%03d.png", level);
+		//imwrite(tmpFilename, img);
+	int numToProcess = static_cast<int>(toProcess.size());
+	for (int i = 0; i < numToProcess; ++i)
 	{
-		splittedPart.Process();
-		splittedPart.DivideByConnectivity(newParts);
+		toProcess[i].Process();
+		toProcess[i].DivideBySkeleton(newParts, level + 1);
 	}
-	if (remainingPart.mPoints.size() >= numPointsThreshold)
-	{
-		remainingPart.Process();
-		cv::Mat img = remainingPart.ImagePart();
-		char tmpFilename[512];
-		sprintf(tmpFilename, "../../../Tables/400000752.668193/partsImage/partSkeletonLevel%03d.png", level);
-		imwrite(tmpFilename, img);
-		remainingPart.DivideBySkeleton(newParts, level + 1);
-	}
-
-	
-	
-
 }
 
 void Part::Process()

@@ -1321,24 +1321,24 @@ int main(int argc, char** argv)
 
 			allParts.push_back(part);
 		}
-		//numParts = static_cast<int>(allParts.size());
-		//for (int i = 0; i < numParts; ++i)
-		//{
-		//	allParts[i].Process();
-		//	allParts[i].DivideByNormalDirection(splittedParts);
-		//}
-		//allParts = splittedParts;
+		numParts = static_cast<int>(allParts.size());
+		for (int i = 0; i < numParts; ++i)
+		{
+			allParts[i].Process();
+			allParts[i].DivideByNormalDirection(splittedParts);
+		}
+		allParts = splittedParts;
 		numParts = static_cast<int>(allParts.size());
 		splittedParts.clear();
 
-		//for (int i = 0; i < numParts; ++i)
-		//{
-		//	allParts[i].Process();
-		//	allParts[i].DivideByConnectivity(splittedParts);
-		//}
-		//allParts = splittedParts;
-		//splittedParts.clear();
-		//numParts = static_cast<int>(allParts.size());
+		for (int i = 0; i < numParts; ++i)
+		{
+			allParts[i].Process();
+			allParts[i].DivideByConnectivity(splittedParts);
+		}
+		allParts = splittedParts;
+		splittedParts.clear();
+		numParts = static_cast<int>(allParts.size());
 
 		for (int i = 0; i < numParts; ++i)
 		{
@@ -1361,9 +1361,14 @@ int main(int argc, char** argv)
 		{
 			//sprintf(plyFileName, "%s/%s/partsSplittedByNormal/part%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
 			//SavePointCloud(plyFileName, allParts[i].GetPoints(), colors, allParts[i].GetNormals());
-
+			if (i == 4)
+				printf("hello");
 			sprintf(filename, "%s/%s/partsSplitted/part%03d", gTableFolder.c_str(), gTableId.c_str(), i);
 			allParts[i].Save(filename);
+
+			sprintf(filename, "%s/%s/partsSplitted/rectangle%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+			allParts[i].Process();
+			allParts[i].GetRectangle().SavePly(filename);
 		}
 		string numPartsFileName = gTableFolder + "/" + gTableId + "/partsSplitted/numParts.txt";
 		ofstream outNumParts(numPartsFileName.c_str());
@@ -1422,8 +1427,9 @@ int main(int argc, char** argv)
 		{
 			for (int j = 1; j < numParts; ++j)
 			{
-
+				
 				if (i >= j) continue;
+
 				//i = 1;
 				//j = 2;
 				BoxFromRectangles box;
