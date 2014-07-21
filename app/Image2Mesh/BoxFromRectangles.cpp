@@ -44,11 +44,41 @@ bool BoxFromRectangles::Construct(const PartRectangle& rect1, const PartRectangl
 		*score = mConfidence;
 	return mIsValid;
 }
+
+void BoxFromRectangles::Save(const string& filename)
+{
+	ofstream out(filename.c_str());
+	out << mIsValid << endl;
+	out << mCenter[0] << " " << mCenter[1] << " " << mCenter[2] << endl;
+	for (int i = 0; i < 3; ++i)
+	{
+		out << mAxis[i][0] << " " << mAxis[i][1] << " " << mAxis[i][2] << endl;
+	}
+	
+	out << mExtent[0] << " " << mExtent[1] << " " << mExtent[2] << endl;
+	out << mComponentId[0] << " " << mComponentId[1]  << endl;
+	out << mConfidence;
+}
+void BoxFromRectangles::Read(const string& filename)
+{
+	ifstream in(filename.c_str());
+	in >> mIsValid;
+	in >> mCenter[0] >> mCenter[1] >> mCenter[2];
+	for (int i = 0; i < 3; ++i)
+	{
+		in >> mAxis[i][0] >> mAxis[i][1] >> mAxis[i][2];
+	}
+
+	in >> mExtent[0] >> mExtent[1] >> mExtent[2];
+	in >> mComponentId[0] >> mComponentId[1];
+	in >> mConfidence;
+}
 void BoxFromRectangles::SavePly(const string& filename)
 {
 	if (!mIsValid) return;
 	if (mVertices.empty())
 		generateBoxGeometry();
+	
 	SaveMesh(filename, mVertices, mFaces);
 }
 vector<PartRectangle> BoxFromRectangles::getAllRectangles() const
@@ -91,6 +121,14 @@ void BoxFromRectangles::generateBoxGeometry()
 		
 		
 	}
+}
+
+void BoxFromRectangles::GetGeometry(vector<Eigen::Vector3f>& vertices, vector<Eigen::Vector3i>& faces)
+{
+	if (mVertices.empty())
+		generateBoxGeometry();
+	vertices = mVertices;
+	faces = mFaces;
 }
 
 bool BoxFromRectangles::constructBoxOrthogonalRectangles(const PartRectangle& rect1, const PartRectangle& rect2, float* score)
@@ -227,4 +265,70 @@ int BoxFromRectangles::ComponentId(int ithId) const
 float BoxFromRectangles::Confidence() const
 {
 	return mConfidence;
+}
+
+BoxFromRectangles BoxFromRectangles::MirroredBox(const UtilPlane& pl) const
+{
+	BoxFromRectangles ret = *this;
+	ret.mVertices.clear();
+	ret.mFaces.clear();
+	ret.mCenter = pl.MirrorPoint(mCenter);
+	for (int i = 0; i < 3; ++i)
+		ret.mAxis[i] = pl.MirrorVector(mAxis[i]);
+	return ret;
+}
+
+bool BoxFromRectangles::IsBoxSimilar(const BoxFromRectangles& rhs) const
+{
+	const float centerOffsetPercentageThreshold = 0.75;
+	const float extentPercentageThreshold = 0.5;
+	const float axisCosineThreshold = 0.9;
+	Eigen::Vector3f centerOffset = rhs.mCenter - mCenter;
+
+	Eigen::Matrix3f localCoord;
+	for (int i = 0; i < 3; ++i)
+		localCoord.col(i) = mAxis[i];
+	Eigen::Vector3f centerOffsetLocal = localCoord.transpose() * centerOffset;
+	if (abs(centerOffsetLocal[0]) > centerOffsetPercentageThreshold * mExtent[0] 
+	 || abs(centerOffsetLocal[1]) > centerOffsetPercentageThreshold * mExtent[1]
+	 || abs(centerOffsetLocal[2]) > centerOffsetPercentageThreshold * mExtent[2])
+	{
+		return false;
+	}
+	Eigen::Vector3i axisCorrespondence;
+	Eigen::Vector3f axisCosine = Eigen::Vector3f::Zero();
+	for (int i = 0; i < 3; ++i)
+	{
+		for (int j = 0; j < 3; ++j)
+		{
+			float cosValue = abs(rhs.mAxis[i].dot(mAxis[j]));
+			if (cosValue >= axisCosine[i])
+			{
+				axisCosine[i] = cosValue;
+				axisCorrespondence[i] = j;
+			}
+		}
+	}
+	CHECK(axisCorrespondence[0] != axisCorrespondence[1] && axisCorrespondence[0] != axisCorrespondence[2] && axisCorrespondence[2] != axisCorrespondence[1]) << "Two different axes are mapped to the same axis in BoxFromRectangles::IsBoxSimilar().";
+	if (axisCosine[0] < axisCosineThreshold || axisCosine[1] < axisCosineThreshold || axisCosine[2] < axisCosineThreshold)
+	{
+		return false;
+	}
+	for (int i = 0; i < 3; ++i)
+	{
+		if (abs(mExtent[i] - rhs.mExtent[axisCorrespondence[i]]) > extentPercentageThreshold * mExtent[i])
+			return false;
+	}
+	return true;
+}
+
+const Eigen::Vector3f& BoxFromRectangles::GetCenter() const
+{
+	return mCenter;
+}
+
+const vector<Eigen::Vector3f>& BoxFromRectangles::GetAxes() const
+{
+	return mAxis;
+
 }

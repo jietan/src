@@ -1380,3 +1380,54 @@ void PCAOnPoints(const vector<Eigen::Vector3f>& points, Eigen::Vector3f& mean, v
 	axis[1] = es.eigenvectors().col(1);
 	axis[2] = es.eigenvectors().col(2);
 }
+
+
+
+UtilPlane::UtilPlane()
+{
+	mN = Eigen::Vector3f(0, 0, 1);
+	mW = 0;
+}
+UtilPlane::UtilPlane(const Eigen::Vector3f& a, const Eigen::Vector3f& b, const Eigen::Vector3f& c)
+{
+	mN = (b - a).cross(c - a).normalized();
+	mW = -mN.dot(a);
+}
+UtilPlane::UtilPlane(const Eigen::Vector3f& n, const Eigen::Vector3f& p)
+{
+	mN = n;
+	mW = -n.dot(p);
+}
+UtilPlane::UtilPlane(const Eigen::Vector3f& n, const float w)
+{
+	mN = n;
+	mW = w;
+}
+float UtilPlane::SignedDistance(const Eigen::Vector3f& p) const
+{
+	return mN.dot(p) + mW;
+}
+Eigen::Vector3f UtilPlane::MirrorPoint(const Eigen::Vector3f& p) const
+{
+	float d = SignedDistance(p);
+	Eigen::Vector3f ret = p - 2 * d * mN;
+	return ret;
+}
+Eigen::Vector3f UtilPlane::MirrorVector(const Eigen::Vector3f& v) const
+{
+	Eigen::Vector3f start = Eigen::Vector3f::Zero();
+	Eigen::Vector3f end = start + v;
+	Eigen::Vector3f startMirrored = MirrorPoint(start);
+	Eigen::Vector3f endMirrored = MirrorPoint(end);
+	Eigen::Vector3f ret = endMirrored - startMirrored;
+	return ret;
+}
+
+const Eigen::Vector3f& UtilPlane::GetNormal() const
+{
+	return mN;
+}
+float UtilPlane::GetOffset() const
+{
+	return mW;
+}

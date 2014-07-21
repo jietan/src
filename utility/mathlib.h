@@ -569,6 +569,23 @@ public:
 //	friend DecoArchive& operator>> (DecoArchive& Ar, Plane& p);
 //};
 
+class UtilPlane
+{
+public:
+	UtilPlane();
+	UtilPlane(const Eigen::Vector3f& a, const Eigen::Vector3f& b, const Eigen::Vector3f& c);
+	UtilPlane(const Eigen::Vector3f& n, const Eigen::Vector3f& p);
+	UtilPlane(const Eigen::Vector3f& n, const float w);
+	float SignedDistance(const Eigen::Vector3f& p) const;
+	Eigen::Vector3f MirrorPoint(const Eigen::Vector3f& p) const;
+	Eigen::Vector3f MirrorVector(const Eigen::Vector3f& v) const;
+	const Eigen::Vector3f& GetNormal() const;
+	float GetOffset() const;
+private:
+	Eigen::Vector3f mN;
+	float mW;
+};
+
 enum EClippingFlag
 {
 	CF_Inside = 0x1,

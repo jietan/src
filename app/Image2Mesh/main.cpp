@@ -49,6 +49,7 @@ using namespace std;
 #include "ImageInpainting.h"
 #include "Part.h"
 #include "BoxFromRectangles.h"
+#include "SymmetryBuilder.h"
 
 #include "pointCloudToPrimitive/RansacShapeDetector.h"
 #include "pointCloudToPrimitive/PlanePrimitiveShape.h"
@@ -1450,10 +1451,73 @@ int main(int argc, char** argv)
 
 			LOG(INFO) << box.ComponentId(0) << " " << box.ComponentId(1);
 			sprintf(filename, "%s/%s/boxes/rectangle%02d_%02d_%02d.ply", gTableFolder.c_str(), gTableId.c_str(), i, box.ComponentId(0), box.ComponentId(1));
-			LOG(INFO) << filename << ": " << box.Confidence();
 			box.SavePly(filename);
+			LOG(INFO) << filename << ": " << box.Confidence();
+			sprintf(filename, "%s/%s/boxes/rectangle%02d_%02d_%02d.box", gTableFolder.c_str(), gTableId.c_str(), i, box.ComponentId(0), box.ComponentId(1));
+			box.Save(filename);
 		}
-	
+	}
+	else if (task == 16)
+	{
+		string inputFileName;
 
+		inputFileName = "allParts.txt";
+		string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
+		ifstream inParts(fullInputFileName.c_str());
+		int numPrimitives;
+		inParts >> numPrimitives;
+		vector<PrimitiveShape*> allPrimitives;
+		allPrimitives.resize(numPrimitives);
+		for (int i = 0; i < numPrimitives; ++i)
+		{
+			int identifier;
+			inParts >> identifier;
+			PrimitiveShape* prim = NULL;
+			if (identifier == 0)
+			{
+				prim = new PlanePrimitiveShape(&inParts);
+			}
+			else
+			{
+				CHECK(0) << "Only planes are supported.";
+			}
+			allPrimitives[i] = prim;
+		}
+
+		inputFileName = "boxInfo.txt";
+		fullInputFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + inputFileName;
+		ifstream inBoxes(fullInputFileName.c_str());
+		int numBoxes;
+		inBoxes >> numBoxes;
+		vector<BoxFromRectangles> boxes;
+		boxes.resize(numBoxes);
+		for (int i = 0; i < numBoxes; ++i)
+		{
+			string boxFilename;
+			inBoxes >> boxFilename;
+			boxFilename += ".box";
+			string fullBoxFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + boxFilename;
+			boxes[i].Read(fullBoxFileName);
+		}
+
+
+		int floorId;
+		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "FloorId", floorId);
+		PlanePrimitiveShape* floorPrimitive = static_cast<PlanePrimitiveShape*>(allPrimitives[floorId]);
+		Vec3f n = floorPrimitive->Internal().getNormal();
+		SymmetryBuilder symmBuilder;
+		symmBuilder.SetUpDirection(Eigen::Vector3f(n.getValue()));
+		bool isSymmetry = symmBuilder.CheckSymmetry(boxes);
+		if (isSymmetry)
+		{
+			vector<pair<int, int> > correspondence = symmBuilder.GetSymmetryCorrespondences();
+			int numSymmetryGroup = static_cast<int>(correspondence.size());
+			for (int i = 0; i < numSymmetryGroup; ++i)
+			{
+				LOG(INFO) << correspondence[i].first << ": " << correspondence[i].second;
+			}
+			symmBuilder.SaveVisualization(gTableFolder + "/" + gTableId + "/" + "/symmetry");
+		}
+		
 	}
 }

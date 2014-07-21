@@ -13,6 +13,7 @@ using namespace std;
 #include "PoissonSurface/Ply.h"
 
 void SaveMesh(const string& filename, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3i>& faces);
+void SaveMesh(const string& filename, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3i>& colors, const vector<Eigen::Vector3i>& faces);
 template< class Vertex >
 void SaveMesh(const string& filename, CoredMeshData< Vertex >* mesh)
 {

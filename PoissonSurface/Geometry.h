@@ -34,6 +34,7 @@ DAMAGE.
 #include <vector>
 #include "Hash.h"
 
+
 template<class Real>
 Real Random(void);
 
@@ -120,6 +121,7 @@ struct XForm4x4
 	}
 	Real& operator() ( int i , int j ){ return coords[i][j]; }
 	const Real& operator() ( int i , int j ) const { return coords[i][j]; }
+
 	Point3D< Real > operator * ( const Point3D< Real >& p ) const
 	{
 		Point3D< Real > q;

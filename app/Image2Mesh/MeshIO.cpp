@@ -53,6 +53,35 @@ void SaveMesh(const string& filename, const vector<Eigen::Vector3f>& points, con
 	SaveMesh(filename, &mesh);
 }
 
+void SaveMesh(const string& filename, const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3i>& colors, const vector<Eigen::Vector3i>& faces)
+{
+	CoredVectorMeshData<PlyColorVertex < Real > > mesh;
+	int numPoints = static_cast<int>(points.size());
+	for (int i = 0; i < numPoints; ++i)
+	{
+		PlyColorVertex<Real> p;
+		p.point = Point3D<Real>(points[i][0], points[i][1], points[i][2]);
+		p.color[0] = static_cast<unsigned char>(colors[i][0]);
+		p.color[1] = static_cast<unsigned char>(colors[i][1]);
+		p.color[2] = static_cast<unsigned char>(colors[i][2]);
+		mesh.addOutOfCorePoint(p);
+	}
+
+	int numFaces = static_cast<int>(faces.size());
+	for (int i = 0; i < numFaces; ++i)
+	{
+		vector<CoredVertexIndex> vertexIndices;
+		vertexIndices.resize(3);
+		for (int j = 0; j < 3; ++j)
+		{
+			vertexIndices[j].idx = faces[i][j];
+		}
+		mesh.addPolygon(vertexIndices);
+	}
+
+	SaveMesh(filename, &mesh);
+}
+
 void ReadPointCloud(const string& filename, vector<Eigen::Vector3f>& points, vector<Eigen::Vector3f>& normals, bool bAppend)
 {
 	if (!bAppend)

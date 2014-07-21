@@ -747,7 +747,8 @@ int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_
 	{
 		Vertex vertex;
 		mesh->nextOutOfCorePoint( vertex );
-		vertex = xForm * ( vertex );
+		Point3D< float > transformedP = xForm * (vertex.point);
+		vertex.point = transformedP;
 		ply_put_element(ply, (void *) &vertex);		
 	}  // for, write vertices
 	

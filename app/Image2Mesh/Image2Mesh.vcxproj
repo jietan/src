@@ -279,6 +279,7 @@
     <ClCompile Include="PatchMatch.cpp" />
     <ClCompile Include="Rectangle.cpp" />
     <ClCompile Include="Segment.cpp" />
+    <ClCompile Include="SymmetryBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\PoissonSurface\PoissonSurface.vcxproj">
@@ -309,6 +310,7 @@
     <ClInclude Include="PatchMatch.h" />
     <ClInclude Include="Rectangle.h" />
     <ClInclude Include="Segment.h" />
+    <ClInclude Include="SymmetryBuilder.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ImageInpainting.inl" />
