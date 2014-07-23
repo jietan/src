@@ -260,6 +260,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BoxFromRectangles.cpp" />
+    <ClCompile Include="BoxVoter.cpp" />
     <ClCompile Include="CVImageHelper.cpp" />
     <ClCompile Include="DepthCamera.cpp" />
     <ClCompile Include="DepthImage.cpp" />
@@ -289,6 +290,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BoxFromRectangles.h" />
+    <ClInclude Include="BoxVoter.h" />
     <ClInclude Include="CVImageHelper.h" />
     <ClInclude Include="DepthCamera.h" />
     <ClInclude Include="DepthImage.h" />

@@ -50,6 +50,7 @@ using namespace std;
 #include "Part.h"
 #include "BoxFromRectangles.h"
 #include "SymmetryBuilder.h"
+#include "BoxVoter.h"
 
 #include "pointCloudToPrimitive/RansacShapeDetector.h"
 #include "pointCloudToPrimitive/PlanePrimitiveShape.h"
@@ -80,6 +81,9 @@ int echoStdout=0;
 typedef float Real;
 
 cv::Mat ImagingPart(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, PrimitiveShape* prim);
+vector<PrimitiveShape*> ReadPrimitives();
+vector<Part> ReadParts(const vector<PrimitiveShape*>& allPrimitives);
+vector<BoxFromRectangles> ReadBoxes();
 
 void DumpOutput( const char* format , ... )
 {
@@ -1362,8 +1366,7 @@ int main(int argc, char** argv)
 		{
 			//sprintf(plyFileName, "%s/%s/partsSplittedByNormal/part%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
 			//SavePointCloud(plyFileName, allParts[i].GetPoints(), colors, allParts[i].GetNormals());
-			if (i == 4)
-				printf("hello");
+
 			sprintf(filename, "%s/%s/partsSplitted/part%03d", gTableFolder.c_str(), gTableId.c_str(), i);
 			allParts[i].Save(filename);
 
@@ -1381,45 +1384,14 @@ int main(int argc, char** argv)
 	}
 	else if (task == 15)
 	{
-		string inputFileName;
-
-		inputFileName = "allParts.txt";
-		string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
-		ifstream inParts(fullInputFileName.c_str());
-		int numPrimitives;
-		inParts >> numPrimitives;
+		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
+		vector<Part> allParts = ReadParts(allPrimitives);
 
 
-		vector<PrimitiveShape*> allPrimitives;
-		vector<Part> allParts;
-
-		allPrimitives.resize(numPrimitives);
-
-		for (int i = 0; i < numPrimitives; ++i)
-		{
-			int identifier;
-			inParts >> identifier;
-			PrimitiveShape* prim = NULL;
-			if (identifier == 0)
-			{
-				prim = new PlanePrimitiveShape(&inParts);
-			}
-			else
-			{
-				CHECK(0) << "Only planes are supported.";
-			}
-			allPrimitives[i] = prim;
-		}
-		int numParts;
-		string numPartsFileName = gTableFolder + "/" + gTableId + "/partsSplitted/numParts.txt";
-		ifstream inNumParts(numPartsFileName.c_str());
-		inNumParts >> numParts;
-		allParts.resize(numParts);
+		int numParts = static_cast<int>(allParts.size());
 		char filename[512];
 		for (int i = 0; i < numParts; ++i)
 		{
-			sprintf(filename, "%s/%s/partsSplitted/part%03d", gTableFolder.c_str(), gTableId.c_str(), i);
-			allParts[i].Read(filename, allPrimitives);
 			sprintf(filename, "%s/%s/partsSplitted/rectangle%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
 			allParts[i].GetRectangle().SavePly(filename);
 		}
@@ -1437,7 +1409,6 @@ int main(int argc, char** argv)
 				float score;
 				if (box.Construct(allParts[i].GetRectangle(), allParts[j].GetRectangle(), i, j, &score))
 				{
-					//LOG(INFO) << i << " " << j;
 					boxes.push_back(box);
 				}
 
@@ -1445,6 +1416,8 @@ int main(int argc, char** argv)
 		}
 		sort(boxes.begin(), boxes.end());
 		int numBoxes = static_cast<int>(boxes.size());
+		string boxInfoFileName = gTableFolder + "/" + gTableId + "/boxes/boxInfo.txt";
+		ofstream boxInfoOut(boxInfoFileName.c_str());
 		for (int i = 0; i < numBoxes; ++i)
 		{
 			BoxFromRectangles& box = boxes[i];
@@ -1455,56 +1428,20 @@ int main(int argc, char** argv)
 			LOG(INFO) << filename << ": " << box.Confidence();
 			sprintf(filename, "%s/%s/boxes/rectangle%02d_%02d_%02d.box", gTableFolder.c_str(), gTableId.c_str(), i, box.ComponentId(0), box.ComponentId(1));
 			box.Save(filename);
+			sprintf(filename, "rectangle%02d_%02d_%02d", i, box.ComponentId(0), box.ComponentId(1));
+			boxInfoOut << filename << endl;
 		}
 	}
 	else if (task == 16)
 	{
-		string inputFileName;
-
-		inputFileName = "allParts.txt";
-		string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
-		ifstream inParts(fullInputFileName.c_str());
-		int numPrimitives;
-		inParts >> numPrimitives;
-		vector<PrimitiveShape*> allPrimitives;
-		allPrimitives.resize(numPrimitives);
-		for (int i = 0; i < numPrimitives; ++i)
-		{
-			int identifier;
-			inParts >> identifier;
-			PrimitiveShape* prim = NULL;
-			if (identifier == 0)
-			{
-				prim = new PlanePrimitiveShape(&inParts);
-			}
-			else
-			{
-				CHECK(0) << "Only planes are supported.";
-			}
-			allPrimitives[i] = prim;
-		}
-
-		inputFileName = "boxInfo.txt";
-		fullInputFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + inputFileName;
-		ifstream inBoxes(fullInputFileName.c_str());
-		int numBoxes;
-		inBoxes >> numBoxes;
-		vector<BoxFromRectangles> boxes;
-		boxes.resize(numBoxes);
-		for (int i = 0; i < numBoxes; ++i)
-		{
-			string boxFilename;
-			inBoxes >> boxFilename;
-			boxFilename += ".box";
-			string fullBoxFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + boxFilename;
-			boxes[i].Read(fullBoxFileName);
-		}
-
+		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
+		vector<BoxFromRectangles> boxes = ReadBoxes();
 
 		int floorId;
 		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "FloorId", floorId);
 		PlanePrimitiveShape* floorPrimitive = static_cast<PlanePrimitiveShape*>(allPrimitives[floorId]);
 		Vec3f n = floorPrimitive->Internal().getNormal();
+
 		SymmetryBuilder symmBuilder;
 		symmBuilder.SetUpDirection(Eigen::Vector3f(n.getValue()));
 		bool isSymmetry = symmBuilder.CheckSymmetry(boxes);
@@ -1520,4 +1457,97 @@ int main(int argc, char** argv)
 		}
 		
 	}
+	else if (task == 17)
+	{
+		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
+		vector<Part> parts = ReadParts(allPrimitives);
+		vector<BoxFromRectangles> boxes = ReadBoxes();
+		
+		BoxVoter boxVoter;
+		vector<BoxFromRectangles> votedBoxes;
+		boxVoter.Vote(boxes, parts, &votedBoxes);
+		sort(votedBoxes.begin(), votedBoxes.end());
+		int numBoxes = static_cast<int>(votedBoxes.size());
+		char filename[512];
+		for (int i = 0; i < numBoxes; ++i)
+		{
+			sprintf(filename, "%s/%s/boxesVote/rectangle%02d%s.ply", gTableFolder.c_str(), gTableId.c_str(), i, votedBoxes[i].GetComponentString().c_str());
+			votedBoxes[i].SavePly(filename);
+			LOG(INFO) << filename << ": " << votedBoxes[i].Confidence();
+			sprintf(filename, "%s/%s/boxesVote/rectangle%02d%s.box", gTableFolder.c_str(), gTableId.c_str(), i, votedBoxes[i].GetComponentString().c_str());
+			votedBoxes[i].Save(filename);
+		}
+
+
+
+	}
+}
+
+vector<PrimitiveShape*> ReadPrimitives()
+{
+	string inputFileName;
+
+	inputFileName = "allParts.txt";
+	string fullInputFileName = gTableFolder + "/" + gTableId + "/" + inputFileName;
+	ifstream inParts(fullInputFileName.c_str());
+	int numPrimitives;
+	inParts >> numPrimitives;
+	vector<PrimitiveShape*> allPrimitives;
+	allPrimitives.resize(numPrimitives);
+	for (int i = 0; i < numPrimitives; ++i)
+	{
+		int identifier;
+		inParts >> identifier;
+		PrimitiveShape* prim = NULL;
+		if (identifier == 0)
+		{
+			prim = new PlanePrimitiveShape(&inParts);
+		}
+		else
+		{
+			CHECK(0) << "Only planes are supported.";
+		}
+		allPrimitives[i] = prim;
+	}
+	return allPrimitives;
+}
+
+vector<Part> ReadParts(const vector<PrimitiveShape*>& allPrimitives)
+{
+	vector<Part> allParts;
+	int numParts;
+	string numPartsFileName = gTableFolder + "/" + gTableId + "/partsSplitted/numParts.txt";
+	ifstream inNumParts(numPartsFileName.c_str());
+	inNumParts >> numParts;
+	allParts.resize(numParts);
+	char filename[512];
+	for (int i = 0; i < numParts; ++i)
+	{
+
+		sprintf(filename, "%s/%s/partsSplitted/part%03d", gTableFolder.c_str(), gTableId.c_str(), i);
+		allParts[i].Read(filename, allPrimitives);
+		sprintf(filename, "%s/%s/partsSplitted/rectangle%03d.ply", gTableFolder.c_str(), gTableId.c_str(), i);
+		allParts[i].GetRectangle().SavePly(filename);
+	}
+	return allParts;
+}
+
+vector<BoxFromRectangles> ReadBoxes()
+{
+	string inputFileName = "boxInfo.txt";
+	string fullInputFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + inputFileName;
+	ifstream inBoxes(fullInputFileName.c_str());
+	int numBoxes;
+	inBoxes >> numBoxes;
+	vector<BoxFromRectangles> boxes;
+	boxes.resize(numBoxes);
+	for (int i = 0; i < numBoxes; ++i)
+	{
+		string boxFilename;
+		inBoxes >> boxFilename;
+		boxFilename += ".box";
+		string fullBoxFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + boxFilename;
+		boxes[i].Read(fullBoxFileName);
+	}
+	return boxes;
 }

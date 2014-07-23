@@ -881,8 +881,7 @@ void DepthCamera::CrossViewMaskUpdate1(const DepthCamera& otherViewOld, const De
 		for (int i = 0; i < numRoots; ++i)
 		{
 			const Eigen::Vector3i& rootCoord = rootCandidate[i];
-			if (rootCoord[1] == 299)
-				printf("hello");
+
 			int rootHeight = rootCoord[0];
 			int minHeight = rootHeight;
 			for (int start = rootNeighbors[i].first; start >= rootNeighbors[i].second; --start)
@@ -952,8 +951,7 @@ void DepthCamera::CrossViewMaskUpdate(const DepthCamera& otherViewOld, const Dep
 	{
 		for (int j = 0; j < mWidth; ++j)
 		{
-			if (i == 222 && j == 343)
-				printf("hello");
+
 				//__debugbreak();
 			int numLayers = static_cast<int>(mDepthMap[i][j].size());
 			for (int k = 0; k < numLayers; ++k)

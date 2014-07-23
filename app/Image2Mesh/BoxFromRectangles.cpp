@@ -118,8 +118,6 @@ void BoxFromRectangles::generateBoxGeometry()
 		{
 			mFaces.push_back(currentFaceNumber * Eigen::Vector3i::Constant(1) + faces[j]);
 		}
-		
-		
 	}
 }
 
@@ -331,4 +329,39 @@ const vector<Eigen::Vector3f>& BoxFromRectangles::GetAxes() const
 {
 	return mAxis;
 
+}
+
+string BoxFromRectangles::GetComponentString() const
+{
+	string ret = ""; 
+	char component[512];
+	int numComponents = static_cast<int>(mComponentId.size());
+	for (int i = 0; i < numComponents; ++i)
+	{
+		sprintf(component, "_%2d", mComponentId[i]);
+		ret += component;
+	}
+	return ret;
+}
+
+void BoxFromRectangles::SetCenter(const Eigen::Vector3f& center)
+{
+	mCenter = center;
+}
+void BoxFromRectangles::SetAxes(const vector<Eigen::Vector3f>& axes)
+{
+	mAxis = axes;
+}
+void BoxFromRectangles::SetExtent(const Eigen::Vector3f& extent)
+{
+	mExtent = extent;
+}
+void BoxFromRectangles::SetComponentIds(const vector<int>& ids)
+{
+	mComponentId = ids;
+}
+
+void BoxFromRectangles::SetValid(bool isValid)
+{
+	mIsValid = isValid;
 }

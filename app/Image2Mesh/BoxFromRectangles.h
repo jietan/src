@@ -27,6 +27,13 @@ public:
 	const Eigen::Vector3f& GetCenter() const;
 	const vector<Eigen::Vector3f>& GetAxes() const;
 	void GetGeometry(vector<Eigen::Vector3f>& vertices, vector<Eigen::Vector3i>& faces);
+	string GetComponentString() const;
+
+	void SetCenter(const Eigen::Vector3f& center);
+	void SetAxes(const vector<Eigen::Vector3f>& axes);
+	void SetExtent(const Eigen::Vector3f& extent);
+	void SetComponentIds(const vector<int>& ids);
+	void SetValid(bool isValid);
 private:
 	vector<PartRectangle> getAllRectangles() const;
 	void generateBoxGeometry();

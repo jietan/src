@@ -73,7 +73,8 @@ const cv::Mat& Part::ImagePart()
 	PCAOnPoints(mPoints, mCenter, axes);
 	mAxis1 = axes[2];
 	mAxis2 = axes[1];
-
+	mPartNormal = axes[0];
+	voteForNormal();
 	mLocalCoords.resize(numPoints);
 	mBBMin[0] = mAxis1.dot(mPoints[0] - mCenter);
 	mBBMin[1] = mAxis2.dot(mPoints[0] - mCenter);
@@ -247,14 +248,14 @@ const cv::Mat& Part::DivideByConnectivity(vector<Part>& newParts)
 
 		for (int i = 0; i < numPoints; ++i)
 		{
-			if ((mPoints[i] - Eigen::Vector3f(0.447624, 1.40815, 0.992839)).norm() < 0.001)
-			{
-				imwrite("test.png", mComponentPart);
-				Eigen::Vector2f localCoord;
-				localCoord[0] = (mPoints[i] - mCenter).dot(mAxis1);
-				localCoord[1] = (mPoints[i] - mCenter).dot(mAxis2);
-				printf("Hello");
-			}
+			//if ((mPoints[i] - Eigen::Vector3f(0.447624, 1.40815, 0.992839)).norm() < 0.001)
+			//{
+			//	imwrite("test.png", mComponentPart);
+			//	Eigen::Vector2f localCoord;
+			//	localCoord[0] = (mPoints[i] - mCenter).dot(mAxis1);
+			//	localCoord[1] = (mPoints[i] - mCenter).dot(mAxis2);
+			//	printf("Hello");
+			//}
 			Eigen::Vector2f gridId = (mLocalCoords[i] - mBBMin) / mImageRes;
 			int label = mComponentPart.at<char>(gridId[0], gridId[1]);
 			splittedPoints[label].push_back(mPoints[i]);
@@ -558,9 +559,8 @@ void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 
 void Part::Process()
 {
-
-	voteForNormal();
 	ImagePart();
+	//voteForNormal();
 	SkeletonPart();
 }
 
@@ -615,24 +615,24 @@ const Eigen::Vector3f& Part::GetNormal() const
 
 void Part::voteForNormal()
 {
-	PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
-	Vec3f n = planePrimitive->Internal().getNormal();
-	Eigen::Vector3f normal(n.getValue());
+	//PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
+	//Vec3f n = planePrimitive->Internal().getNormal();
+	//Eigen::Vector3f normal(n.getValue());
 
 	int vote = 0;
 	int numNormals = static_cast<int>(mNormals.size());
 	for (int i = 0; i < numNormals; ++i)
 	{
-		if (mNormals[i].dot(normal) > 0)
+		if (mNormals[i].dot(mPartNormal) > 0)
 			vote++;
 	}
 	if (vote > numNormals / 2)
 	{
-		mPartNormal = normal;
+		mPartNormal = mPartNormal;
 	}
 	else
 	{
-		mPartNormal = -normal;
+		mPartNormal = -mPartNormal;
 	}
 }
 

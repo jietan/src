@@ -96,10 +96,17 @@ void PartRectangle::generateRectangleGeometry()
 	rot.col(0) = mTangent1;
 	rot.col(1) = mTangent2;
 	rot.col(2) = mNormal;
+	//Eigen::Matrix3f id = rot.transpose() * rot;
 	for (int i = 0; i < 6; ++i)
 	{
 		mVertices[i] = rot * mVertices[i] + mCenter;
 	}
+	//Eigen::Vector3f a = mVertices[0];
+	//Eigen::Vector3f b = mVertices[1];
+	//Eigen::Vector3f c = mVertices[2];
+	//Eigen::Vector3f n = (b - a).cross(c - a);
+	//n.normalize();
+
 	mFaces.resize(2);
 	for (int i = 0; i < 3; ++i)
 	{
