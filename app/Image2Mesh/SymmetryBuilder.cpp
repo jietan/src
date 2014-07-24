@@ -113,6 +113,7 @@ void SymmetryBuilder::RefineSymmetry(int ithSymmetryPlane)
 			{
 				UtilPlane testPlane = fromXYThetaToPlane(Eigen::Vector3f(xOffset, yOffset, thetaOffset));
 				{
+					float testOrthogonal = testPlane.GetNormal().dot(mUp);
 					float score = evaluateSymmetryScore(mBoxes, ithSymmetryPlane, testPlane);
 					LOG(INFO) << "(" << xOffset << ", " << yOffset << ", " << thetaOffset << "):" << score;
 					if (score < minScore)
@@ -256,10 +257,12 @@ float SymmetryBuilder::evaluateSymmetryScoreForPointsInBoxes(const vector<BoxFro
 	for (int i = 0; i < numPointsToMirror; ++i)
 	{
 		Eigen::Vector3f mirroredPoint = plane.MirrorPoint(boxes[tobeReflectedId].mPoints[i]);
+		Eigen::Vector3f mirroredNormal = plane.MirrorVector(boxes[tobeReflectedId].mNormals[i]);
 		vector<int> nnIdx = mKDTreesPointCloud[originalId]->kSearch(mirroredPoint, 1);
 		const Eigen::Vector3f& nearestPoint = boxes[originalId].mPoints[nnIdx[0]];
+		const Eigen::Vector3f& nearestNormal = boxes[originalId].mNormals[nnIdx[0]];
 		float distance = (mirroredPoint - nearestPoint).norm();
-		if (distance > 0.1)
+		if (distance > 0.1 || nearestNormal.dot(mirroredNormal) < 0.9)
 			score += 0.1;
 		else
 			score += distance;
