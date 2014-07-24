@@ -42,11 +42,21 @@ bool BoxFromRectangles::Construct(const PartRectangle& rect1, const PartRectangl
 	}
 	if (score)
 		*score = mConfidence;
+	if (mIsValid)
+	{
+		mPoints.clear();
+		mNormals.clear();
+		mPoints.insert(mPoints.end(), rect1.mPoints.begin(), rect1.mPoints.end());
+		mPoints.insert(mPoints.end(), rect2.mPoints.begin(), rect2.mPoints.end());
+		mNormals.insert(mNormals.end(), rect1.mNormals.begin(), rect1.mNormals.end());
+		mNormals.insert(mNormals.end(), rect2.mNormals.begin(), rect2.mNormals.end());
+	}
 	return mIsValid;
 }
 
 void BoxFromRectangles::Save(const string& filename)
 {
+	
 	ofstream out(filename.c_str());
 	out << mIsValid << endl;
 	out << mCenter[0] << " " << mCenter[1] << " " << mCenter[2] << endl;
@@ -56,8 +66,18 @@ void BoxFromRectangles::Save(const string& filename)
 	}
 	
 	out << mExtent[0] << " " << mExtent[1] << " " << mExtent[2] << endl;
-	out << mComponentId[0] << " " << mComponentId[1]  << endl;
+	int numComponents = static_cast<int>(mComponentId.size());
+	out << numComponents << " ";
+	for (int i = 0; i < numComponents; ++i)
+	{
+		out << mComponentId[i] << " ";
+	}
+	out << endl;
 	out << mConfidence;
+	
+	string pointCloudFileName = filename + "_points.ply";
+
+	SavePointCloud(pointCloudFileName, mPoints, mNormals);
 }
 void BoxFromRectangles::Read(const string& filename)
 {
@@ -70,8 +90,18 @@ void BoxFromRectangles::Read(const string& filename)
 	}
 
 	in >> mExtent[0] >> mExtent[1] >> mExtent[2];
-	in >> mComponentId[0] >> mComponentId[1];
+	int numComponents;
+	in >> numComponents;
+	mComponentId.resize(numComponents);
+	for (int i = 0; i < numComponents; ++i)
+	{
+		in >> mComponentId[i];
+	}
+
 	in >> mConfidence;
+
+	string pointCloudFileName = filename + "_points.ply";
+	ReadPointCloud(pointCloudFileName, mPoints, mNormals);
 }
 void BoxFromRectangles::SavePly(const string& filename)
 {
@@ -278,7 +308,7 @@ BoxFromRectangles BoxFromRectangles::MirroredBox(const UtilPlane& pl) const
 
 bool BoxFromRectangles::IsBoxSimilar(const BoxFromRectangles& rhs) const
 {
-	const float centerOffsetPercentageThreshold = 0.75;
+	const float centerOffsetPercentageThreshold = 0.8;
 	const float extentPercentageThreshold = 0.5;
 	const float axisCosineThreshold = 0.9;
 	Eigen::Vector3f centerOffset = rhs.mCenter - mCenter;
@@ -307,7 +337,8 @@ bool BoxFromRectangles::IsBoxSimilar(const BoxFromRectangles& rhs) const
 			}
 		}
 	}
-	CHECK(axisCorrespondence[0] != axisCorrespondence[1] && axisCorrespondence[0] != axisCorrespondence[2] && axisCorrespondence[2] != axisCorrespondence[1]) << "Two different axes are mapped to the same axis in BoxFromRectangles::IsBoxSimilar().";
+	if ((axisCorrespondence[0] == axisCorrespondence[1] || axisCorrespondence[0] == axisCorrespondence[2] || axisCorrespondence[2] == axisCorrespondence[1]))
+		LOG(WARNING) << "Two different axes are mapped to the same axis in BoxFromRectangles::IsBoxSimilar().";
 	if (axisCosine[0] < axisCosineThreshold || axisCosine[1] < axisCosineThreshold || axisCosine[2] < axisCosineThreshold)
 	{
 		return false;
@@ -338,7 +369,7 @@ string BoxFromRectangles::GetComponentString() const
 	int numComponents = static_cast<int>(mComponentId.size());
 	for (int i = 0; i < numComponents; ++i)
 	{
-		sprintf(component, "_%2d", mComponentId[i]);
+		sprintf(component, "_%02d", mComponentId[i]);
 		ret += component;
 	}
 	return ret;

@@ -117,6 +117,13 @@ void BoxVoter::voteBox(const vector<BoxFromRectangles>& boxes, const vector<Part
 		result->SetExtent(extent);
 		result->SetComponentIds(componentIds);
 		result->SetValid(true);
+		int numComponents = static_cast<int>(componentIds.size());
+		for (int i = 0; i < numComponents; ++i)
+		{
+			result->mPoints.insert(result->mPoints.end(), partsToConsider[i].GetPoints().begin(), partsToConsider[i].GetPoints().end());
+			result->mNormals.insert(result->mNormals.end(), partsToConsider[i].GetNormals().begin(), partsToConsider[i].GetNormals().end());
+		}
+		
 	}
 }
 

@@ -581,6 +581,9 @@ public:
 	Eigen::Vector3f MirrorVector(const Eigen::Vector3f& v) const;
 	const Eigen::Vector3f& GetNormal() const;
 	float GetOffset() const;
+	bool IsCloseTo(const UtilPlane& rhs) const;
+	friend ostream& operator<< (ostream& out, const UtilPlane& pl);
+
 private:
 	Eigen::Vector3f mN;
 	float mW;

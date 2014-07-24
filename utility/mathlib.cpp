@@ -1431,3 +1431,23 @@ float UtilPlane::GetOffset() const
 {
 	return mW;
 }
+
+bool UtilPlane::IsCloseTo(const UtilPlane& rhs) const
+{
+	float cos = mN.dot(rhs.mN);
+	float offset = abs(mW - rhs.mW);
+	if (cos > 0.9 && offset < 0.1)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+ostream& operator<< (ostream& out, const UtilPlane& pl)
+{
+	out << pl.mN[0] << " " << pl.mN[1] << " " << pl.mN[2] << " " << pl.mW << endl;
+	return out;
+}

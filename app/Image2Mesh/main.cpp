@@ -1445,15 +1445,50 @@ int main(int argc, char** argv)
 		SymmetryBuilder symmBuilder;
 		symmBuilder.SetUpDirection(Eigen::Vector3f(n.getValue()));
 		bool isSymmetry = symmBuilder.CheckSymmetry(boxes);
+		vector<Eigen::Vector3f> allPoints;
+		vector<Eigen::Vector3f> allNormals;
+		char newPointCloudName[512];
+
 		if (isSymmetry)
 		{
-			vector<pair<int, int> > correspondence = symmBuilder.GetSymmetryCorrespondences();
-			int numSymmetryGroup = static_cast<int>(correspondence.size());
-			for (int i = 0; i < numSymmetryGroup; ++i)
-			{
-				LOG(INFO) << correspondence[i].first << ": " << correspondence[i].second;
-			}
 			symmBuilder.SaveVisualization(gTableFolder + "/" + gTableId + "/" + "/symmetry");
+
+			string pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1.ply";
+			ReadPointCloud(pointCloudName, points, normals);
+			int numPoints = static_cast<int>(points.size());
+			allPoints.insert(allPoints.end(), points.begin(), points.end());
+			allNormals.insert(allNormals.end(), normals.begin(), normals.end());
+
+			
+			int numSymmtryPlanes = symmBuilder.GetNumSymmetryPlanes();
+			for (int ithPlane = 0; ithPlane < numSymmtryPlanes; ++ithPlane)
+			{
+				vector<pair<int, int> > correspondence = symmBuilder.GetSymmetryCorrespondences(ithPlane);
+				int numSymmetryGroup = static_cast<int>(correspondence.size());
+				for (int i = 0; i < numSymmetryGroup; ++i)
+				{
+					LOG(INFO) << correspondence[i].first << ": " << correspondence[i].second;
+				}
+				symmBuilder.RefineSymmetry(ithPlane);
+				const UtilPlane& mirrorPlane = symmBuilder.GetSymmetryPlane(ithPlane);
+
+				vector<Eigen::Vector3f> mirroredPoints;
+				vector<Eigen::Vector3f> mirroredNormals;
+				mirroredPoints.resize(numPoints);
+				mirroredNormals.resize(numPoints);
+
+				for (int i = 0; i < numPoints; ++i)
+				{
+					mirroredPoints[i] = mirrorPlane.MirrorPoint(points[i]);
+					mirroredNormals[i] = mirrorPlane.MirrorVector(normals[i]);
+				}
+				allPoints.insert(allPoints.end(), mirroredPoints.begin(), mirroredPoints.end());
+				allNormals.insert(allNormals.end(), mirroredNormals.begin(), mirroredNormals.end());
+				sprintf(newPointCloudName, "%s/%s/pointsFromSimplifiedMesh1Mirrored_%d.ply", gTableFolder.c_str(), gTableId.c_str(), ithPlane);
+				SavePointCloud(newPointCloudName, mirroredPoints, colors, mirroredNormals);
+			}
+			sprintf(newPointCloudName, "%s/%s/pointsFromSimplifiedMesh1MirroredAll.ply", gTableFolder.c_str(), gTableId.c_str());
+			SavePointCloud(newPointCloudName, allPoints, colors, allNormals);
 		}
 		
 	}
@@ -1468,6 +1503,9 @@ int main(int argc, char** argv)
 		boxVoter.Vote(boxes, parts, &votedBoxes);
 		sort(votedBoxes.begin(), votedBoxes.end());
 		int numBoxes = static_cast<int>(votedBoxes.size());
+		string boxInfoFileName = gTableFolder + "/" + gTableId + "/boxesVote/boxInfo.txt";
+		ofstream boxInfoOut(boxInfoFileName.c_str());
+		boxInfoOut << numBoxes << endl;
 		char filename[512];
 		for (int i = 0; i < numBoxes; ++i)
 		{
@@ -1476,6 +1514,9 @@ int main(int argc, char** argv)
 			LOG(INFO) << filename << ": " << votedBoxes[i].Confidence();
 			sprintf(filename, "%s/%s/boxesVote/rectangle%02d%s.box", gTableFolder.c_str(), gTableId.c_str(), i, votedBoxes[i].GetComponentString().c_str());
 			votedBoxes[i].Save(filename);
+			sprintf(filename, "rectangle%02d%s", i, votedBoxes[i].GetComponentString().c_str());
+			boxInfoOut << filename << endl;
+
 		}
 
 

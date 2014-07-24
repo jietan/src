@@ -73,7 +73,7 @@ const cv::Mat& Part::ImagePart()
 	PCAOnPoints(mPoints, mCenter, axes);
 	mAxis1 = axes[2];
 	mAxis2 = axes[1];
-	mPartNormal = axes[0];
+	//mPartNormal = axes[0];
 	voteForNormal();
 	mLocalCoords.resize(numPoints);
 	mBBMin[0] = mAxis1.dot(mPoints[0] - mCenter);
@@ -615,9 +615,10 @@ const Eigen::Vector3f& Part::GetNormal() const
 
 void Part::voteForNormal()
 {
-	//PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
-	//Vec3f n = planePrimitive->Internal().getNormal();
-	//Eigen::Vector3f normal(n.getValue());
+	PlanePrimitiveShape* planePrimitive = static_cast<PlanePrimitiveShape*>(mShape);
+	Vec3f n = planePrimitive->Internal().getNormal();
+	Eigen::Vector3f normal(n.getValue());
+	mPartNormal = normal;
 
 	int vote = 0;
 	int numNormals = static_cast<int>(mNormals.size());
@@ -663,6 +664,7 @@ PartRectangle Part::GetRectangle() const
 	PartRectangle ret;
 	ret.mNormal = GetNormal();
 	ret.mPoints = mPoints;
+	ret.mNormals = mNormals;
 	ret.mTangent1 = mAxis1;
 	ret.mTangent2 = mAxis2;
 	if (mAxis1.cross(mAxis2).dot(ret.mNormal) < 0)

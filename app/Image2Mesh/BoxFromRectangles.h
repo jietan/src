@@ -34,6 +34,10 @@ public:
 	void SetExtent(const Eigen::Vector3f& extent);
 	void SetComponentIds(const vector<int>& ids);
 	void SetValid(bool isValid);
+
+	vector<Eigen::Vector3f> mPoints;
+	vector<Eigen::Vector3f> mNormals;
+
 private:
 	vector<PartRectangle> getAllRectangles() const;
 	void generateBoxGeometry();
@@ -49,6 +53,7 @@ private:
 	vector<Eigen::Vector3i> mFaces;
 	vector<int> mComponentId;
 	float mConfidence;
+
 };
 
 #endif

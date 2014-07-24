@@ -24,6 +24,7 @@ public:
 	Eigen::Vector3f mCenter;
 	Eigen::Vector2f mExtent;
 	vector<Eigen::Vector3f> mPoints;
+	vector<Eigen::Vector3f> mNormals;
 
 	vector<Eigen::Vector3f> mVertices;
 	vector<Eigen::Vector3i> mFaces;
