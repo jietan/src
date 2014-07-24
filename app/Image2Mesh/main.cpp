@@ -83,7 +83,7 @@ typedef float Real;
 cv::Mat ImagingPart(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals, PrimitiveShape* prim);
 vector<PrimitiveShape*> ReadPrimitives();
 vector<Part> ReadParts(const vector<PrimitiveShape*>& allPrimitives);
-vector<BoxFromRectangles> ReadBoxes();
+vector<BoxFromRectangles> ReadBoxes(bool bAfterVote);
 
 void DumpOutput( const char* format , ... )
 {
@@ -1435,7 +1435,7 @@ int main(int argc, char** argv)
 	else if (task == 16)
 	{
 		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
-		vector<BoxFromRectangles> boxes = ReadBoxes();
+		vector<BoxFromRectangles> boxes = ReadBoxes(true);
 
 		int floorId;
 		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "FloorId", floorId);
@@ -1496,7 +1496,7 @@ int main(int argc, char** argv)
 	{
 		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
 		vector<Part> parts = ReadParts(allPrimitives);
-		vector<BoxFromRectangles> boxes = ReadBoxes();
+		vector<BoxFromRectangles> boxes = ReadBoxes(false);
 		
 		BoxVoter boxVoter;
 		vector<BoxFromRectangles> votedBoxes;
@@ -1573,10 +1573,17 @@ vector<Part> ReadParts(const vector<PrimitiveShape*>& allPrimitives)
 	return allParts;
 }
 
-vector<BoxFromRectangles> ReadBoxes()
+vector<BoxFromRectangles> ReadBoxes(bool bAfterVote)
 {
 	string inputFileName = "boxInfo.txt";
-	string fullInputFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + inputFileName;
+	string folderName = gTableFolder + "/" + gTableId + "/" + "/boxes/";
+	if (bAfterVote)
+	{
+		folderName = gTableFolder + "/" + gTableId + "/" + "/boxesVote/";
+	}
+	string fullInputFileName = folderName + inputFileName;
+
+	
 	ifstream inBoxes(fullInputFileName.c_str());
 	int numBoxes;
 	inBoxes >> numBoxes;
@@ -1587,7 +1594,7 @@ vector<BoxFromRectangles> ReadBoxes()
 		string boxFilename;
 		inBoxes >> boxFilename;
 		boxFilename += ".box";
-		string fullBoxFileName = gTableFolder + "/" + gTableId + "/" + "/boxes/" + boxFilename;
+		string fullBoxFileName = folderName + boxFilename;
 		boxes[i].Read(fullBoxFileName);
 	}
 	return boxes;

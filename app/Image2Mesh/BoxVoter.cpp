@@ -111,7 +111,7 @@ void BoxVoter::voteBox(const vector<BoxFromRectangles>& boxes, const vector<Part
 		vector<Eigen::Vector3f> axes;
 		Eigen::Vector3f center, extent;
 		computeAxis(partsToConsider, &axes);
-		computeCenterAndExtent(partsToConsider, axes, 0.9f, &center, &extent);
+		computeCenterAndExtent(partsToConsider, axes, 1.0f, &center, &extent);
 		result->SetAxes(axes);
 		result->SetCenter(center);
 		result->SetExtent(extent);
@@ -164,25 +164,113 @@ void BoxVoter::groupParallelRectangles(const vector<Part>& parts, vector<Paralle
 	CHECK(parallelPartGroup->size() <= 3) << "More than three parallel rectangles in the same box. Might need to loosen the threhold of parallel";
 }
 
+void BoxVoter::refineAxis(const vector<Part>& parts, vector<Eigen::Vector3f>* axes)
+{
+	const float rotateAngleBound = 5 * CV_PI / 180;
+	const float rotateAngleResolution = 1 * CV_PI / 180;
+	//int numParts = static_cast<int>(parts.size());
+	//vector<Eigen::Vector3f> allPoints;
+	//for (int i = 0; i < numParts; ++i)
+	//{
+	//	allPoints.insert(allPoints.end(), parts[i].GetPoints().begin(), parts[i].GetPoints().end());
+	//}
+	float minVolume = FLT_MAX;
+	vector<Eigen::Vector3f> bestAxis;
+	Eigen::Matrix3f currentCoord;
+	for (int i = 0; i < 3; ++i)
+	{
+		currentCoord.col(i) = axes->at(i);
+	}
+	for (float currentAngle = -rotateAngleBound; currentAngle <= rotateAngleBound; currentAngle += rotateAngleResolution)
+	{
+		Eigen::Vector3f center;
+		Eigen::Vector3f extent;
+
+		Eigen::Vector3f axis1Local(0, cos(currentAngle), sin(currentAngle));
+		Eigen::Vector3f axis2Local(0, -sin(currentAngle), cos(currentAngle));
+		vector<Eigen::Vector3f> candidateAxis;
+		candidateAxis.resize(3);
+		candidateAxis[0] = axes->at(0);
+		candidateAxis[1] = currentCoord * axis1Local;
+		candidateAxis[2] = currentCoord * axis2Local;
+		computeCenterAndExtent(parts, candidateAxis, 1.0, &center, &extent);
+		float volume = extent[0] * extent[1] * extent[2];
+		if (volume < minVolume)
+		{
+			minVolume = volume;
+			bestAxis = candidateAxis;
+		}
+	}
+	*axes = bestAxis;
+}
+
 void BoxVoter::computeAxis(const vector<Part>& parts, vector<Eigen::Vector3f>* axes)
 {
+	//axes->resize(3);
+	//vector<Eigen::Vector3f> allPoints;
+	//int numParts = static_cast<int>(parts.size());
+	//vector<ParallelPartGroup> parallelPartGroup;
+	//groupParallelRectangles(parts, &parallelPartGroup);
+
+	//for (int i = 0; i < numParts; ++i)
+	//{
+	//	allPoints.insert(allPoints.end(), parts[i].GetPoints().begin(), parts[i].GetPoints().end());
+	//}
+	//Eigen::Vector3f center;
+	//PCAOnPoints(allPoints, center, *axes);
+	//if (axes->at(0).cross(axes->at(1)).dot(axes->at(2)) < 0)
+	//	axes->at(2) = -axes->at(2);
+	//return;
+
 	axes->resize(3);
 	vector<ParallelPartGroup> parallelPartGroup;
 	groupParallelRectangles(parts, &parallelPartGroup);
-	if (parallelPartGroup.size() == 1)
+	//if (parallelPartGroup.size() == 1)
+	//{
+	//	vector<Eigen::Vector3f> allPoints;
+	//	int numPartsInGroup = static_cast<int>(parallelPartGroup[0].mPartIdx.size());
+	//	for (int i = 0; i < numPartsInGroup; ++i)
+	//	{
+	//		allPoints.insert(allPoints.end(), parts[parallelPartGroup[0].mPartIdx[i]].GetPoints().begin(), parts[parallelPartGroup[0].mPartIdx[i]].GetPoints().end());
+	//	}
+	//	int numPoints = static_cast<int>(allPoints.size());
+	//	for (int i = 0; i < numPoints; ++i)
+	//	{
+	//		const Eigen::Vector3f& pt = allPoints[i];
+	//		Eigen::Vector3f projPt = pt - pt.dot(parallelPartGroup[0].mNormal) * parallelPartGroup[0].mNormal;
+	//		allPoints[i] = projPt;
+
+	//	}
+	//	Eigen::Vector3f mean;
+	//	//Eigen::Vector3f axes[3];
+	//	PCAOnPoints(allPoints, mean, *axes);
+	//	if ((*axes)[0].cross((*axes)[1]).dot((*axes)[2]) < 0)
+	//		(*axes)[2] = -(*axes)[2];
+
+	//}
+	//else if (parallelPartGroup.size() == 2 || parallelPartGroup.size() == 3)
+	//{
+	//	(*axes)[0] = parallelPartGroup[0].mNormal;
+	//	(*axes)[1] = parallelPartGroup[1].mNormal;
+	//	(*axes)[2] = (*axes)[0].cross((*axes)[1]);
+	//	(*axes)[2].normalize();
+	//	(*axes)[1] = (*axes)[2].cross((*axes)[0]);
+	//	(*axes)[1].normalize();
+	//}
+	if (parallelPartGroup.size() <= 3)
 	{
 		vector<Eigen::Vector3f> allPoints;
-		int numPartsInGroup = static_cast<int>(parallelPartGroup[0].mPartIdx.size());
-		for (int i = 0; i < numPartsInGroup; ++i)
+		int numParts = static_cast<int>(parts.size());
+		for (int i = 0; i < numParts; ++i)
 		{
-			allPoints.insert(allPoints.end(), parts[parallelPartGroup[0].mPartIdx[i]].GetPoints().begin(), parts[parallelPartGroup[0].mPartIdx[i]].GetPoints().end());
+			allPoints.insert(allPoints.end(), parts[i].GetPoints().begin(), parts[i].GetPoints().end());
 		}
 		int numPoints = static_cast<int>(allPoints.size());
 		for (int i = 0; i < numPoints; ++i)
 		{
 			const Eigen::Vector3f& pt = allPoints[i];
 			Eigen::Vector3f projPt = pt - pt.dot(parallelPartGroup[0].mNormal) * parallelPartGroup[0].mNormal;
-			allPoints.push_back(projPt);
+			allPoints[i] = projPt;
 
 		}
 		Eigen::Vector3f mean;
@@ -190,21 +278,31 @@ void BoxVoter::computeAxis(const vector<Part>& parts, vector<Eigen::Vector3f>* a
 		PCAOnPoints(allPoints, mean, *axes);
 		if ((*axes)[0].cross((*axes)[1]).dot((*axes)[2]) < 0)
 			(*axes)[2] = -(*axes)[2];
+		//	int numPartsInGroup = static_cast<int>(parallelPartGroup[0].mPartIdx.size());
+		//	for (int i = 0; i < numPartsInGroup; ++i)
+		//	{
+		//		allPoints.insert(allPoints.end(), parts[parallelPartGroup[0].mPartIdx[i]].GetPoints().begin(), parts[parallelPartGroup[0].mPartIdx[i]].GetPoints().end());
+		//	}
+		//	int numPoints = static_cast<int>(allPoints.size());
+		//	for (int i = 0; i < numPoints; ++i)
+		//	{
+		//		const Eigen::Vector3f& pt = allPoints[i];
+		//		Eigen::Vector3f projPt = pt - pt.dot(parallelPartGroup[0].mNormal) * parallelPartGroup[0].mNormal;
+		//		allPoints[i] = projPt;
 
-	}
-	else if (parallelPartGroup.size() == 2 || parallelPartGroup.size() == 3)
-	{
-		(*axes)[0] = parallelPartGroup[0].mNormal;
-		(*axes)[1] = parallelPartGroup[1].mNormal;
-		(*axes)[2] = (*axes)[0].cross((*axes)[1]);
-		(*axes)[2].normalize();
-		(*axes)[1] = (*axes)[2].cross((*axes)[0]);
-		(*axes)[1].normalize();
+		//	}
+		//	Eigen::Vector3f mean;
+		//	//Eigen::Vector3f axes[3];
+		//	PCAOnPoints(allPoints, mean, *axes);
+		//	if ((*axes)[0].cross((*axes)[1]).dot((*axes)[2]) < 0)
+		//		(*axes)[2] = -(*axes)[2];
 	}
 	else
 	{
 		CHECK(0) << "Impossible case in BoxVoter::computeAxis().";
 	}
+	refineAxis(parts, axes);
+
 }
 
 void BoxVoter::computeCenterAndExtent(const vector<Part>& parts, const vector<Eigen::Vector3f> axes, float confidenceInteval, Eigen::Vector3f* center, Eigen::Vector3f* extent)

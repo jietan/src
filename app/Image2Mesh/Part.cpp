@@ -70,11 +70,19 @@ const cv::Mat& Part::ImagePart()
 
 	//es.compute(cov);
 	vector<Eigen::Vector3f> axes;
-	PCAOnPoints(mPoints, mCenter, axes);
+	vector<Eigen::Vector3f> projectedPoints;
+	projectedPoints.resize(numPoints);
+	for (int i = 0; i < numPoints; ++i)
+	{
+		Vec3f pp;
+		mShape->Project(Vec3f(mPoints[i][0], mPoints[i][1], mPoints[i][2]), &pp);
+		projectedPoints[i] = Eigen::Vector3f(pp.getValue());
+	}
+	
+	PCAOnPoints(projectedPoints, mCenter, axes);
 	mAxis1 = axes[2];
 	mAxis2 = axes[1];
 	//mPartNormal = axes[0];
-	voteForNormal();
 	mLocalCoords.resize(numPoints);
 	mBBMin[0] = mAxis1.dot(mPoints[0] - mCenter);
 	mBBMin[1] = mAxis2.dot(mPoints[0] - mCenter);
@@ -559,6 +567,7 @@ void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 
 void Part::Process()
 {
+	voteForNormal();
 	ImagePart();
 	//voteForNormal();
 	SkeletonPart();

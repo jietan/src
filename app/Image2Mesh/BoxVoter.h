@@ -35,6 +35,7 @@ private:
 	//void clusterPartsToBoxes(const vector<BoxFromRectangles>& boxes, const map<pair<int, int>, int>& componentToBox);
 	void voteBox(const vector<BoxFromRectangles>& boxes, const vector<Part>& parts, const pair<PartsInClusterT, BoxesInClusterT>& rectangleCluster, BoxFromRectangles* result);
 	void computeAxis(const vector<Part>& parts, vector<Eigen::Vector3f>* axes);
+	void refineAxis(const vector<Part>& parts, vector<Eigen::Vector3f>* axes);
 	void computeCenterAndExtent(const vector<Part>& parts, const vector<Eigen::Vector3f> axes, float confidenceInteval, Eigen::Vector3f* center, Eigen::Vector3f* extent);
 	void groupParallelRectangles(const vector<Part>& parts, vector<ParallelPartGroup>* parallelPartGroup);
 	//void searchClusters(int ithComponent, int jthComponent, int* clusterI, int* clusterJ);
