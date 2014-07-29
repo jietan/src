@@ -259,6 +259,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="barExtruder.cpp" />
     <ClCompile Include="BoxFromRectangles.cpp" />
     <ClCompile Include="BoxVoter.cpp" />
     <ClCompile Include="CVImageHelper.cpp" />
@@ -290,6 +291,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="barExtruder.h" />
     <ClInclude Include="BoxFromRectangles.h" />
     <ClInclude Include="BoxVoter.h" />
     <ClInclude Include="CVImageHelper.h" />

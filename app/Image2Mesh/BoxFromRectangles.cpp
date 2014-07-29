@@ -297,6 +297,7 @@ float BoxFromRectangles::TotalArea() const
 }
 
 
+
 int BoxFromRectangles::GetNumComponents() const
 {
 	return static_cast<int>(mComponentId.size());
@@ -319,6 +320,19 @@ BoxFromRectangles BoxFromRectangles::MirroredBox(const UtilPlane& pl) const
 	for (int i = 0; i < 3; ++i)
 		ret.mAxis[i] = pl.MirrorVector(mAxis[i]);
 	return ret;
+}
+
+bool BoxFromRectangles::IsPointInBox(const Eigen::Vector3f& pt) const
+{
+	Eigen::Vector3f offset = pt - mCenter;
+	float localOffset;
+	for (int i = 0; i < 3; ++i)
+	{
+		localOffset = offset.dot(mAxis[i]);
+		if (abs(localOffset) > mExtent[i])
+			return false;
+	}
+	return true;
 }
 
 bool BoxFromRectangles::IsBoxSimilar(const BoxFromRectangles& rhs) const
@@ -415,4 +429,19 @@ void BoxFromRectangles::SetValid(bool isValid)
 const Eigen::Vector3f& BoxFromRectangles::GetExtents() const
 {
 	return mExtent;
+}
+
+void BoxFromRectangles::ReassignPoints(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals)
+{
+	mPoints.clear();
+	mNormals.clear();
+	int numPoints = static_cast<int>(points.size());
+	for (int i = 0; i < numPoints; ++i)
+	{
+		if (IsPointInBox(points[i]))
+		{
+			mPoints.push_back(points[i]);
+			mNormals.push_back(normals[i]);
+		}
+	}
 }

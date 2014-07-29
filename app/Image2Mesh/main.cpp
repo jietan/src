@@ -52,6 +52,7 @@ using namespace std;
 #include "SymmetryBuilder.h"
 #include "BoxVoter.h"
 #include "boxExtruder.h"
+#include "barExtruder.h"
 
 #include "pointCloudToPrimitive/RansacShapeDetector.h"
 #include "pointCloudToPrimitive/PlanePrimitiveShape.h"
@@ -1522,48 +1523,110 @@ int main(int argc, char** argv)
 	}
 	else if (task == 18)
 	{
-		points.clear();
-		normals.clear();
-		string pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1.ply";
-		ReadPointCloud(pointCloudName, points, normals);
-		CoredFileMeshData<PlyVertex< Real > > mesh;
-		Points2Mesh(points, normals, mesh);
-		string fileToWrite = pointCloudName;
-		fileToWrite += "PoissonMesh.ply";
-		SaveMesh(fileToWrite, &mesh);
+		//points.clear();
+		//normals.clear();
+		//string pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1.ply";
+		//ReadPointCloud(pointCloudName, points, normals);
+		//CoredFileMeshData<PlyVertex< Real > > mesh;
+		//Points2Mesh(points, normals, mesh);
+		//string fileToWrite = pointCloudName;
+		//fileToWrite += "PoissonMesh.ply";
+		//SaveMesh(fileToWrite, &mesh);
 
 
-		points.clear();
-		normals.clear();
-		pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1MirroredAll.ply";
-		ReadPointCloud(pointCloudName, points, normals);
-		CoredFileMeshData<PlyVertex< Real > > mesh1;
+		//points.clear();
+		//normals.clear();
+		//pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1MirroredAll.ply";
+		//ReadPointCloud(pointCloudName, points, normals);
+		//CoredFileMeshData<PlyVertex< Real > > mesh1;
 
 		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
 		vector<Part> parts = ReadParts(allPrimitives);
 		vector<BoxFromRectangles> boxes = ReadBoxes(true);
-		
-		Extruder extruder;
+		int numBoxes = static_cast<int>(boxes.size());		
+		//Extruder extruder;
+		//for (int i = 0; i < numBoxes; ++i)
+		//{
+		//	vector<Eigen::Vector3f> extrudedPoints;
+		//	vector<Eigen::Vector3f> extrudedNormals;
+		//	string extrudedFileName = gTableFolder + "/" + gTableId + "/extrude/box" + boxes[i].GetComponentString() + "_extrude.ply";
 
-		int numBoxes = static_cast<int>(boxes.size());
+
+		//	if (extruder.Extrude(boxes[i], parts, &extrudedPoints, &extrudedNormals))
+		//	{
+		//		points.insert(points.end(), extrudedPoints.begin(), extrudedPoints.end());
+		//		normals.insert(normals.end(), extrudedNormals.begin(), extrudedNormals.end());
+		//		SavePointCloud(extrudedFileName, extrudedPoints, extrudedNormals);
+		//	}
+		//}
+		//Points2Mesh(points, normals, mesh1);
+		//fileToWrite = pointCloudName;
+		//fileToWrite += "PoissonMeshWithSymmetryExtrusion.ply";
+		//SaveMesh(fileToWrite, &mesh1);
+
+		string pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1MirroredAll.ply";
+		ReadPointCloud(pointCloudName, points, normals);
+		for (int i = 0; i < numBoxes; ++i)
+		{
+			boxes[i].ReassignPoints(points, normals);
+		}
+
+		BarExtruder barExtruder;
+		vector<DepthImage*> refDepthImages;
+		int stepVerifyCamera = 10;
+		
+		for (int i = ithDepthToProcess; i < numFrames; i += stepVerifyCamera)
+		{
+			char filename[MAX_FILENAME_LEN];
+			memset(filename, 0, MAX_FILENAME_LEN * sizeof(char));
+			sprintf(filename, "%s/%s/%s", gTableFolder.c_str(), gTableId.c_str(), correspondences[i].first.c_str());
+			DepthImage* depthImg = new DepthImage(filename);
+			depthImg->SetCameraPose(cameraPoses[i]);
+			refDepthImages.push_back(depthImg);
+			//LOG(INFO) << i << "th reference camera: " << filename;
+		}
+		int floorId, wallId;
+		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "WallId", wallId);
+		DecoConfig::GetSingleton()->GetInt("Image2Mesh", "FloorId", floorId);
+		PrimitiveShape* floor = NULL;
+		PrimitiveShape* wall = NULL;
+		if (floorId >= 0)
+		{
+			floor = allPrimitives[floorId];
+		}
+		if (wallId >= 0)
+		{
+			wall = allPrimitives[wallId];
+		}
+		barExtruder.SetWallAndFloor(wall, floor);
+		barExtruder.SetReferenceDepthImages(refDepthImages);
 		for (int i = 0; i < numBoxes; ++i)
 		{
 			vector<Eigen::Vector3f> extrudedPoints;
 			vector<Eigen::Vector3f> extrudedNormals;
-			string extrudedFileName = gTableFolder + "/" + gTableId + "/extrude/box" + boxes[i].GetComponentString() + "_extrude.ply";
+			string extrudedFileName = gTableFolder + "/" + gTableId + "/extrude/box" + boxes[i].GetComponentString() + "_barExtrude.ply";
 
 
-			if (extruder.Extrude(boxes[i], parts, &extrudedPoints, &extrudedNormals))
+			if (barExtruder.Extrude(boxes[i], parts, &extrudedPoints, &extrudedNormals))
 			{
+				
 				points.insert(points.end(), extrudedPoints.begin(), extrudedPoints.end());
 				normals.insert(normals.end(), extrudedNormals.begin(), extrudedNormals.end());
 				SavePointCloud(extrudedFileName, extrudedPoints, extrudedNormals);
+				LOG(INFO) << "Extruding " << extrudedFileName;
 			}
 		}
-		Points2Mesh(points, normals, mesh1);
-		fileToWrite = pointCloudName;
-		fileToWrite += "PoissonMeshWithSymmetryExtrusion.ply";
-		SaveMesh(fileToWrite, &mesh1);
+
+	}
+	else if (task == 19)
+	{
+
+		ReadPointCloud(gTableFolder + "/" + gTableId + "/extrude/box_34_38_41_barExtrude.ply", points, normals);
+		ReadPointCloud(gTableFolder + "/" + gTableId + "/extrude/box_26_44_45_46_extrude.ply", points, normals, true);
+		ReadPointCloud(gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1MirroredAll.ply", points, normals, true);
+
+
+		SavePointCloud(gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1SymmetryWithExtrusion.ply", points, normals);
 	}
 }
 

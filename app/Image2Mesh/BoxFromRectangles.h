@@ -34,6 +34,7 @@ public:
 	float Confidence() const;
 	BoxFromRectangles MirroredBox(const UtilPlane& pl) const;
 	bool IsBoxSimilar(const BoxFromRectangles& rhs) const;
+	bool IsPointInBox(const Eigen::Vector3f& pt) const;
 	const Eigen::Vector3f& GetCenter() const;
 	const vector<Eigen::Vector3f>& GetAxes() const;
 	const Eigen::Vector3f& GetExtents() const;
@@ -45,7 +46,7 @@ public:
 	void SetExtent(const Eigen::Vector3f& extent);
 	void SetComponentIds(const vector<int>& ids);
 	void SetValid(bool isValid);
-
+	void ReassignPoints(const vector<Eigen::Vector3f>& points, const vector<Eigen::Vector3f>& normals);
 	vector<Eigen::Vector3f> mPoints;
 	vector<Eigen::Vector3f> mNormals;
 
