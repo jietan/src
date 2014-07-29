@@ -2,6 +2,16 @@
 #include "MeshIO.h"
 #include "utility/mathlib.h"
 
+ExtentAxisPair::ExtentAxisPair(float extent, const Eigen::Vector3f& axis)
+{
+	mPair.first = extent;
+	mPair.second = axis;
+}
+bool ExtentAxisPair::operator< (const ExtentAxisPair& rhs) const
+{
+	return this->mPair.first < rhs.mPair.first;
+}
+
 BoxFromRectangles::BoxFromRectangles() : mIsValid(false), mConfidence(0)
 {
 	mComponentId.resize(2);
@@ -286,6 +296,11 @@ float BoxFromRectangles::TotalArea() const
 	return 8 * (mExtent[0] * mExtent[1] + mExtent[1] * mExtent[2] + mExtent[2] * mExtent[0]);
 }
 
+
+int BoxFromRectangles::GetNumComponents() const
+{
+	return static_cast<int>(mComponentId.size());
+}
 int BoxFromRectangles::ComponentId(int ithId) const
 {
 	return mComponentId[ithId];
@@ -395,4 +410,9 @@ void BoxFromRectangles::SetComponentIds(const vector<int>& ids)
 void BoxFromRectangles::SetValid(bool isValid)
 {
 	mIsValid = isValid;
+}
+
+const Eigen::Vector3f& BoxFromRectangles::GetExtents() const
+{
+	return mExtent;
 }

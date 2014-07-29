@@ -51,6 +51,7 @@ using namespace std;
 #include "BoxFromRectangles.h"
 #include "SymmetryBuilder.h"
 #include "BoxVoter.h"
+#include "boxExtruder.h"
 
 #include "pointCloudToPrimitive/RansacShapeDetector.h"
 #include "pointCloudToPrimitive/PlanePrimitiveShape.h"
@@ -1507,6 +1508,7 @@ int main(int argc, char** argv)
 		ofstream boxInfoOut(boxInfoFileName.c_str());
 		boxInfoOut << numBoxes << endl;
 		char filename[512];
+
 		for (int i = 0; i < numBoxes; ++i)
 		{
 			sprintf(filename, "%s/%s/boxesVote/rectangle%02d%s.ply", gTableFolder.c_str(), gTableId.c_str(), i, votedBoxes[i].GetComponentString().c_str());
@@ -1516,11 +1518,52 @@ int main(int argc, char** argv)
 			votedBoxes[i].Save(filename);
 			sprintf(filename, "rectangle%02d%s", i, votedBoxes[i].GetComponentString().c_str());
 			boxInfoOut << filename << endl;
-
 		}
+	}
+	else if (task == 18)
+	{
+		points.clear();
+		normals.clear();
+		string pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1.ply";
+		ReadPointCloud(pointCloudName, points, normals);
+		CoredFileMeshData<PlyVertex< Real > > mesh;
+		Points2Mesh(points, normals, mesh);
+		string fileToWrite = pointCloudName;
+		fileToWrite += "PoissonMesh.ply";
+		SaveMesh(fileToWrite, &mesh);
 
 
+		points.clear();
+		normals.clear();
+		pointCloudName = gTableFolder + "/" + gTableId + "/pointsFromSimplifiedMesh1MirroredAll.ply";
+		ReadPointCloud(pointCloudName, points, normals);
+		CoredFileMeshData<PlyVertex< Real > > mesh1;
 
+		vector<PrimitiveShape*> allPrimitives = ReadPrimitives();
+		vector<Part> parts = ReadParts(allPrimitives);
+		vector<BoxFromRectangles> boxes = ReadBoxes(true);
+		
+		Extruder extruder;
+
+		int numBoxes = static_cast<int>(boxes.size());
+		for (int i = 0; i < numBoxes; ++i)
+		{
+			vector<Eigen::Vector3f> extrudedPoints;
+			vector<Eigen::Vector3f> extrudedNormals;
+			string extrudedFileName = gTableFolder + "/" + gTableId + "/extrude/box" + boxes[i].GetComponentString() + "_extrude.ply";
+
+
+			if (extruder.Extrude(boxes[i], parts, &extrudedPoints, &extrudedNormals))
+			{
+				points.insert(points.end(), extrudedPoints.begin(), extrudedPoints.end());
+				normals.insert(normals.end(), extrudedNormals.begin(), extrudedNormals.end());
+				SavePointCloud(extrudedFileName, extrudedPoints, extrudedNormals);
+			}
+		}
+		Points2Mesh(points, normals, mesh1);
+		fileToWrite = pointCloudName;
+		fileToWrite += "PoissonMeshWithSymmetryExtrusion.ply";
+		SaveMesh(fileToWrite, &mesh1);
 	}
 }
 

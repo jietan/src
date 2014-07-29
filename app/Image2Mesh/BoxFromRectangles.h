@@ -7,6 +7,15 @@
 #include "utility/mathlib.h"
 using namespace std;
 
+class ExtentAxisPair
+{
+public:
+	ExtentAxisPair(float extent, const Eigen::Vector3f& axis);
+	bool operator< (const ExtentAxisPair& rhs) const;
+	pair<float, Eigen::Vector3f> mPair;
+};
+
+
 class BoxFromRectangles
 {
 public:
@@ -20,12 +29,14 @@ public:
 	{
 		return mConfidence > rhs.mConfidence;
 	}
+	int GetNumComponents() const;
 	int ComponentId(int ithId) const;
 	float Confidence() const;
 	BoxFromRectangles MirroredBox(const UtilPlane& pl) const;
 	bool IsBoxSimilar(const BoxFromRectangles& rhs) const;
 	const Eigen::Vector3f& GetCenter() const;
 	const vector<Eigen::Vector3f>& GetAxes() const;
+	const Eigen::Vector3f& GetExtents() const;
 	void GetGeometry(vector<Eigen::Vector3f>& vertices, vector<Eigen::Vector3i>& faces);
 	string GetComponentString() const;
 
