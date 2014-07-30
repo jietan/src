@@ -492,6 +492,11 @@ bool Part::isPointInRectangle(const Eigen::Vector2f& localCoord, Eigen::Vector2f
 
 void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 {
+	if (level >= 10)
+	{
+		newParts.push_back(*this);
+		return;
+	}
 	int numPointsThreshold;
 	DecoConfig::GetSingleton()->GetInt("Image2Mesh", "PartMinPointThreshold", numPointsThreshold);
 
@@ -533,7 +538,7 @@ void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 	//cv::line(cdst0, pt1, pt2, cv::Scalar(0, 0, 255), 1, CV_AA);
 	//cv::imshow("detected lines0", cdst0);
 	//cv::waitKey();
-
+	//cv::destroyAllWindows();
 	if (lines.empty())
 	{
 		DivideByConnectivity(newParts);
@@ -546,12 +551,17 @@ void Part::DivideBySkeleton(vector<Part>& newParts, int level)
 
 	vector<Part> toProcess;
 
-	splittedPart.Process();
-	splittedPart.DivideByConnectivity(toProcess);
+	if (splittedPart.GetPoints().size() > numPointsThreshold)
+	{
+		splittedPart.Process();
+		splittedPart.DivideByConnectivity(toProcess);
+	}
+	if (remainingPart.GetPoints().size() > numPointsThreshold)
+	{
+		remainingPart.Process();
+		remainingPart.DivideByConnectivity(toProcess);
 
-
-	remainingPart.Process();
-	remainingPart.DivideByConnectivity(toProcess);
+	}
 
 		//cv::Mat img = remainingPart.ImagePart();
 		//char tmpFilename[512];

@@ -166,7 +166,7 @@ void BoxVoter::groupParallelRectangles(const vector<Part>& parts, vector<Paralle
 
 void BoxVoter::refineAxis(const vector<Part>& parts, vector<Eigen::Vector3f>* axes)
 {
-	const float rotateAngleBound = 5 * CV_PI / 180;
+	const float rotateAngleBound = 45 * CV_PI / 180;
 	const float rotateAngleResolution = 1 * CV_PI / 180;
 	//int numParts = static_cast<int>(parts.size());
 	//vector<Eigen::Vector3f> allPoints;

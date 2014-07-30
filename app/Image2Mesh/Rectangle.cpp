@@ -8,7 +8,7 @@ PartRectangle::PartRectangle()
 bool PartRectangle::IsRectangleInBack(const PartRectangle& rhs) const
 {
 	int numPointsRhs = static_cast<int>(rhs.mPoints.size());
-	const float frontRatioThreshold = 0.75f;
+	const float frontRatioThreshold = 0.7f; //used to be 0.75
 	int vote = 0;
 	for (int i = 0; i < numPointsRhs; ++i)
 	{

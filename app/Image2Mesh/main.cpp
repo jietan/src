@@ -1404,9 +1404,8 @@ int main(int argc, char** argv)
 			{
 				
 				if (i >= j) continue;
-				//i = 19;
-				//j = 25;
 
+				LOG(INFO) << "Considering " << i << ", " << j << "pair.";
 				BoxFromRectangles box;
 				float score;
 				if (box.Construct(allParts[i].GetRectangle(), allParts[j].GetRectangle(), i, j, &score))
