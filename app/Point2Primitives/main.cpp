@@ -80,6 +80,7 @@ int main()
 	string tableFolder, tableId, inputFileName, outputFileName, referenceFileName;
 	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableFolder", tableFolder);
 	DecoConfig::GetSingleton()->GetString("Image2Mesh", "TableId", tableId);
+	//inputFileName = "pointsFromSimplifiedMesh1.ply";
 	inputFileName = "pointsFromSimplifiedMesh1.ply";
 	string fullInputFileName = tableFolder + "/" + tableId + "/" + inputFileName;
 	ReadPointCloud(fullInputFileName, points, normals, false);
