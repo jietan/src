@@ -54,6 +54,14 @@ def goRenderTurnTableAnimation(scene):
         queue.join()
     print(Statistics.getInstance().getStats())
 
+def genTurntablePosition(theta, aabb):
+    height = (aabb.max.z - aabb.min.z)
+    center = aabb.getBSphere().center
+    radius = 3 * aabb.getBSphere().radius
+    phi = acos(height / radius)
+    turnTablePos = [radius*sin(phi)*cos(theta),radius*sin(phi)*sin(theta),radius*cos(phi)]
+    return Point(turnTablePos[0] + center[0], turnTablePos[1] + center[1], turnTablePos[2] + center[2])
+
 def genRandomPosition(distance):
     radiusRange = (0.5,1)
     elevationRange = (40,90)
@@ -84,23 +92,29 @@ def goRenderRandomCameras(scene,nRenderings,OUT_DIR,scheduler):
     queue = RenderQueue()
     sensor = scene.getSensor()
     aabb = getShapesAABB(scene.getShapes())
+    print('aabb x: %f %f\n' %(aabb.min.x, aabb.max.x))
+    print('aabb y: %f %f\n' %(aabb.min.y, aabb.max.y))
+    print('aabb z: %f %f\n' %(aabb.min.z, aabb.max.z))
     diagLength = aabb.getBSphere().radius
     sensorProperties = sensor.getProperties()
     fov = sensorProperties['fov']
     distance = diagLength/(2*math.tan(fov*0.5*math.pi/180.0))
     distance = max(aabb.max.x,aabb.max.y,aabb.max.z)+distance
     sceneResID = scheduler.registerResource(scene)
-
+    step = 360 / nRenderings;
     for i in range(nRenderings):
+        
         frameID = '_%05i'%i
+        print('working on %5i\n' %i);
         destination = join(OUT_DIR,scene.getID(),'depth',scene.getID()+frameID)
         ensure_dir(destination)
         newScene = Scene(scene)
         pmgr= PluginManager.getInstance()
         newSensor = pmgr.createObject(scene.getSensor().getProperties())
         # Sample random camera position
-        randPos = genRandomPosition(distance)
+        # randPos = genRandomPosition(distance)
         #newWorldTransform = Transform.lookAt(randPos,aabb.getCenter(),Vector(0,1,0)) #Gravity along x
+        randPos = genTurntablePosition(i * step * pi / 180, aabb);
         newWorldTransform = Transform.lookAt(randPos,aabb.getCenter(),Vector(0,0,1)) # Gravity along z
         newSensor.setWorldTransform(newWorldTransform)
         newFilm = pmgr.createObject(scene.getFilm().getProperties())
